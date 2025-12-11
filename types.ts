@@ -5,7 +5,10 @@ export enum Platform {
   TRIPADVISOR = 'TripAdvisor',
   AIRBNB = 'Airbnb',
   FACEBOOK = 'Facebook',
-  ZOMATO = 'Zomato/Yelp'
+  YELP = 'Yelp',
+  UBER_EATS = 'Uber Eats',
+  EXPEDIA = 'Expedia',
+  ZOMATO = 'Zomato'
 }
 
 export enum Tone {

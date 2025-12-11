@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Platform, Tone, Language as AppLanguage, ReviewData } from '../types';
-import { Star, Send, Loader2, RefreshCw } from 'lucide-react';
+import { Star, Send, Loader2, RefreshCw, Briefcase, Smile, Heart, HeartHandshake, Sparkles } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 
 interface ReviewFormProps {
@@ -37,6 +37,18 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
     setRating(4);
     setReviewText('A comida estava ótima, especialmente o risoto! O serviço demorou um pouco, mas os empregados foram simpáticos.');
     setTone(Tone.PROFESSIONAL);
+  };
+
+  // Helper para obter o ícone do tom
+  const getToneIcon = (t: Tone) => {
+    switch (t) {
+      case Tone.PROFESSIONAL: return <Briefcase size={16} />;
+      case Tone.FRIENDLY: return <Smile size={16} />;
+      case Tone.GRATEFUL: return <Heart size={16} />;
+      case Tone.APOLOGETIC: return <HeartHandshake size={16} />;
+      case Tone.WITTY: return <Sparkles size={16} />;
+      default: return <Briefcase size={16} />;
+    }
   };
 
   return (
@@ -130,18 +142,19 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
         {/* Tone */}
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.tone}</label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {Object.values(Tone).map((toneOption) => (
               <button
                 key={toneOption}
                 type="button"
                 onClick={() => setTone(toneOption)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 border shadow-sm ${
                   tone === toneOption
-                    ? 'bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-700 border shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-700 ring-1 ring-brand-200 dark:ring-brand-800'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300'
                 }`}
               >
+                {getToneIcon(toneOption)}
                 {toneOption}
               </button>
             ))}
