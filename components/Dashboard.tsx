@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts';
 import { ReviewData } from '../types';
+import { Activity, Star, Layout, TrendingUp } from 'lucide-react';
 
 interface DashboardProps {
   history: ReviewData[];
@@ -50,17 +51,26 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors relative overflow-hidden">
+          <div className="absolute right-4 top-4 p-2 bg-brand-50 dark:bg-brand-900/20 rounded-lg text-brand-600 dark:text-brand-400">
+            <Activity size={20} />
+          </div>
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase">Total Respostas</h4>
           <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2">{history.length}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors relative overflow-hidden">
+          <div className="absolute right-4 top-4 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-yellow-600 dark:text-yellow-400">
+            <Star size={20} />
+          </div>
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase">Média de Avaliação</h4>
           <p className="text-3xl font-bold text-slate-800 dark:text-white mt-2 flex items-center gap-2">
             {averageRating} <span className="text-yellow-400 text-2xl">★</span>
           </p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors relative overflow-hidden">
+          <div className="absolute right-4 top-4 p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400">
+            <Layout size={20} />
+          </div>
           <h4 className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase">Plataforma Principal</h4>
           <p className="text-lg font-bold text-slate-800 dark:text-white mt-3 truncate">
              {platformData.sort((a,b) => b.value - a.value)[0]?.name || '-'}
@@ -70,7 +80,10 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-80 transition-colors">
-          <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Distribuição de Estrelas</h3>
+          <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+            <TrendingUp size={18} className="text-slate-400" />
+            Distribuição de Estrelas
+          </h3>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={ratingData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.2} />
@@ -90,7 +103,10 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm h-80 transition-colors">
-          <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Reviews por Plataforma</h3>
+          <h3 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+            <Layout size={18} className="text-slate-400" />
+            Reviews por Plataforma
+          </h3>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

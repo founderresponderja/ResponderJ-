@@ -16,7 +16,8 @@ export const translations = {
         generate: "Gerar Resposta",
         dashboard: "Estatísticas",
         platforms: "Apps Suportadas",
-        plans: "Planos & Faturação"
+        plans: "Planos & Faturação",
+        accounting: "Contabilidade"
       }
     },
     landing: {
@@ -125,7 +126,8 @@ export const translations = {
         generate: "Generate Response",
         dashboard: "Statistics",
         platforms: "Supported Apps",
-        plans: "Plans & Billing"
+        plans: "Plans & Billing",
+        accounting: "Accounting"
       }
     },
     landing: {
@@ -234,7 +236,8 @@ export const translations = {
         generate: "Generar Respuesta",
         dashboard: "Estadísticas",
         platforms: "Apps Compatibles",
-        plans: "Planes y Facturación"
+        plans: "Planes y Facturación",
+        accounting: "Contabilidad"
       }
     },
     landing: {
@@ -288,7 +291,7 @@ export const translations = {
       security: "Protegido por encriptación SSL de nivel empresarial."
     },
     app: {
-      generatorTitle: "Generador de Respuestas",
+      generatorTitle: "Generador de Respostas",
       waitingInput: "Esperando entrada",
       waitingDesc: "Rellena el formulario de la izquierda para ver la magia de la IA.",
       dashboardTitle: "Panel de Control",

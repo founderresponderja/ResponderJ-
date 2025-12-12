@@ -3,9 +3,10 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import MainApp from './components/MainApp';
 import AboutPage from './components/AboutPage';
+import AdminDashboard from './components/AdminDashboard';
 import { Language } from './utils/translations';
 
-type ViewState = 'landing' | 'login' | 'app' | 'about';
+type ViewState = 'landing' | 'login' | 'app' | 'about' | 'admin';
 export type Theme = 'light' | 'dark';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
   const navigateToAbout = () => setCurrentView('about');
   const handleLoginSuccess = () => setCurrentView('app');
   const handleLogout = () => setCurrentView('landing');
+  const navigateToAdmin = () => setCurrentView('admin');
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300`}>
@@ -57,6 +59,7 @@ function App() {
       {currentView === 'app' && (
         <MainApp 
           onLogout={handleLogout}
+          onNavigateToAdmin={navigateToAdmin}
           lang={currentLang}
           setLang={setCurrentLang}
           theme={theme}
@@ -67,6 +70,13 @@ function App() {
       {currentView === 'about' && (
         <AboutPage 
           onBack={navigateToLanding}
+          theme={theme}
+        />
+      )}
+
+      {currentView === 'admin' && (
+        <AdminDashboard 
+          onBack={handleLoginSuccess} // Back to app
           theme={theme}
         />
       )}

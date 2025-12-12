@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { MessageSquareText, LayoutDashboard, List, LogOut, Sun, Moon, CreditCard, Zap, X } from 'lucide-react';
+import { MessageSquareText, LayoutDashboard, List, LogOut, Sun, Moon, CreditCard, Zap, X, Calculator, Activity, ShieldCheck } from 'lucide-react';
 import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
 import Dashboard from './Dashboard';
 import PlatformList from './PlatformList';
 import AssistantTip from './AssistantTip';
 import PricingSection from './PricingSection';
+import AccountingPage from './AccountingPage';
 import { Logo } from './Logo';
 import { generateResponse } from '../services/geminiService';
 import { processReplitPayment } from '../services/paymentService';
@@ -15,6 +16,7 @@ import { Theme } from '../App';
 
 interface MainAppProps {
   onLogout: () => void;
+  onNavigateToAdmin?: () => void;
   lang: Language;
   setLang: (l: Language) => void;
   theme: Theme;
@@ -29,8 +31,8 @@ const PLAN_LIMITS: Record<PlanId, number> = {
     agency: 500
 };
 
-const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggleTheme }) => {
-  const [activeTab, setActiveTab] = useState<'generate' | 'dashboard' | 'platforms' | 'pricing'>('generate');
+const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, setLang, theme, toggleTheme }) => {
+  const [activeTab, setActiveTab] = useState<'generate' | 'dashboard' | 'platforms' | 'pricing' | 'accounting'>('generate');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -169,6 +171,18 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggl
           </button>
 
           <button
+            onClick={() => setActiveTab('accounting')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'accounting' 
+                ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300' 
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Calculator size={20} />
+            {nav.menu.accounting}
+          </button>
+
+          <button
             onClick={() => setActiveTab('pricing')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
               activeTab === 'pricing' 
@@ -179,6 +193,16 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggl
             <CreditCard size={20} />
             {nav.menu.plans}
           </button>
+
+          {onNavigateToAdmin && (
+            <button
+              onClick={onNavigateToAdmin}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 mt-4 border-t border-slate-100 dark:border-slate-800"
+            >
+              <ShieldCheck size={20} />
+              Admin
+            </button>
+          )}
         </div>
 
         <div className="px-4 pb-4 space-y-4">
@@ -317,7 +341,10 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggl
             <Dashboard history={history} />
             
             <div className="mt-8">
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4">{t.recentHistory}</h3>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                {t.recentHistory}
+              </h3>
               <div className="space-y-4">
                 {history.map((review) => (
                   <div key={review.id} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 transition-colors">
@@ -335,7 +362,7 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggl
                     <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 italic">
                       "{review.reviewText}"
                     </p>
-                    <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded text-sm text-slate-700 dark:text-slate-300 text-sm border-l-4 border-brand-400">
+                    <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded text-sm text-slate-700 dark:text-slate-300 text-sm border-l-4 border-brand-400">
                       {review.generatedResponse}
                     </div>
                   </div>
@@ -350,6 +377,10 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggl
 
         {activeTab === 'platforms' && (
           <PlatformList lang={lang} />
+        )}
+
+        {activeTab === 'accounting' && (
+          <AccountingPage />
         )}
 
         {activeTab === 'pricing' && (
@@ -404,11 +435,11 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, lang, setLang, theme, toggl
             Stats
           </button>
           <button
-            onClick={() => setActiveTab('pricing')}
-            className={`flex flex-col items-center gap-1 text-xs font-medium ${activeTab === 'pricing' ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'}`}
+            onClick={() => setActiveTab('accounting')}
+            className={`flex flex-col items-center gap-1 text-xs font-medium ${activeTab === 'accounting' ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-500'}`}
           >
-            <CreditCard size={24} />
-            Planos
+            <Calculator size={24} />
+            Contab
           </button>
       </div>
 
