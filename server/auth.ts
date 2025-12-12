@@ -23,6 +23,7 @@ declare global {
       isActive: boolean;
       isAdmin: boolean;
       isSuperAdmin: boolean;
+      selectedPlan?: string;
     }
   }
 }

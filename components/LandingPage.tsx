@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Clock, CheckCircle2, ArrowRight, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { BarChart3, Clock, CheckCircle2, ArrowRight, ShieldCheck, Sun, Moon, Info } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
 import PricingSection from './PricingSection';
@@ -7,13 +7,14 @@ import { Logo } from './Logo';
 
 interface LandingPageProps {
   onNavigateToLogin: () => void;
+  onNavigateToAbout?: () => void;
   lang: Language;
   setLang: (l: Language) => void;
   theme: Theme;
   toggleTheme: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, lang, setLang, theme, toggleTheme }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigateToAbout, lang, setLang, theme, toggleTheme }) => {
   const t = translations[lang].landing;
   const tn = translations[lang].nav;
 
@@ -47,6 +48,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, lang, setL
                 ))}
             </div>
           </div>
+
+          {onNavigateToAbout && (
+            <button 
+              onClick={onNavigateToAbout}
+              className="text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 font-medium text-sm transition-colors hidden sm:block"
+            >
+              Sobre Nós
+            </button>
+          )}
 
           <button 
             onClick={onNavigateToLogin}
@@ -88,9 +98,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, lang, setL
               <ArrowRight className="group-hover:translate-x-1 transition-transform" />
             </button>
             <button 
+              onClick={onNavigateToAbout}
               className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl font-bold text-lg transition-all"
             >
-              {t.ctaSecondary}
+              <Info size={18} />
+              Saber Mais
             </button>
           </div>
           
@@ -161,6 +173,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, lang, setL
           </div>
           <div className="text-sm text-slate-400">
             © {new Date().getFullYear()} Amplia Solutions. {t.footer}
+          </div>
+          <div className="flex gap-6 text-sm">
+             {onNavigateToAbout && (
+                <button onClick={onNavigateToAbout} className="text-slate-400 hover:text-white transition-colors">
+                    Sobre Nós
+                </button>
+             )}
+             <button className="text-slate-400 hover:text-white transition-colors">Privacidade</button>
+             <button className="text-slate-400 hover:text-white transition-colors">Termos</button>
           </div>
         </div>
       </footer>
