@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Clock, CheckCircle2, ArrowRight, ShieldCheck, Sun, Moon, Info } from 'lucide-react';
+import { BarChart3, Clock, CircleCheckBig, ArrowRight, ShieldCheck, Sun, Moon, Info, Users } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
 import PricingSection from './PricingSection';
@@ -8,13 +8,14 @@ import { Logo } from './Logo';
 interface LandingPageProps {
   onNavigateToLogin: () => void;
   onNavigateToAbout?: () => void;
+  onNavigateToCookies?: () => void;
   lang: Language;
   setLang: (l: Language) => void;
   theme: Theme;
   toggleTheme: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigateToAbout, lang, setLang, theme, toggleTheme }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigateToAbout, onNavigateToCookies, lang, setLang, theme, toggleTheme }) => {
   const t = translations[lang].landing;
   const tn = translations[lang].nav;
 
@@ -130,7 +131,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="bg-slate-50 dark:bg-slate-950 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6">
                 <Clock size={24} />
@@ -143,7 +144,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
             
             <div className="bg-slate-50 dark:bg-slate-950 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
               <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-6">
-                <CheckCircle2 size={24} />
+                <CircleCheckBig size={24} />
               </div>
               <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-3">{t.features.seo.title}</h3>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -158,6 +159,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
               <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-3">{t.features.insights.title}</h3>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                 {t.features.insights.desc}
+              </p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-950 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
+              <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/30 rounded-xl flex items-center justify-center text-orange-600 dark:text-orange-400 mb-6">
+                <Users size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-3">CRM Integrado</h3>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                Centralize contactos, gira leads e acompanhe o pipeline de vendas numa única plataforma.
               </p>
             </div>
           </div>
@@ -182,6 +193,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
              )}
              <button className="text-slate-400 hover:text-white transition-colors">Privacidade</button>
              <button className="text-slate-400 hover:text-white transition-colors">Termos</button>
+             {onNavigateToCookies && (
+               <button onClick={onNavigateToCookies} className="text-slate-400 hover:text-white transition-colors">
+                 Cookies
+               </button>
+             )}
           </div>
         </div>
       </footer>

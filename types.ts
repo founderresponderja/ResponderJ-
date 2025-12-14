@@ -8,7 +8,11 @@ export enum Platform {
   YELP = 'Yelp',
   UBER_EATS = 'Uber Eats',
   EXPEDIA = 'Expedia',
-  ZOMATO = 'Zomato'
+  ZOMATO = 'Zomato',
+  INSTAGRAM = 'Instagram',
+  LINKEDIN = 'LinkedIn',
+  TIKTOK = 'TikTok',
+  TWITTER = 'Twitter'
 }
 
 export enum Tone {
@@ -36,6 +40,21 @@ export interface ReviewData {
   language: Language;
   generatedResponse?: string;
   createdAt: Date;
+  isFavorite?: boolean;
+}
+
+export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter';
+export type PostStatus = 'draft' | 'scheduled' | 'published';
+export type ContentType = 'image' | 'video' | 'text' | 'carousel';
+
+export interface SocialPost {
+  id: string;
+  title: string;
+  platform: SocialPlatform;
+  status: PostStatus;
+  scheduledDate: Date;
+  contentType: ContentType;
+  engagement?: string;
 }
 
 export interface ChartData {

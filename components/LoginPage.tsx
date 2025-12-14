@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
 import { Logo } from './Logo';
@@ -7,13 +7,15 @@ import { Logo } from './Logo';
 interface LoginPageProps {
   onLoginSuccess: () => void;
   onBack: () => void;
+  onRegister: () => void;
   lang: Language;
   theme: Theme;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onBack, lang, theme }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onBack, onRegister, lang, theme }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const t = translations[lang].login;
   const nav = translations[lang].nav;
@@ -74,13 +76,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onBack, lang, the
                   <Lock size={18} className="text-slate-400" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all"
+                  className="w-full pl-10 pr-10 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -106,7 +115,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onBack, lang, the
           </form>
 
           <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            {t.noAccount} <a href="#" className="text-brand-600 dark:text-brand-400 font-bold hover:underline">{t.create}</a>
+            {t.noAccount} <button onClick={onRegister} className="text-brand-600 dark:text-brand-400 font-bold hover:underline">{t.create}</button>
           </div>
         </div>
         

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { ReviewData } from '../types';
-import { Copy, Check, MessageSquare, AlertCircle } from 'lucide-react';
+import { Copy, Check, MessageSquare, CircleAlert, Heart } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 
 interface ResponseCardProps {
   review: ReviewData;
   lang: Language;
+  onToggleFavorite?: () => void;
 }
 
-const ResponseCard: React.FC<ResponseCardProps> = ({ review, lang }) => {
+const ResponseCard: React.FC<ResponseCardProps> = ({ review, lang, onToggleFavorite }) => {
   const [copied, setCopied] = useState(false);
   const t = translations[lang].app.card;
 
@@ -40,18 +41,33 @@ const ResponseCard: React.FC<ResponseCardProps> = ({ review, lang }) => {
             <p className="text-xs text-slate-500 dark:text-slate-400">{review.tone}</p>
           </div>
         </div>
-        <button
-          onClick={handleCopy}
-          disabled={copied}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-            copied 
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 scale-105 border border-transparent' 
-              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95'
-          }`}
-        >
-          {copied ? <Check size={16} className="animate-bounce" /> : <Copy size={16} />}
-          {copied ? t.copied : t.copy}
-        </button>
+        <div className="flex gap-2">
+          {onToggleFavorite && (
+            <button
+              onClick={onToggleFavorite}
+              className={`p-2 rounded-lg transition-all duration-200 border ${
+                review.isFavorite 
+                  ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500 border-rose-200 dark:border-rose-800' 
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-700'
+              }`}
+              title="Guardar nos favoritos"
+            >
+              <Heart size={16} fill={review.isFavorite ? "currentColor" : "none"} />
+            </button>
+          )}
+          <button
+            onClick={handleCopy}
+            disabled={copied}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+              copied 
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 scale-105 border border-transparent' 
+                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95'
+            }`}
+          >
+            {copied ? <Check size={16} className="animate-bounce" /> : <Copy size={16} />}
+            {copied ? t.copied : t.copy}
+          </button>
+        </div>
       </div>
       
       <div className="p-6">
@@ -60,7 +76,7 @@ const ResponseCard: React.FC<ResponseCardProps> = ({ review, lang }) => {
         </div>
         
         <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-start gap-3">
-          <AlertCircle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <CircleAlert size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-slate-500 dark:text-slate-400">
             <strong>{t.aiTip}:</strong> {t.aiTipDesc}
           </p>

@@ -8,7 +8,7 @@ import {
   GitBranch, 
   Database, 
   Upload, 
-  CheckCircle, 
+  CircleCheckBig, 
   AlertTriangle,
   Server,
   Mail,
@@ -16,11 +16,21 @@ import {
   Settings,
   Search,
   ArrowLeft,
-  LayoutDashboard
+  LayoutDashboard,
+  Key,
+  Landmark,
+  Clock,
+  BookOpen,
+  X
 } from 'lucide-react';
 import { Theme } from '../App';
 import AdminLeadsManagement from './AdminLeadsManagement';
 import AdminRolesManagement from './AdminRolesManagement';
+import AdminApiKeys from './AdminApiKeys';
+import AdminApiManagement from './AdminApiManagement';
+import AdminBankingManagement from './AdminBankingManagement';
+import AdminContentManagement from './AdminContentManagement';
+import AdminCriticalSystems from './AdminCriticalSystems';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -52,8 +62,60 @@ const MOCK_LOGS = [
   { id: 3, type: 'warning', message: 'Tentativa de login falhada: email@teste.com', timestamp: '2024-01-20 06:35:23' },
 ];
 
+const MOCK_VERSIONS = [
+  { 
+    version: "v2.5.0", 
+    date: "2025-01-20", 
+    status: "current",
+    author: "Luís Pedrosa", 
+    description: "Atualização Major: Integração Gemini 2.5",
+    changes: [
+      "Migração para modelo Gemini 2.5 Flash",
+      "Novo módulo de Gestão Bancária",
+      "Exportação CSV de Leads",
+      "Filtros avançados no CRM"
+    ] 
+  },
+  { 
+    version: "v2.4.5", 
+    date: "2025-01-18", 
+    status: "deployed",
+    author: "Maria Santos", 
+    description: "Hotfix: Correções de Segurança",
+    changes: [
+      "Correção na validação de tokens CSRF",
+      "Rate limiting ajustado para API pública",
+      "Logs de auditoria melhorados"
+    ] 
+  },
+  { 
+    version: "v2.4.0", 
+    date: "2025-01-10", 
+    status: "deployed",
+    author: "Luís Pedrosa", 
+    description: "Feature Release: CRM & Social",
+    changes: [
+      "Lançamento do módulo CRM",
+      "Calendário de Redes Sociais",
+      "Suporte para TikTok e LinkedIn"
+    ] 
+  }
+];
+
+// Mock do utilizador atual (admin)
+const MOCK_CURRENT_USER = {
+  id: 999,
+  firstName: "Super",
+  lastName: "Admin",
+  email: "admin@responderja.pt",
+  isAdmin: true,
+  isSuperAdmin: true,
+  isActive: true
+};
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
   const [activeTab, setActiveTab] = useState("users");
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'} transition-colors duration-300`}>
@@ -75,7 +137,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
                 <ShieldCheck className="w-4 h-4" />
                 Administrador
               </span>
-              <button className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium px-3 py-1 border border-blue-200 dark:border-blue-900/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+              <button 
+                onClick={() => setIsVersionModalOpen(true)}
+                className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium px-3 py-1 border border-blue-200 dark:border-blue-900/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
                 <GitBranch className="w-4 h-4" />
                 Controlo de Versões
               </button>
@@ -99,7 +164,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
           </div>
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <div className="flex items-center">
-              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+              <CircleCheckBig className="h-8 w-8 text-green-600 dark:text-green-400" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Respostas Geradas</p>
                 <p className="text-2xl font-bold">{MOCK_STATS.totalResponses}</p>
@@ -130,17 +195,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
         <div className="flex flex-col space-y-6">
           <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
             <div className="flex space-x-8">
-              {['users', 'roles', 'analytics', 'system', 'emails', 'leads', 'settings', 'logs'].map((tab) => (
+              {['users', 'roles', 'api-keys', 'analytics', 'banking', 'system', 'monitoring', 'emails', 'leads', 'content', 'settings', 'logs'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${
                     activeTab === tab
                       ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
                 >
-                  {tab === 'roles' ? 'Permissões' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === 'content' && <BookOpen className="w-4 h-4" />}
+                  {tab === 'monitoring' && <Activity className="w-4 h-4" />}
+                  {tab === 'roles' ? 'Permissões' : 
+                   tab === 'api-keys' ? 'Checklist APIs' : 
+                   tab === 'system' ? 'Gestão de API' : 
+                   tab === 'banking' ? 'Bancos' : 
+                   tab === 'monitoring' ? 'Monitorização' :
+                   tab === 'content' ? 'Conteúdo' : 
+                   tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
@@ -187,6 +260,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
           {/* Content Roles */}
           {activeTab === 'roles' && (
             <AdminRolesManagement />
+          )}
+
+          {/* Content API Keys Checklist */}
+          {activeTab === 'api-keys' && (
+            <AdminApiKeys />
           )}
 
           {/* Content Analytics */}
@@ -270,7 +348,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
                     <h4 className="font-medium mb-2">{item.title}</h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{item.desc}</p>
                     <div className={`flex items-center text-${item.color === 'green' ? 'emerald' : item.color}-600`}>
-                      <CheckCircle className="h-4 w-4 mr-1" />
+                      <CircleCheckBig className="h-4 w-4 mr-1" />
                       <span className="text-sm font-medium">{item.status}</span>
                     </div>
                   </div>
@@ -296,45 +374,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
             </div>
           )}
 
-          {/* Content System */}
+          {/* Content System (Agora usa o novo AdminApiManagement) */}
           {activeTab === 'system' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center mb-4">
-                  <Database className="mr-2 h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  <h3 className="font-bold">Base de Dados</h3>
-                </div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="font-medium">Operacional</span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Conexões ativas: 12</p>
-              </div>
+            <AdminApiManagement currentUser={MOCK_CURRENT_USER} />
+          )}
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center mb-4">
-                  <ShieldCheck className="mr-2 h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  <h3 className="font-bold">OpenAI API</h3>
-                </div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="font-medium">Operacional</span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Última verificação: há 2 minutos</p>
-              </div>
+          {/* Content Banking (Novo) */}
+          {activeTab === 'banking' && (
+            <AdminBankingManagement />
+          )}
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center mb-4">
-                  <CreditCard className="mr-2 h-5 w-5 text-gray-600 dark:text-gray-400" />
-                  <h3 className="font-bold">Stripe</h3>
-                </div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                  <span className="font-medium">Configuração Pendente</span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Configurar chaves API</p>
-              </div>
-            </div>
+          {/* Content CMS / Content Management */}
+          {activeTab === 'content' && (
+            <AdminContentManagement />
+          )}
+
+          {/* Content Monitoring (New) */}
+          {activeTab === 'monitoring' && (
+            <AdminCriticalSystems />
           )}
 
           {/* Content Settings */}
@@ -400,10 +457,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
                     log.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20' :
                     'bg-blue-50 dark:bg-blue-900/20'
                   }`}>
-                    {log.type === 'success' && <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                    {log.type === 'success' && <CircleCheckBig className="h-4 w-4 text-green-600 dark:text-green-400" />}
                     {log.type === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />}
-                    {log.type === 'info' && <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-                    <span className="text-gray-500 dark:text-gray-400">{log.timestamp}</span>
+                    {log.type === 'info' && <CircleCheckBig className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                      <Clock className="w-3 h-3" />
+                      <span>{log.timestamp}</span>
+                    </div>
                     <span>{log.message}</span>
                   </div>
                 ))}
@@ -413,6 +473,70 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
 
         </div>
       </div>
+
+      {/* Version Control Modal */}
+      {isVersionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                  <GitBranch className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Histórico de Versões</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Log de alterações e deployments do sistema</p>
+                </div>
+              </div>
+              <button onClick={() => setIsVersionModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6">
+              {MOCK_VERSIONS.map((version, index) => (
+                <div key={version.version} className="relative pl-8 border-l-2 border-gray-200 dark:border-gray-800 last:pb-0">
+                  <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-gray-900 ${version.status === 'current' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                  
+                  <div className="mb-1 flex items-center gap-3">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white">{version.version}</span>
+                    {version.status === 'current' && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-bold rounded-full uppercase">Atual</span>
+                    )}
+                    <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(version.date).toLocaleDateString('pt-PT')}
+                    </span>
+                  </div>
+                  
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{version.description}</p>
+                  <p className="text-xs text-gray-500 mb-3">Deployed by <span className="font-semibold">{version.author}</span></p>
+                  
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
+                    <ul className="space-y-2">
+                      {version.changes.map((change, i) => (
+                        <li key={i} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 flex-shrink-0"></span>
+                          {change}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex justify-end">
+              <button 
+                onClick={() => setIsVersionModalOpen(false)}
+                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

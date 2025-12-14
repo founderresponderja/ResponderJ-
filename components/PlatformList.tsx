@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform } from '../types';
-import { ExternalLink, CheckCircle } from 'lucide-react';
+import { ExternalLink, CircleCheckBig } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 
 interface PlatformListProps {
@@ -102,7 +102,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang }) => {
       </div>
       
       <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 mt-8 flex items-start gap-4">
-         <CheckCircle className="text-brand-600 dark:text-brand-400 flex-shrink-0" size={24} />
+         <CircleCheckBig className="text-brand-600 dark:text-brand-400 flex-shrink-0" size={24} />
          <div>
             <h4 className="font-bold text-slate-800 dark:text-white text-lg">{t.whyCentralize}</h4>
             <p className="text-slate-600 dark:text-slate-400 mt-1">

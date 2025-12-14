@@ -9,11 +9,12 @@ import {
   CreditCard, 
   Building2, 
   Calendar, 
-  CheckCircle2, 
-  AlertCircle, 
+  CircleCheckBig, 
+  CircleAlert, 
   Save,
   Wallet,
-  PieChart
+  PieChart,
+  FileSpreadsheet
 } from 'lucide-react';
 
 // Mock Data from the original file
@@ -276,9 +277,14 @@ const AccountingPage: React.FC = () => {
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Por categoria de receitas e gastos.</p>
             </div>
-            <button className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-              <Download className="w-4 h-4" /> Gerar Relatório PDF
-            </button>
+            <div className="flex gap-2">
+                <button className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                <Download className="w-4 h-4" /> PDF
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                <FileSpreadsheet className="w-4 h-4" /> Excel
+                </button>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-full">
@@ -289,9 +295,14 @@ const AccountingPage: React.FC = () => {
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Saldos por conta contabilística.</p>
             </div>
-            <button className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-              <Download className="w-4 h-4" /> Gerar Relatório PDF
-            </button>
+            <div className="flex gap-2">
+                <button className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                <Download className="w-4 h-4" /> PDF
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                <FileSpreadsheet className="w-4 h-4" /> Excel
+                </button>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between h-full">
@@ -385,7 +396,7 @@ const AccountingPage: React.FC = () => {
           {businessType === "individual_entrepreneur" && (
             <div className="border border-blue-100 dark:border-blue-900/30 rounded-lg p-4 space-y-4 bg-blue-50 dark:bg-blue-900/10">
               <h4 className="font-medium flex items-center text-blue-800 dark:text-blue-300">
-                <AlertCircle className="w-4 h-4 mr-2" />
+                <CircleAlert className="w-4 h-4 mr-2" />
                 Configurações ENI - Segurança Social
               </h4>
               <div className="grid gap-6 md:grid-cols-2">

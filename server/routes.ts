@@ -412,6 +412,60 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // === INVITATION ROUTES ===
+  app.get('/api/invitations/:token', async (req, res) => {
+    try {
+      const invite = await storage.getAgencyInvitationByToken(req.params.token);
+      if (!invite) return res.status(404).json({ message: "Convite inválido ou expirado" });
+      res.json(invite);
+    } catch (e) {
+      res.status(500).json({ message: "Erro ao validar convite" });
+    }
+  });
+
+  app.post('/api/invitations/:token/accept', requireAuth, async (req: any, res) => {
+    try {
+      await storage.acceptAgencyInvitation(req.params.token, req.user.id);
+      res.json({ success: true, message: "Convite aceite com sucesso" });
+    } catch (e: any) {
+      res.status(400).json({ message: e.message || "Erro ao aceitar convite" });
+    }
+  });
+
+  app.post('/api/invitations/:token/register', async (req, res) => {
+    try {
+      const { firstName, lastName, email, password } = req.body;
+      const invite = await storage.getAgencyInvitationByToken(req.params.token);
+      
+      if (!invite) return res.status(404).json({ message: "Convite inválido ou expirado" });
+      if (invite.email !== email) return res.status(400).json({ message: "Email não corresponde ao convite" });
+
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) return res.status(409).json({ message: "Utilizador já existe" });
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const user = await storage.createUser({
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        isActive: true,
+        credits: 10 // Trial credits
+      });
+
+      await storage.acceptAgencyInvitation(req.params.token, user.id);
+      
+      // Auto login
+      req.login(user, (err: any) => {
+        if (err) return res.status(500).json({ message: "Erro no login automático" });
+        res.json({ success: true, user });
+      });
+
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Erro ao registar conta" });
+    }
+  });
+
   // User Data
   app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {

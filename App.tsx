@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
 import MainApp from './components/MainApp';
 import AboutPage from './components/AboutPage';
 import AdminDashboard from './components/AdminDashboard';
+import CookieManagementPage from './components/CookieManagementPage';
+import InvitePage from './components/InvitePage';
 import { Language } from './utils/translations';
 
-type ViewState = 'landing' | 'login' | 'app' | 'about' | 'admin';
+type ViewState = 'landing' | 'login' | 'register' | 'app' | 'about' | 'admin' | 'cookies' | 'invite';
 export type Theme = 'light' | 'dark';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [currentLang, setCurrentLang] = useState<Language>('pt');
   const [theme, setTheme] = useState<Theme>('light');
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   // Handle Dark Mode Class
   useEffect(() => {
@@ -23,15 +27,35 @@ function App() {
     }
   }, [theme]);
 
+  // Handle URL routing for invitations
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/convite/')) {
+      const token = path.split('/convite/')[1];
+      if (token) {
+        setInviteToken(token);
+        setCurrentView('invite');
+      }
+    }
+  }, []);
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
   const navigateToLogin = () => setCurrentView('login');
-  const navigateToLanding = () => setCurrentView('landing');
+  const navigateToRegister = () => setCurrentView('register');
+  const navigateToLanding = () => {
+    window.history.pushState({}, '', '/');
+    setCurrentView('landing');
+  };
   const navigateToAbout = () => setCurrentView('about');
+  const navigateToCookies = () => setCurrentView('cookies');
   const handleLoginSuccess = () => setCurrentView('app');
-  const handleLogout = () => setCurrentView('landing');
+  const handleLogout = () => {
+    window.history.pushState({}, '', '/');
+    setCurrentView('landing');
+  };
   const navigateToAdmin = () => setCurrentView('admin');
 
   return (
@@ -40,6 +64,7 @@ function App() {
         <LandingPage 
           onNavigateToLogin={navigateToLogin} 
           onNavigateToAbout={navigateToAbout}
+          onNavigateToCookies={navigateToCookies}
           lang={currentLang} 
           setLang={setCurrentLang}
           theme={theme}
@@ -51,6 +76,16 @@ function App() {
         <LoginPage 
           onLoginSuccess={handleLoginSuccess} 
           onBack={navigateToLanding}
+          onRegister={navigateToRegister}
+          lang={currentLang}
+          theme={theme}
+        />
+      )}
+
+      {currentView === 'register' && (
+        <RegisterPage 
+          onRegisterSuccess={handleLoginSuccess} 
+          onLoginClick={navigateToLogin}
           lang={currentLang}
           theme={theme}
         />
@@ -74,9 +109,24 @@ function App() {
         />
       )}
 
+      {currentView === 'cookies' && (
+        <CookieManagementPage 
+          onBack={navigateToLanding}
+        />
+      )}
+
       {currentView === 'admin' && (
         <AdminDashboard 
           onBack={handleLoginSuccess} // Back to app
+          theme={theme}
+        />
+      )}
+
+      {currentView === 'invite' && inviteToken && (
+        <InvitePage
+          token={inviteToken}
+          onNavigateToLogin={navigateToLogin}
+          onSuccess={handleLoginSuccess}
           theme={theme}
         />
       )}

@@ -1,3 +1,4 @@
+
 export type Language = 'pt' | 'en' | 'es';
 
 export const translations = {
@@ -17,7 +18,10 @@ export const translations = {
         dashboard: "Estatísticas",
         platforms: "Apps Suportadas",
         plans: "Planos & Faturação",
-        accounting: "Contabilidade"
+        accounting: "Contabilidade",
+        profile: "Perfil de Negócio",
+        calendar: "Calendário Social",
+        crm: "CRM & Clientes"
       }
     },
     landing: {
@@ -108,6 +112,23 @@ export const translations = {
         copied: "Copiado!",
         aiTip: "Dica de IA",
         aiTipDesc: "Verifique sempre os detalhes factuais antes de publicar."
+      },
+      calendar: {
+        title: "Calendário Social",
+        subtitle: "Planeie e visualize o seu conteúdo.",
+        newPost: "Novo Post",
+        scheduled: "Agendado",
+        published: "Publicado",
+        drafts: "Rascunhos",
+        engagement: "Engagement Médio",
+        noPosts: "Sem posts para este dia.",
+        createTitle: "Criar Conteúdo",
+        postTitle: "Título",
+        postDate: "Data",
+        postPlatform: "Plataforma",
+        postStatus: "Estado",
+        save: "Guardar",
+        cancel: "Cancelar"
       }
     }
   },
@@ -127,7 +148,10 @@ export const translations = {
         dashboard: "Statistics",
         platforms: "Supported Apps",
         plans: "Plans & Billing",
-        accounting: "Accounting"
+        accounting: "Accounting",
+        profile: "Business Profile",
+        calendar: "Social Calendar",
+        crm: "CRM & Customers"
       }
     },
     landing: {
@@ -218,6 +242,23 @@ export const translations = {
         copied: "Copied!",
         aiTip: "AI Tip",
         aiTipDesc: "Always check factual details before publishing."
+      },
+      calendar: {
+        title: "Social Calendar",
+        subtitle: "Plan and view your content.",
+        newPost: "New Post",
+        scheduled: "Scheduled",
+        published: "Published",
+        drafts: "Drafts",
+        engagement: "Avg. Engagement",
+        noPosts: "No posts for this day.",
+        createTitle: "Create Content",
+        postTitle: "Title",
+        postDate: "Date",
+        postPlatform: "Platform",
+        postStatus: "Status",
+        save: "Save",
+        cancel: "Cancel"
       }
     }
   },
@@ -237,7 +278,10 @@ export const translations = {
         dashboard: "Estadísticas",
         platforms: "Apps Compatibles",
         plans: "Planes y Facturación",
-        accounting: "Contabilidad"
+        accounting: "Contabilidad",
+        profile: "Perfil de Negocio",
+        calendar: "Calendario Social",
+        crm: "CRM y Clientes"
       }
     },
     landing: {
@@ -288,7 +332,7 @@ export const translations = {
       loading: "Entrando...",
       noAccount: "¿No tienes una cuenta?",
       create: "Crear cuenta",
-      security: "Protegido por encriptación SSL de nivel empresarial."
+      security: "Protegido por encriptación SSL de nível empresarial."
     },
     app: {
       generatorTitle: "Generador de Respostas",
@@ -303,7 +347,7 @@ export const translations = {
       supported: "Compatible",
       manageOn: "Gestionar en",
       whyCentralize: "¿Por qué centralizar?",
-      whyCentralizeDesc: "Usar una sola herramienta garantiza consistencia y ahorra tiempo.",
+      whyCentralizeDesc: "Usar una sola herramienta garantiza consistência y ahorra tiempo.",
       limitReachedTitle: "Límite Alcanzado",
       limitReachedDesc: "Has alcanzado el límite de respuestas de tu plan actual. Mejora tu plan para continuar.",
       upgradeNow: "Mejorar Ahora",
@@ -328,6 +372,23 @@ export const translations = {
         copied: "¡Copiado!",
         aiTip: "Consejo IA",
         aiTipDesc: "Verifica siempre los detalles factuales antes de publicar."
+      },
+      calendar: {
+        title: "Calendario Social",
+        subtitle: "Planifica y visualiza tu contenido.",
+        newPost: "Nuevo Post",
+        scheduled: "Programado",
+        published: "Publicado",
+        drafts: "Borradores",
+        engagement: "Engagement Medio",
+        noPosts: "No hay posts para este día.",
+        createTitle: "Crear Contenido",
+        postTitle: "Título",
+        postDate: "Fecha",
+        postPlatform: "Plataforma",
+        postStatus: "Estado",
+        save: "Guardar",
+        cancel: "Cancelar"
       }
     }
   }

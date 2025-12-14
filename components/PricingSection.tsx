@@ -50,7 +50,7 @@ const PricingSection: React.FC<PricingSectionProps> = ({ lang, onSelectPlan, cur
 
               <div className="mb-6">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                  {t[plan.nameKey as keyof typeof t] || plan.id}
+                  {(t[plan.nameKey as keyof typeof t] as string) || plan.id}
                 </h3>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-slate-900 dark:text-white">

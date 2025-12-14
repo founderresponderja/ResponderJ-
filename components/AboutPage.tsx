@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, Rocket, Code, Lightbulb, CheckCircle2, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Rocket, Code, Lightbulb, CircleCheckBig, Building2 } from 'lucide-react';
 import { Theme } from '../App';
 
 interface AboutPageProps {
@@ -68,15 +68,15 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBack, theme }) => {
                   <h3 className="text-xl font-semibold text-center text-slate-900 dark:text-white">Soluções à Medida</h3>
                   <div className="mt-6 space-y-3">
                     <div className="flex items-center gap-3">
-                        <CheckCircle2 className="text-emerald-500 w-5 h-5" />
+                        <CircleCheckBig className="text-emerald-500 w-5 h-5" />
                         <span className="text-slate-600 dark:text-slate-300">Software Inteligente</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <CheckCircle2 className="text-emerald-500 w-5 h-5" />
+                        <CircleCheckBig className="text-emerald-500 w-5 h-5" />
                         <span className="text-slate-600 dark:text-slate-300">Adaptação Rápida</span>
                     </div>
                     <div className="flex items-center gap-3">
-                        <CheckCircle2 className="text-emerald-500 w-5 h-5" />
+                        <CircleCheckBig className="text-emerald-500 w-5 h-5" />
                         <span className="text-slate-600 dark:text-slate-300">Foco no Cliente</span>
                     </div>
                   </div>

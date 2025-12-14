@@ -6,7 +6,7 @@ import {
   Download, 
   Clock, 
   Mail, 
-  CheckCircle2, 
+  CircleCheckBig, 
   TrendingUp, 
   Users,
   BrainCircuit, 
@@ -16,7 +16,8 @@ import {
   Phone, 
   Building,
   Loader2,
-  X
+  X,
+  FileSpreadsheet
 } from 'lucide-react';
 
 // Mock types
@@ -201,6 +202,31 @@ const AdminLeadsManagement: React.FC = () => {
     }, 2000);
   };
 
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Empresa', 'Contacto', 'Email', 'Telefone', 'Website', 'Indústria', 'Região', 'Status', 'Score'];
+    const csvContent = [
+      headers.join(','),
+      ...leads.map(lead => [
+        lead.id,
+        `"${lead.companyName}"`,
+        `"${lead.contactName}"`,
+        lead.email,
+        lead.phone,
+        lead.website,
+        lead.industry,
+        lead.region,
+        lead.emailStatus,
+        lead.leadScore
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `leads_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
   const getStatusBadge = (status: string) => {
     const config: Record<string, { label: string; color: string }> = {
       pending: { label: "Pendente", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" },
@@ -239,8 +265,11 @@ const AdminLeadsManagement: React.FC = () => {
           <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <Mail className="w-4 h-4" /> Processar Emails
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-            <Download className="w-4 h-4" /> Exportar CSV
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Exportar CSV
           </button>
           <button 
             onClick={() => setIsAiSearchModalOpen(true)}
@@ -282,7 +311,7 @@ const AdminLeadsManagement: React.FC = () => {
         </div>
         <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+            <CircleCheckBig className="w-4 h-4 text-green-600 dark:text-green-400" />
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Convertidos</span>
           </div>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.converted}</p>
