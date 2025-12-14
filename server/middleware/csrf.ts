@@ -61,14 +61,14 @@ export const validateCSRFToken = (token: string, sessionId: string): boolean => 
 };
 
 // Middleware para adicionar token CSRF ao request
-export const addCSRFToken = (req: Request, res: Response, next: NextFunction) => {
+export const addCSRFToken = (req: any, res: any, next: any) => {
   const sessionId = (req as any).sessionID || 'no-session';
   req.csrfToken = generateCSRFToken(sessionId);
   next();
 };
 
 // Middleware para validar token CSRF
-export const protectCSRF = (req: Request, res: Response, next: NextFunction) => {
+export const protectCSRF = (req: any, res: any, next: any) => {
   // Apenas verificar em métodos que modificam estado
   if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
     return next();
@@ -110,7 +110,7 @@ export const protectCSRF = (req: Request, res: Response, next: NextFunction) => 
 };
 
 // Endpoint para obter token CSRF
-export const getCSRFToken = (req: Request, res: Response) => {
+export const getCSRFToken = (req: any, res: any) => {
   const sessionId = (req as any).sessionID || 'no-session';
   const token = generateCSRFToken(sessionId);
   

@@ -7,9 +7,11 @@ import AboutPage from './components/AboutPage';
 import AdminDashboard from './components/AdminDashboard';
 import CookieManagementPage from './components/CookieManagementPage';
 import InvitePage from './components/InvitePage';
+import PrivacyPolicyPage from './components/PrivacyPolicyPage';
+import TermsAndConditionsPage from './components/TermsAndConditionsPage';
 import { Language } from './utils/translations';
 
-type ViewState = 'landing' | 'login' | 'register' | 'app' | 'about' | 'admin' | 'cookies' | 'invite';
+type ViewState = 'landing' | 'login' | 'register' | 'app' | 'about' | 'admin' | 'cookies' | 'invite' | 'privacy' | 'terms';
 export type Theme = 'light' | 'dark';
 
 function App() {
@@ -51,6 +53,8 @@ function App() {
   };
   const navigateToAbout = () => setCurrentView('about');
   const navigateToCookies = () => setCurrentView('cookies');
+  const navigateToPrivacy = () => setCurrentView('privacy');
+  const navigateToTerms = () => setCurrentView('terms');
   const handleLoginSuccess = () => setCurrentView('app');
   const handleLogout = () => {
     window.history.pushState({}, '', '/');
@@ -65,6 +69,8 @@ function App() {
           onNavigateToLogin={navigateToLogin} 
           onNavigateToAbout={navigateToAbout}
           onNavigateToCookies={navigateToCookies}
+          onNavigateToPrivacy={navigateToPrivacy}
+          onNavigateToTerms={navigateToTerms}
           lang={currentLang} 
           setLang={setCurrentLang}
           theme={theme}
@@ -99,6 +105,8 @@ function App() {
           setLang={setCurrentLang}
           theme={theme}
           toggleTheme={toggleTheme}
+          onNavigateToPrivacy={navigateToPrivacy}
+          onNavigateToTerms={navigateToTerms}
         />
       )}
 
@@ -111,6 +119,18 @@ function App() {
 
       {currentView === 'cookies' && (
         <CookieManagementPage 
+          onBack={navigateToLanding}
+        />
+      )}
+
+      {currentView === 'privacy' && (
+        <PrivacyPolicyPage 
+          onBack={navigateToLanding}
+        />
+      )}
+
+      {currentView === 'terms' && (
+        <TermsAndConditionsPage 
           onBack={navigateToLanding}
         />
       )}

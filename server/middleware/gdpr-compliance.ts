@@ -60,7 +60,7 @@ export const cookieConfigurations: CookieConfig[] = [
 ];
 
 // Middleware para configuração segura de cookies
-export const secureCookieMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const secureCookieMiddleware = (req: any, res: any, next: any) => {
   // Override do res.cookie para aplicar configurações seguras
   const originalCookie = res.cookie.bind(res);
   
@@ -109,7 +109,7 @@ export interface CookieConsent {
 }
 
 // Middleware para verificar consentimento de cookies
-export const checkCookieConsent = (req: Request, res: Response, next: NextFunction) => {
+export const checkCookieConsent = (req: any, res: any, next: any) => {
   const consentCookie = req.cookies ? req.cookies['cookie-consent'] : undefined;
   
   if (!consentCookie) {
@@ -138,7 +138,7 @@ export const checkCookieConsent = (req: Request, res: Response, next: NextFuncti
 };
 
 // Endpoint para atualizar consentimento de cookies
-export const updateCookieConsent = (req: Request, res: Response) => {
+export const updateCookieConsent = (req: any, res: any) => {
   const { functional, analytics, marketing } = req.body;
   
   const consent: CookieConsent = {
@@ -170,7 +170,7 @@ export const updateCookieConsent = (req: Request, res: Response) => {
 };
 
 // Endpoint para obter configurações de cookies
-export const getCookieConfigurations = (req: Request, res: Response) => {
+export const getCookieConfigurations = (req: any, res: any) => {
   res.json({
     configurations: cookieConfigurations,
     currentConsent: (req as any).cookieConsent || null,
@@ -183,7 +183,7 @@ export const getCookieConfigurations = (req: Request, res: Response) => {
 };
 
 // Middleware de auditoria GDPR
-export const gdprAuditLog = (req: Request, res: Response, next: NextFunction) => {
+export const gdprAuditLog = (req: any, res: any, next: any) => {
   // Log de acesso a dados pessoais para auditoria GDPR
   const sensitiveEndpoints = [
     '/api/users',
@@ -214,7 +214,7 @@ export const gdprAuditLog = (req: Request, res: Response, next: NextFunction) =>
 };
 
 // Headers para conformidade legal portuguesa e europeia
-export const legalComplianceHeaders = (req: Request, res: Response, next: NextFunction) => {
+export const legalComplianceHeaders = (req: any, res: any, next: any) => {
   // Headers específicos para conformidade portuguesa
   res.setHeader('X-Data-Protection-Officer', 'dpo@responderja.pt');
   res.setHeader('X-GDPR-Compliant', 'true');

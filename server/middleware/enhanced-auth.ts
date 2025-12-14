@@ -9,7 +9,7 @@ import { SecurityLogService } from '../services/security-log-service';
 /**
  * 🛡️ Middleware de autenticação com logging de segurança
  */
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+export const requireAuth = (req: any, res: any, next: any) => {
   const endpoint = req.path;
   const userAgent = req.get('User-Agent') || 'unknown';
   const ip = req.ip || 'unknown';
@@ -66,7 +66,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 /**
  * 👑 Middleware para verificar permissões de administrador
  */
-export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const requireAdmin = (req: any, res: any, next: any) => {
   if (!req.user?.isAdmin && !req.user?.isSuperAdmin) {
     SecurityLogService.addLog({
       level: 'warning',
@@ -90,7 +90,7 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
 /**
  * ⚡ Middleware para verificar permissões de super administrador
  */
-export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const requireSuperAdmin = (req: any, res: any, next: any) => {
   if (!req.user?.isSuperAdmin) {
     SecurityLogService.addLog({
       level: 'critical',
@@ -114,7 +114,7 @@ export const requireSuperAdmin = (req: Request, res: Response, next: NextFunctio
 /**
  * 💎 Middleware para verificar planos premium
  */
-export const requirePremium = (req: Request, res: Response, next: NextFunction) => {
+export const requirePremium = (req: any, res: any, next: any) => {
   const premiumPlans = ['pro', 'enterprise', 'premium_trial'];
   
   if (!req.user?.selectedPlan || !premiumPlans.includes(req.user.selectedPlan)) {
@@ -131,7 +131,7 @@ export const requirePremium = (req: Request, res: Response, next: NextFunction) 
 /**
  * 🔄 Helper para validar token CSRF em requests específicas
  */
-export const validateCSRF = (req: Request, res: Response, next: NextFunction) => {
+export const validateCSRF = (req: any, res: any, next: any) => {
   if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
     const token = req.headers['x-csrf-token'];
     if (!token) {

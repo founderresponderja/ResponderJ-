@@ -1,6 +1,11 @@
+
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
+import { GoogleGenAI, Type } from "@google/genai";
+import { ControllerUtils } from "../utils/ControllerUtils";
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Schema de validação para pesquisa AI
 const aiSearchSchema = z.object({
@@ -12,7 +17,7 @@ const aiSearchSchema = z.object({
 
 export class LeadsAIController {
   // Pesquisa AI de leads nas redes sociais
-  static async aiSearch(req: Request, res: Response) {
+  static async aiSearch(req: any, res: any) {
     try {
       const result = aiSearchSchema.safeParse(req.body);
       if (!result.success) {
@@ -21,14 +26,14 @@ export class LeadsAIController {
 
       const { region, businessType, platforms, limit } = result.data;
       
-      // Simular pesquisa AI (integração com APIs reais seria implementada aqui)
-      const mockLeads = await generateMockAILeads({ region, businessType, platforms, limit });
+      // Pesquisa AI Real com Gemini
+      const leads = await generateAILeads({ region, businessType, platforms, limit });
       
       // Filtrar leads que já existem
       const filteredLeads = [];
       let filteredCount = 0;
 
-      for (const lead of mockLeads) {
+      for (const lead of leads) {
         const exists = await storage.checkLeadExists(lead.email);
         if (!exists) {
           filteredLeads.push(lead);
@@ -44,13 +49,12 @@ export class LeadsAIController {
         filtered: filteredCount,
       });
     } catch (error) {
-      console.error("Erro na pesquisa AI:", error);
-      res.status(500).json({ error: "Erro interno na pesquisa AI" });
+      ControllerUtils.handleError(error, 'na pesquisa AI', res, req);
     }
   }
 
   // Importar leads da pesquisa AI
-  static async importAIResults(req: Request, res: Response) {
+  static async importAIResults(req: any, res: any) {
     try {
       const { leads } = req.body;
       
@@ -104,42 +108,74 @@ export class LeadsAIController {
         details: errorsList.length > 0 ? errorsList : undefined
       });
     } catch (error) {
-      console.error("Erro ao importar resultados AI:", error);
-      res.status(500).json({ error: "Erro interno ao processar importação" });
+      ControllerUtils.handleError(error, 'ao importar resultados AI', res, req);
     }
   }
 }
 
-// Gerar leads mock para simulação da pesquisa AI
-async function generateMockAILeads({ region, businessType, platforms, limit }: any) {
-  const mockBusinesses = [
-    'Restaurante Central', 'Hotel Mar Azul', 'Café da Esquina', 'Pizzaria Napoli',
-    'Pensão do Centro', 'Bistro Moderno', 'Taberna Tradicional', 'Pastelaria Doce',
-    'Marisqueira Atlântico', 'Quinta Rural', 'SPA & Wellness', 'Casa de Chá'
-  ];
-  
-  const leads = [];
-  // Garantir que limit é um número
-  const max = typeof limit === 'number' ? limit : 50;
-  
-  for (let i = 0; i < Math.min(max, 50); i++) {
-    const businessName = mockBusinesses[i % mockBusinesses.length];
-    // Gerar string aleatória para evitar duplicatas em testes repetidos
-    const randomSuffix = Math.floor(Math.random() * 10000);
+// Gerar leads usando Gemini 2.5 Flash
+async function generateAILeads({ region, businessType, platforms, limit }: any) {
+  const prompt = `
+    Generate a list of realistic fictional (or real if you know them) business leads for a sales simulation in the region of "${region}" specifically for "${businessType}".
     
-    leads.push({
-      companyName: `${businessName} ${i + 1}`,
-      contactName: `Contacto ${i + 1}`,
-      email: `contacto${i + 1}_${randomSuffix}@${businessName.toLowerCase().replace(/\s+/g, '')}.pt`,
-      phone: `+351 ${200000000 + i}`,
-      website: `https://${businessName.toLowerCase().replace(/\s+/g, '')}.pt`,
-      industry: businessType || 'Restauração',
-      region: region || 'Lisboa',
-      businessType: businessType || 'Restaurante',
-      aiConfidence: (0.7 + Math.random() * 0.3).toFixed(2),
-      leadScore: Math.floor(60 + Math.random() * 40),
+    Context:
+    - We are looking for potential clients for a "Review Management Platform".
+    - They should be businesses that likely have reviews on ${platforms.join(', ')}.
+    - Provide ${Math.min(limit, 15)} detailed leads.
+    
+    For each lead, generate:
+    - Company Name
+    - Contact Name (Manager/Owner)
+    - Email (generate a realistic email like info@company.pt or manager@company.pt)
+    - Phone Number (Portuguese format)
+    - Website (optional)
+    - Industry/Category
+    - AI Confidence Score (0.0 to 1.0 based on how good a fit they are)
+    - Lead Score (0-100)
+    
+    Output strictly valid JSON array.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              companyName: { type: Type.STRING },
+              contactName: { type: Type.STRING },
+              email: { type: Type.STRING },
+              phone: { type: Type.STRING },
+              website: { type: Type.STRING },
+              industry: { type: Type.STRING },
+              region: { type: Type.STRING },
+              businessType: { type: Type.STRING },
+              aiConfidence: { type: Type.NUMBER },
+              leadScore: { type: Type.INTEGER }
+            },
+            required: ["companyName", "email", "industry"]
+          }
+        }
+      }
     });
+
+    const leads = JSON.parse(response.text || "[]");
+    
+    // Add default region/businessType if missing from AI response
+    return leads.map((lead: any) => ({
+      ...lead,
+      region: lead.region || region,
+      businessType: lead.businessType || businessType
+    }));
+
+  } catch (error) {
+    console.error("Error generating leads with Gemini:", error);
+    // Fallback to empty array to avoid crash
+    return [];
   }
-  
-  return leads;
 }

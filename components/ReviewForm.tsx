@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Platform, Tone, Language as AppLanguage, ReviewData } from '../types';
-import { Star, Send, Loader2, RefreshCw, Briefcase, Smile, Heart, HeartHandshake, Sparkles } from 'lucide-react';
+import { Star, Send, Loader2, RefreshCw, Briefcase, Smile, Heart, HeartHandshake, Sparkles, MessageSquarePlus } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 
 interface ReviewFormProps {
@@ -16,6 +17,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
   const [reviewText, setReviewText] = useState('');
   const [tone, setTone] = useState<Tone>(Tone.PROFESSIONAL);
   const [language, setLanguage] = useState<AppLanguage>(AppLanguage.PT);
+  const [extraInstructions, setExtraInstructions] = useState('');
 
   const t = translations[lang].app.form;
 
@@ -27,7 +29,8 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
       rating,
       reviewText,
       tone,
-      language
+      language,
+      extraInstructions
     });
   };
 
@@ -37,6 +40,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
     setRating(4);
     setReviewText('A comida estava ótima, especialmente o risoto! O serviço demorou um pouco, mas os empregados foram simpáticos.');
     setTone(Tone.PROFESSIONAL);
+    setExtraInstructions('');
   };
 
   // Helper para obter o ícone do tom
@@ -161,13 +165,27 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
           </div>
         </div>
 
+        {/* Extra Instructions */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-2">
+            <MessageSquarePlus size={16} className="text-brand-500"/> Instruções Extra (Opcional)
+          </label>
+          <input
+            type="text"
+            value={extraInstructions}
+            onChange={(e) => setExtraInstructions(e.target.value)}
+            placeholder="Ex: Mencionar a promoção de Natal, ser breve..."
+            className="w-full rounded-lg border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 border p-2.5 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition"
+          />
+        </div>
+
         <button
           type="submit"
           disabled={isLoading || !reviewText}
           className={`w-full py-3 px-4 rounded-lg text-white font-semibold flex items-center justify-center gap-2 transition-all ${
             isLoading || !reviewText
               ? 'bg-slate-400 dark:bg-slate-600 cursor-not-allowed'
-              : 'bg-brand-600 hover:bg-brand-700 dark:bg-brand-600 dark:hover:bg-brand-500 shadow-md hover:shadow-lg'
+              : 'bg-brand-600 hover:bg-brand-700 dark:bg-brand-600 dark:hover:bg-brand-50 shadow-md hover:shadow-lg'
           }`}
         >
           {isLoading ? (

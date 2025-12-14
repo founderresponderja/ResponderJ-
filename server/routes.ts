@@ -16,6 +16,11 @@ import {
   getCookieConfigurations
 } from "./middleware/gdpr-compliance";
 import { trialRateLimit } from "./middleware/trial-rate-limiting";
+import { 
+  isAdminMiddleware,
+  isSuperAdminMiddleware, 
+  isAgencyOwnerMiddleware
+} from './middleware/auth';
 
 // Import services dynamically to avoid circular dependencies issues on startup
 import { emailService } from "./services/email-service";
@@ -30,33 +35,38 @@ import { registerSecurityDashboardRoutes } from "./routes/security-dashboard";
 import { registerSystemRoutes } from "./routes/system";
 import { registerAdminLeadsRoutes } from "./routes/admin-leads";
 import { registerAdminSystemRoutes } from "./routes/admin-system";
+import { setupAdminManagementRoutes } from "./routes/admin-management";
 import { registerDownloadRoutes } from "./routes/downloads";
+import { setupTechnicalSpecsRoutes } from "./routes/admin/technical"; // Added import
 import { setupEmailSequenceRoutes } from './routes/email-sequence';
+import { registerAnalyticsRoutes } from "./routes/analytics"; 
+import { registerApiKeysGuideRoutes } from "./routes/api-keys-guide"; 
+import { registerAutomationRoutes } from "./routes/automation"; 
+import { registerBillingRoutes } from "./routes/billing"; 
+import { registerDiscoveryRoutes } from "./routes/discovery"; 
+import { registerContentRoutes } from "./routes/content"; 
+import { registerCorporateSocialRoutes } from "./routes/corporate-social";
+import { registerCriticalSystemsRoutes } from "./routes/critical-systems";
 import reviewsRouter from "./routes/reviews";
+import reviewsAiRouter from "./routes/reviews-ai"; 
 import errorRoutes from "./routes/errors";
 import { db } from "./db";
 import { users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
-import OpenAI from "openai";
 import Stripe from "stripe";
 import passport from "passport";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import process from "process";
 
-// Initialize OpenAI
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_KEY || "your-openai-key"
-});
-
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "your-stripe-secret-key", {
-  apiVersion: "2025-07-30.basil" as any, // Cast to any to avoid version mismatch errors in some envs
+  apiVersion: "2025-07-30.basil" as any, 
 });
 
 // Setup ONLY authentication routes - called BEFORE Vite setup
-export async function setupAuthRoutes(app: Express): Promise<void> {
+export async function setupAuthRoutes(app: any): Promise<void> {
   console.log('🔐 Setting up auth routes BEFORE Vite...');
   
   // Rate Limiting
@@ -71,7 +81,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
   setupAuth(app);
 
   // Simple test endpoint without auth middleware
-  app.get('/api/test', (req: any, res) => {
+  app.get('/api/test', (req: any, res: any) => {
     res.json({
       message: "Test endpoint works",
       sessionId: req.sessionID,
@@ -82,7 +92,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
   });
 
   // ✅ ENDPOINT DE CORREÇÃO CRÉDITOS ADMINISTRADORES
-  app.get('/api/admin/fix-admin-credits', requireAuth, requireSuperAdmin, async (req: any, res) => {
+  app.get('/api/admin/fix-admin-credits', requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const adminEmails = ['founder.responderja@gmail.com', 'lfpedrosa@gmail.com'];
       const results = [];
@@ -113,7 +123,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
   });
 
   // ✅ ENDPOINT DE RESET PASSWORD ADMIN
-  app.get('/api/admin/reset-admin-password', requireAuth, requireSuperAdmin, async (req: any, res) => {
+  app.get('/api/admin/reset-admin-password', requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const user = await storage.getUserByEmail('lfpedrosa@gmail.com');
       if (user) {
@@ -129,7 +139,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
   });
 
   // ✅ ENDPOINT DE VERIFICAÇÃO DE UTILIZADORES DE TESTE
-  app.get('/api/admin/verify-test-users', async (req: any, res) => {
+  app.get('/api/admin/verify-test-users', async (req: any, res: any) => {
     try {
       const testEmails = [
         'founder.responderja@gmail.com',
@@ -152,7 +162,6 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
               credits: user.credits,
               isAdmin: user.isAdmin || false,
               isSuperAdmin: user.isSuperAdmin || false,
-              // Cast to any for properties not in core User type
               isAgencyOwner: (user as any).isAgencyOwner || false,
               isTrialActive: (user as any).isTrialActive || false,
               emailVerified: (user as any).emailVerified || false,
@@ -189,7 +198,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
     }
   });
 
-  // ✅ FUNÇÃO PARA CRIAR UTILIZADORES DE TESTE (executada automaticamente)
+  // ✅ FUNÇÃO PARA CRIAR UTILIZADORES DE TESTE
   async function createTestUsersOnStartup() {
     try {
       console.log("🔧 Iniciando criação de utilizadores de teste...");
@@ -251,7 +260,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
           await storage.createUser({
             ...userData,
             password: hashedPassword,
-            phone: "", // Required fields default
+            phone: "", 
             isActive: true,
             role: userData.isAdmin ? "admin" : "user"
           });
@@ -266,11 +275,9 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
     }
   }
 
-  // ✅ EXECUTAR AUTOMATICAMENTE DURANTE A INICIALIZAÇÃO
   await createTestUsersOnStartup();
 
-  // Endpoint de login principal
-  app.post('/api/login', async (req: any, res) => {
+  app.post('/api/login', async (req: any, res: any) => {
     try {
       const { email, password } = req.body;
       const [user] = await db.select().from(users).where(eq(users.email, email));
@@ -305,7 +312,6 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Alias para /api/auth/login
   app.post('/api/auth/login', (req: any, res: any, next: any) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return res.status(500).json({ message: "Erro interno do servidor" });
@@ -318,8 +324,7 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
     })(req, res, next);
   });
 
-  // Endpoint de verificação de estado da sessão
-  app.get('/api/session-status', (req: any, res) => {
+  app.get('/api/session-status', (req: any, res: any) => {
     res.json({
       isAuthenticated: req.isAuthenticated(),
       user: req.user || null,
@@ -327,21 +332,18 @@ export async function setupAuthRoutes(app: Express): Promise<void> {
     });
   });
 
-  // Redirects
-  app.get('/login', (req, res) => res.redirect(302, '/auth'));
-  app.get('/register', (req, res) => res.redirect(302, '/auth'));
-  app.get('/home', (req, res) => res.redirect(302, '/'));
+  app.get('/login', (req: any, res: any) => res.redirect(302, '/auth'));
+  app.get('/register', (req: any, res: any) => res.redirect(302, '/auth'));
+  app.get('/home', (req: any, res: any) => res.redirect(302, '/'));
 }
 
-export async function registerRoutes(app: Express): Promise<void> {
-  // Segurança
+export async function registerRoutes(app: any): Promise<void> {
   app.use(legalComplianceHeaders);
   app.use(protectDatabaseQueries);
   
-  app.use((req, res, next) => {
+  app.use((req: any, res: any, next: any) => {
     if (req.path === '/api/suggestions' && req.method === 'POST') return next();
     
-    // Exception for test emails in development
     const authPaths = ['/api/auth/login', '/api/auth/register'];
     const testEmails = ['test@example.com', 'user@test.com', 'admin@test.com'];
     const requestEmail = req.body?.email || req.query?.email;
@@ -360,20 +362,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     next();
   };
   
-  // Endpoints de segurança
   app.get('/api/csrf-token', addCSRFToken, getCSRFToken);
   app.post('/api/cookie-consent', updateCookieConsent);
   app.get('/api/cookie-configurations', getCookieConfigurations);
   
-  // Contact form
-  app.post('/api/contact', async (req, res) => {
+  app.post('/api/contact', async (req: any, res: any) => {
     try {
       const { name, email, message } = req.body;
       if (!name?.trim() || !email?.trim() || !message?.trim()) {
         return res.status(400).json({ message: "Campos obrigatórios em falta" });
       }
 
-      // Mock email sending
       console.log('📧 Contacto recebido:', { name, email, message });
       
       res.status(200).json({
@@ -385,14 +384,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Admin routes
   try {
     const landingPageRoutes = (await import('./routes/admin/landing-page')).default;
     app.use('/api/admin/landing-page', requireAuth, requireAdmin, landingPageRoutes);
   } catch (e) { console.warn("Landing page routes not found"); }
 
-  // Fix User Roles Endpoint
-  app.post('/api/debug/fix-user-roles', requireAuth, requireSuperAdmin, async (req, res) => {
+  try {
+    const adminContentRoutes = (await import("./routes/admin/content")).default;
+    app.use("/api/admin/content", requireAuth, requireAdmin, adminContentRoutes);
+  } catch (e) { console.warn("Admin content routes not found"); }
+
+  app.post('/api/debug/fix-user-roles', requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const fixes = [
         { email: 'trial@amplia.com', plan: 'trial' },
@@ -412,8 +414,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // === INVITATION ROUTES ===
-  app.get('/api/invitations/:token', async (req, res) => {
+  // Invitation Routes
+  app.get('/api/invitations/:token', async (req: any, res: any) => {
     try {
       const invite = await storage.getAgencyInvitationByToken(req.params.token);
       if (!invite) return res.status(404).json({ message: "Convite inválido ou expirado" });
@@ -423,7 +425,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.post('/api/invitations/:token/accept', requireAuth, async (req: any, res) => {
+  app.post('/api/invitations/:token/accept', requireAuth, async (req: any, res: any) => {
     try {
       await storage.acceptAgencyInvitation(req.params.token, req.user.id);
       res.json({ success: true, message: "Convite aceite com sucesso" });
@@ -432,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.post('/api/invitations/:token/register', async (req, res) => {
+  app.post('/api/invitations/:token/register', async (req: any, res: any) => {
     try {
       const { firstName, lastName, email, password } = req.body;
       const invite = await storage.getAgencyInvitationByToken(req.params.token);
@@ -450,12 +452,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         firstName,
         lastName,
         isActive: true,
-        credits: 10 // Trial credits
+        credits: 10 
       });
 
       await storage.acceptAgencyInvitation(req.params.token, user.id);
       
-      // Auto login
       req.login(user, (err: any) => {
         if (err) return res.status(500).json({ message: "Erro no login automático" });
         res.json({ success: true, user });
@@ -466,8 +467,98 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // User Data
-  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+  // Agency Management
+  app.get('/api/agency/members', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+    try {
+      const user = req.user;
+      if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
+      
+      const members = await storage.getAgencyMembers(user.agencyId);
+      
+      const invitationsResult = await db.execute(sql`
+        SELECT * FROM agency_invitations 
+        WHERE agency_id = ${user.agencyId} AND status = 'pending' AND expires_at > NOW()
+      `);
+      
+      const invitations = invitationsResult.rows.map((inv: any) => ({
+        id: `invite-${inv.id}`,
+        email: inv.email,
+        role: inv.role,
+        status: 'pending',
+        joinedAt: inv.created_at,
+        user: null
+      }));
+      
+      res.json([...members, ...invitations]);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Erro ao obter membros" });
+    }
+  });
+
+  app.post('/api/agency/invite-member', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+    try {
+      const { email, role } = req.body;
+      const user = req.user;
+      if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
+
+      const counts = await storage.getAgencyMemberCount(user.agencyId);
+      if (counts.total >= 5) return res.status(403).json({ message: "Limite de membros atingido" });
+
+      const invite = await storage.inviteAgencyMember(user.agencyId, email, role, user.id);
+      
+      res.json({ message: "Convite enviado com sucesso", invite });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Erro ao enviar convite" });
+    }
+  });
+
+  app.patch('/api/agency/members/:memberId', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+    try {
+      const { memberId } = req.params;
+      const updates = req.body;
+      
+      const updatedMember = await storage.updateAgencyMember(memberId, updates);
+      res.json(updatedMember);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Erro ao atualizar membro" });
+    }
+  });
+
+  app.get('/api/agency/delegations', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+    try {
+      const user = req.user;
+      if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
+      
+      const delegations = await storage.getAgencyDelegations(user.agencyId);
+      res.json(delegations);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Erro ao obter delegações" });
+    }
+  });
+
+  app.post('/api/agency/delegate-admin', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+    try {
+      const user = req.user;
+      const { userId, type, days } = req.body;
+      
+      if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
+
+      const delegation = await storage.createAgencyDelegation({
+        agencyId: user.agencyId,
+        delegatedBy: user.id,
+        delegatedTo: userId,
+        type,
+        days: type === 'temporary' ? parseInt(days) : null,
+        permissions: ['admin']
+      });
+
+      res.json(delegation);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Erro ao delegar administração" });
+    }
+  });
+
+  app.get('/api/auth/user', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -484,8 +575,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // User Stats
-  app.get('/api/user/stats', requireAuth, async (req: any, res) => {
+  app.get('/api/user/stats', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -505,8 +595,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // === TRIAL SYSTEM ENDPOINTS ===
-  app.get('/api/trial/status', requireAuth, async (req: any, res) => {
+  // Trial System
+  app.get('/api/trial/status', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const status = await trialService.getTrialStatus(userId);
@@ -516,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.post('/api/trial/start', requireAuth, async (req: any, res) => {
+  app.post('/api/trial/start', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const success = await trialService.startTrial(userId);
@@ -527,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // Business Profile
-  app.get('/api/business-profile', requireAuth, async (req: any, res) => {
+  app.get('/api/business-profile', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const profile = await storage.getBusinessProfile(userId);
@@ -537,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.post('/api/business-profile', requireAuth, async (req: any, res) => {
+  app.post('/api/business-profile', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const profileData = { ...req.body, userId };
@@ -548,11 +638,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Response Generation
-  app.post('/api/generate-response', protectCSRF, requireAuth, trialRateLimit, generateRateLimit, async (req: any, res) => {
+  // Generate Response
+  app.post('/api/generate-response', protectCSRF, requireAuth, trialRateLimit, generateRateLimit, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
-      const { platform, originalMessage, tone, businessProfileId, responseType } = req.body;
+      const { platform, originalMessage, tone, businessProfileId, responseType, extraInstructions } = req.body;
 
       const user = await storage.getUser(userId);
       if (!user || user.credits < 1) {
@@ -572,6 +662,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         comment: originalMessage,
         platform: platform as any,
         tone: tone || "profissional",
+        extraInstructions,
         businessContext,
         responseType: responseType || "resposta"
       });
@@ -588,12 +679,15 @@ export async function registerRoutes(app: Express): Promise<void> {
         platform,
         originalMessage,
         generatedResponse: aiResult.response,
+        sentiment: aiResult.sentiment,
+        keywords: aiResult.keywords,
         tone: tone || "profissional",
         creditsUsed: creditCost,
         status: "generated",
         metadata: {
           detectedLanguage: aiResult.detectedLanguage.language,
           tokensUsed: aiResult.tokensUsed,
+          extraInstructions: extraInstructions
         }
       };
 
@@ -615,8 +709,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Analytics
-  app.get('/api/analytics/stats', requireAuth, async (req: any, res) => {
+  app.get('/api/analytics/stats', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const stats = await storage.getUserStats(userId);
@@ -626,8 +719,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Credits
-  app.get('/api/credits/balance', requireAuth, async (req: any, res) => {
+  app.get('/api/credits/balance', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const balance = await storage.getUserCreditBalance(userId);
@@ -637,15 +729,13 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Stripe
-  app.post('/api/get-or-create-subscription', requireAuth, async (req: any, res) => {
+  app.post('/api/get-or-create-subscription', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       let user = await storage.getUser(userId);
 
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // If user is Stripe user, return subscription
       if ((user as any).stripeSubscriptionId) {
         const subscription = await stripe.subscriptions.retrieve((user as any).stripeSubscriptionId, {
           expand: ['latest_invoice.payment_intent']
@@ -670,7 +760,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         expand: ['latest_invoice.payment_intent'],
       });
 
-      // Fixed: passed as object to match signature in storage.ts
       await storage.updateUserStripeInfo(userId, { customerId: customer.id, subscriptionId: subscription.id });
       
       const latestInvoice = subscription.latest_invoice as any;
@@ -684,22 +773,13 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Sentiment Analysis
-  app.post("/api/sentiment/analyze", requireAuth, trialRateLimit, generateRateLimit, async (req: any, res) => {
+  app.post("/api/sentiment/analyze", requireAuth, trialRateLimit, generateRateLimit, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const { text, platform } = req.body;
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "Analyze sentiment JSON." },
-          { role: "user", content: text }
-        ],
-        response_format: { type: "json_object" }
-      });
-
-      const analysis = JSON.parse(response.choices[0].message.content || '{}');
+      const { aiResponseService } = await import("./services/ai-response-service");
+      const analysis = await aiResponseService.analyzeSentiment(text);
       
       const sentimentData = {
         userId,
@@ -717,18 +797,33 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // Register optional/admin routes in try-catch to avoid hard crash if files missing
+  // Admin and Optional Routes
   try {
     registerSecurityDashboardRoutes(app);
     registerSystemRoutes(app);
+    setupAdminManagementRoutes(app);
+    setupTechnicalSpecsRoutes(app); // New route
     const adminSocialMediaRoutes = (await import("./routes/admin-social-media")).default;
     app.use("/api/admin/social-media", adminSocialMediaRoutes);
     const reportsRoutes = (await import("./routes/reports")).default;
     app.use("/api/admin/reports", reportsRoutes);
     
-    // Additional features
+    const aiTrainingRoutes = (await import("./routes/ai-training")).default;
+    app.use("/api/ai-training", aiTrainingRoutes);
+
     app.use("/api/reviews", reviewsRouter);
+    app.use("/api/reviews-ai", reviewsAiRouter); 
     app.use("/api/errors", errorRoutes);
+
+    registerAnalyticsRoutes(app);
+    registerApiKeysGuideRoutes(app);
+    registerAutomationRoutes(app);
+    registerBillingRoutes(app);
+    registerDiscoveryRoutes(app);
+    registerContentRoutes(app);
+    registerCorporateSocialRoutes(app);
+    registerCriticalSystemsRoutes(app);
+
   } catch (e) {
     console.log("Algumas rotas administrativas não foram carregadas.");
   }

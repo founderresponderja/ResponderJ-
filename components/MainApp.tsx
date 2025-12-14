@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { 
   MessageSquareText, 
   LayoutDashboard, 
@@ -25,7 +26,11 @@ import {
   GitBranch,
   CheckCircle2,
   Sparkles,
-  FileText
+  FileText,
+  Shield,
+  Share2,
+  UserCog,
+  Compass // Added compass icon
 } from 'lucide-react';
 import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
@@ -38,7 +43,10 @@ import InvoicingPage from './InvoicingPage';
 import BillingPage from './BillingPage';
 import BusinessProfilePage from './BusinessProfilePage';
 import SocialMediaCalendar from './SocialMediaCalendar';
+import SocialMediaManager from './SocialMediaManager';
 import CRMPage from './CRMPage';
+import AgencyTeamManagement from './AgencyTeamManagement';
+import BusinessDiscoveryPage from './BusinessDiscoveryPage'; // Added import
 import { Logo } from './Logo';
 import { generateResponse } from '../services/geminiService';
 import { processReplitPayment } from '../services/paymentService';
@@ -53,6 +61,8 @@ interface MainAppProps {
   setLang: (l: Language) => void;
   theme: Theme;
   toggleTheme: () => void;
+  onNavigateToPrivacy: () => void;
+  onNavigateToTerms?: () => void;
 }
 
 // Plan definitions map for easy access
@@ -66,30 +76,39 @@ const PLAN_LIMITS: Record<PlanId, number> = {
 // Mock data for App Updates
 const APP_UPDATES = [
   {
+    version: "2.7.0",
+    date: "01 Fev 2025",
+    title: "Descoberta de Negócios IA",
+    description: "Nova ferramenta para encontrar leads qualificados na sua região usando Inteligência Artificial.",
+    tags: ["IA", "Novo Módulo"]
+  },
+  {
+    version: "2.6.0",
+    date: "25 Jan 2025",
+    title: "Análise de Sentimento",
+    description: "A IA agora identifica automaticamente o sentimento (Positivo, Neutro, Negativo) e palavras-chave das reviews.",
+    tags: ["IA", "Novo"]
+  },
+  {
     version: "2.5.0",
     date: "20 Jan 2025",
     title: "IA Mais Inteligente & Contabilidade",
     description: "Atualizámos o nosso modelo de IA para o Gemini 2.5 para respostas mais naturais e empáticas. Lançámos também o novo módulo de Contabilidade para ENI e Unipessoais.",
     tags: ["IA", "Novo Módulo"]
-  },
-  {
-    version: "2.4.0",
-    date: "10 Jan 2025",
-    title: "CRM & Calendário Social",
-    description: "Agora pode gerir os seus clientes no novo CRM integrado e planear os seus posts no Calendário de Redes Sociais.",
-    tags: ["CRM", "Social"]
-  },
-  {
-    version: "2.3.5",
-    date: "05 Jan 2025",
-    title: "Favoritos & Histórico",
-    description: "Adicionámos a possibilidade de marcar respostas como favoritas e melhorámos a pesquisa no histórico.",
-    tags: ["Melhoria"]
   }
 ];
 
-const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, setLang, theme, toggleTheme }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'invoicing' | 'business-profile' | 'calendar' | 'crm'>('overview');
+const MainApp: React.FC<MainAppProps> = ({ 
+  onLogout, 
+  onNavigateToAdmin, 
+  lang, 
+  setLang, 
+  theme, 
+  toggleTheme, 
+  onNavigateToPrivacy,
+  onNavigateToTerms 
+}) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'invoicing' | 'business-profile' | 'calendar' | 'crm' | 'social-manager' | 'team' | 'discovery'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,6 +124,41 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
+
+  // Load persistence
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('responderja_history');
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        const hydrated = parsed.map((item: any) => ({
+            ...item,
+            createdAt: new Date(item.createdAt)
+        }));
+        setHistory(hydrated);
+      } catch (e) { console.error("Failed to load history", e); }
+    }
+
+    const savedSub = localStorage.getItem('responderja_subscription');
+    if (savedSub) {
+      try {
+        const parsed = JSON.parse(savedSub);
+        setSubscription({
+            ...parsed,
+            startDate: new Date(parsed.startDate)
+        });
+      } catch (e) { console.error("Failed to load subscription", e); }
+    }
+  }, []);
+
+  // Save persistence
+  useEffect(() => {
+    localStorage.setItem('responderja_history', JSON.stringify(history));
+  }, [history]);
+
+  useEffect(() => {
+    localStorage.setItem('responderja_subscription', JSON.stringify(subscription));
+  }, [subscription]);
 
   const t = translations[lang].app;
   const nav = translations[lang].nav;
@@ -123,7 +177,7 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
 
     setIsLoading(true);
     setError(null);
-    setCurrentReview(null);
+    // Don't clear currentReview immediately to avoid flicker
 
     // Create temp review object
     const tempReview: ReviewData = {
@@ -134,8 +188,31 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
     };
 
     try {
-      const responseText = await generateResponse(tempReview);
-      const finishedReview = { ...tempReview, generatedResponse: responseText };
+      // Attempt to get business context from localStorage (set in BusinessProfilePage)
+      let businessContext = undefined;
+      const savedProfile = localStorage.getItem('demo_business_profile');
+      if (savedProfile) {
+        try {
+          const profile = JSON.parse(savedProfile);
+          businessContext = {
+            businessName: profile.businessName,
+            businessType: profile.businessType,
+            description: profile.description,
+            responseGuidelines: profile.responseGuidelines
+          };
+        } catch (e) {
+          console.warn("Failed to parse business profile");
+        }
+      }
+
+      const result = await generateResponse(tempReview, businessContext);
+      
+      const finishedReview: ReviewData = { 
+        ...tempReview, 
+        generatedResponse: result.response,
+        sentiment: result.sentiment,
+        keywords: result.keywords
+      };
       
       setCurrentReview(finishedReview);
       setHistory(prev => [finishedReview, ...prev]);
@@ -153,6 +230,23 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
     }
   };
 
+  const handleUpdateResponse = (id: string, newResponse: string) => {
+    if (currentReview && currentReview.id === id) {
+      setCurrentReview({ ...currentReview, generatedResponse: newResponse });
+    }
+    setHistory(prev => prev.map(item => 
+      item.id === id ? { ...item, generatedResponse: newResponse } : item
+    ));
+  };
+
+  const handleRegenerate = () => {
+    if (currentReview) {
+       // Remove internal fields to treat as new request
+       const { id, createdAt, generatedResponse, isFavorite, sentiment, keywords, ...rest } = currentReview;
+       handleGenerate(rest);
+    }
+  };
+
   const handleUpgrade = async (planId: PlanId) => {
       setIsProcessingPayment(true);
       try {
@@ -161,8 +255,6 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
               setSubscription(prev => ({
                   ...prev,
                   planId: planId,
-                  // We don't reset credits used, just increase the limit implied by planId
-                  // unless it's a new billing cycle, but for demo simplicity:
               }));
               setShowUpgradeModal(false);
               setActiveTab('generate'); // Go back to work
@@ -229,8 +321,11 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
         <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
           <NavButton tab="overview" icon={LayoutDashboard} label="Visão Geral" />
           <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
+          <NavButton tab="social-manager" icon={Share2} label="Gestão de Redes" />
+          <NavButton tab="discovery" icon={Compass} label="Descoberta (IA)" />
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} />
           <NavButton tab="crm" icon={Users} label={nav.menu.crm} />
+          <NavButton tab="team" icon={UserCog} label={nav.menu.team} />
           <NavButton tab="calendar" icon={CalendarIcon} label={nav.menu.calendar} />
           <NavButton tab="business-profile" icon={Store} label={nav.menu.profile} />
           <NavButton tab="platforms" icon={List} label={nav.menu.platforms} />
@@ -296,6 +391,18 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
                 </div>
              </div>
 
+             <div className="flex justify-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+                <button onClick={onNavigateToPrivacy} className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1">
+                  <Shield size={10} /> Privacidade
+                </button>
+                <span>•</span>
+                {onNavigateToTerms ? (
+                  <button onClick={onNavigateToTerms} className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Termos</button>
+                ) : (
+                  <button className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors">Termos</button>
+                )}
+             </div>
+
             <button
                 onClick={onLogout}
                 className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
@@ -334,8 +441,11 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                 {activeTab === 'overview' && 'Visão Geral'}
                 {activeTab === 'generate' && 'Gerar Resposta'}
+                {activeTab === 'social-manager' && 'Gestão de Redes Sociais'}
+                {activeTab === 'discovery' && 'Descoberta de Negócios (IA)'}
                 {activeTab === 'analytics' && 'Estatísticas'}
                 {activeTab === 'crm' && 'Gestão de Clientes'}
+                {activeTab === 'team' && 'Gestão de Equipas'}
                 {activeTab === 'calendar' && 'Calendário Social'}
                 {activeTab === 'business-profile' && 'Perfil de Negócio'}
                 {activeTab === 'platforms' && 'Aplicações Conectadas'}
@@ -375,12 +485,20 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
                     A sua central de inteligência artificial para gestão de reputação. 
                     Você tem <span className="font-bold text-white">{creditsLeft} créditos</span> disponíveis para usar hoje.
                   </p>
-                  <button 
-                    onClick={() => setActiveTab('generate')}
-                    className="mt-6 bg-white text-brand-600 px-6 py-2.5 rounded-lg font-bold hover:bg-brand-50 transition-colors shadow-md inline-flex items-center gap-2"
-                  >
-                    Começar a Gerar <ArrowRight size={18} />
-                  </button>
+                  <div className="flex gap-4 mt-6">
+                    <button 
+                        onClick={() => setActiveTab('generate')}
+                        className="bg-white text-brand-600 px-6 py-2.5 rounded-lg font-bold hover:bg-brand-50 transition-colors shadow-md inline-flex items-center gap-2"
+                    >
+                        Começar a Gerar <ArrowRight size={18} />
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('discovery')}
+                        className="bg-brand-700/50 backdrop-blur-sm text-white px-6 py-2.5 rounded-lg font-bold hover:bg-brand-700 transition-colors border border-brand-500 inline-flex items-center gap-2"
+                    >
+                        Encontrar Leads <Compass size={18} />
+                    </button>
+                  </div>
                 </div>
                 <div className="absolute right-0 bottom-0 opacity-10">
                   <Bot size={200} />
@@ -418,7 +536,7 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
                       <Bot className="w-6 h-6" />
                     </div>
                     <span className="text-xs font-bold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
-                      v2.5
+                      v2.7
                     </span>
                   </div>
                   <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Modelo IA</h3>
@@ -455,14 +573,14 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
                   </button>
 
                   <button 
-                    onClick={() => setActiveTab('analytics')}
-                    className="group p-6 bg-gradient-to-br from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-xl border border-blue-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all text-left shadow-sm hover:shadow-md"
+                    onClick={() => setActiveTab('discovery')}
+                    className="group p-6 bg-gradient-to-br from-indigo-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-xl border border-indigo-100 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left shadow-sm hover:shadow-md"
                   >
-                    <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 group-hover:scale-110 transition-transform">
-                      <History size={24} />
+                    <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-110 transition-transform">
+                      <Compass size={24} />
                     </div>
-                    <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Histórico</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Consulte e analise todas as respostas geradas anteriormente.</p>
+                    <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Descoberta (Novo)</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Encontre novos clientes potenciais na sua região com IA.</p>
                   </button>
 
                   <button 
@@ -547,6 +665,9 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
                         review={currentReview} 
                         lang={lang} 
                         onToggleFavorite={() => toggleFavorite(currentReview.id)}
+                        onUpdate={handleUpdateResponse}
+                        onRegenerate={handleRegenerate}
+                        isRegenerating={isLoading}
                       />
                     </>
                  ) : (
@@ -618,6 +739,18 @@ const MainApp: React.FC<MainAppProps> = ({ onLogout, onNavigateToAdmin, lang, se
 
           {activeTab === 'crm' && (
             <CRMPage />
+          )}
+
+          {activeTab === 'team' && (
+            <AgencyTeamManagement />
+          )}
+
+          {activeTab === 'social-manager' && (
+            <SocialMediaManager lang={lang} />
+          )}
+
+          {activeTab === 'discovery' && (
+            <BusinessDiscoveryPage />
           )}
 
           {activeTab === 'calendar' && (

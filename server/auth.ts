@@ -48,7 +48,7 @@ async function comparePasswords(supplied: string, stored: string): Promise<boole
 // CONFIGURAÇÃO DE AUTENTICAÇÃO
 // =====================================
 
-export function setupAuth(app: Express) {
+export function setupAuth(app: any) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.ENCRYPTION_KEY || "responderja-revolutionary-secret-2025",
     resave: false,
@@ -129,7 +129,7 @@ export function setupAuth(app: Express) {
   // SERIALIZAÇÃO
   // =====================================
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => done(null, (user as any).id));
   
   passport.deserializeUser(async (id: string, done) => {
     try {
@@ -152,7 +152,7 @@ export function setupAuth(app: Express) {
   // =====================================
 
   // REGISTO
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/register", async (req: any, res: any, next: any) => {
     try {
       // Validação Zod
       const validationResult = registerUserSchema.safeParse(req.body);
@@ -182,7 +182,7 @@ export function setupAuth(app: Express) {
       console.log(`🚀 Novo utilizador registado: ${user.email}`);
 
       // Login automático pós-registo
-      req.login(user as any, (err) => {
+      req.login(user as any, (err: any) => {
         if (err) return next(err);
 
         // Disparar sequência de emails (Async)
@@ -212,7 +212,7 @@ export function setupAuth(app: Express) {
   });
 
   // LOGIN
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", (req: any, res: any, next: any) => {
     const validationResult = loginUserSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
@@ -228,7 +228,7 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ message: info?.message || "Credenciais inválidas" });
       }
 
-      req.logIn(user, (err) => {
+      req.logIn(user, (err: any) => {
         if (err) return next(err);
 
         console.log(`✅ Sessão iniciada: ${user.email} [${user.role}]`);
@@ -242,9 +242,9 @@ export function setupAuth(app: Express) {
   });
 
   // LOGOUT
-  const handleLogout = (req: Request, res: Response, next: NextFunction) => {
+  const handleLogout = (req: any, res: any, next: any) => {
     const user = req.user;
-    req.logout((err) => {
+    req.logout((err: any) => {
       if (err) return next(err);
       
       if (user) {
@@ -264,7 +264,7 @@ export function setupAuth(app: Express) {
   app.get("/api/logout", handleLogout);
 
   // USER DATA
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", (req: any, res: any) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Não autenticado" });
     }
@@ -293,7 +293,7 @@ function sanitizeUser(user: any) {
   };
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export function requireAuth(req: any, res: any, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Sessão expirada ou inválida." });
   }
@@ -305,7 +305,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
  * Verifica tanto a role string quanto os flags booleanos de admin.
  */
 export function requireRole(allowedRoles: string[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: any, res: any, next: NextFunction) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Autenticação necessária" });
     }

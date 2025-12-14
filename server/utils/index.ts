@@ -5,8 +5,8 @@
  */
 
 // Core Utilities
-export { ControllerUtils, AppError } from './ControllerUtils';
 export { Logger, LogLevel, ErrorType } from './Logger';
+export { ControllerUtils, AppError } from './ControllerUtils';
 export { urlBuilder, URLBuilder } from './url-builder';
 
 // Common Types

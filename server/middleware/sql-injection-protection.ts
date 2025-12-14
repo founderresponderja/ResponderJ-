@@ -166,7 +166,7 @@ const checkObjectForSQLInjection = (obj: any, path = ''): string | null => {
 };
 
 // Middleware principal de proteção
-export const protectDatabaseQueries = (req: Request, res: Response, next: NextFunction) => {
+export const protectDatabaseQueries = (req: any, res: any, next: any) => {
   try {
     // TEMPORÁRIO: Desactivar para endpoints de login
     if (req.path.includes('login') || req.path.includes('/auth/')) {

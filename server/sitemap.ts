@@ -1,7 +1,6 @@
 import { SitemapStream, streamToPromise } from 'sitemap';
 import fs from 'fs';
 import path from 'path';
-import process from 'process';
 
 // URLs principais da aplicação
 const urls = [
@@ -112,7 +111,7 @@ export async function generateSitemap() {
   try {
     // Nota: Em produção, process.cwd() geralmente aponta para a raiz do projeto.
     // Ajuste o caminho 'dist/public' conforme a estrutura de build real do seu servidor.
-    const sitemapPath = path.join(process.cwd(), 'dist', 'public', 'sitemap.xml');
+    const sitemapPath = path.join((process as any).cwd(), 'dist', 'public', 'sitemap.xml');
     
     // Criar diretório se não existir
     const dir = path.dirname(sitemapPath);
@@ -165,7 +164,7 @@ User-agent: Googlebot
 Allow: /
 Crawl-delay: 1`;
 
-    const robotsPath = path.join(process.cwd(), 'dist', 'public', 'robots.txt');
+    const robotsPath = path.join((process as any).cwd(), 'dist', 'public', 'robots.txt');
     
     // Criar diretório se não existir
     const dir = path.dirname(robotsPath);
@@ -186,7 +185,7 @@ Crawl-delay: 1`;
 // Executar se chamado diretamente
 // Em ESM, import.meta.url é o caminho do ficheiro.
 // Comparamos com process.argv[1] convertendo para formato de ficheiro se necessário.
-if (import.meta.url && process.argv[1] === import.meta.url.replace('file://', '')) {
+if (import.meta.url && (process as any).argv[1] === import.meta.url.replace('file://', '')) {
   (async () => {
     await generateSitemap();
     generateRobots();

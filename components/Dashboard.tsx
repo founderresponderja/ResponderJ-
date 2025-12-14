@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
 import { ReviewData, Platform, Tone } from '../types';
 import { 
@@ -12,7 +12,9 @@ import {
   TrendingDown, 
   Calendar,
   Layout,
-  Smile
+  Smile,
+  Heart,
+  Tag
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -20,9 +22,28 @@ interface DashboardProps {
 }
 
 const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f97316', '#ef4444', '#8b5cf6', '#ec4899'];
+const SENTIMENT_COLORS: Record<string, string> = {
+  Positive: '#22c55e', // green-500
+  Neutral: '#94a3b8', // slate-400
+  Negative: '#ef4444', // red-500
+};
 
 const Dashboard: React.FC<DashboardProps> = ({ history }) => {
   const [dateRange, setDateRange] = useState("7d");
+
+  if (history.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 animate-fade-in min-h-[400px]">
+        <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+           <MessageSquare className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Sem dados para mostrar</h3>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
+           O seu dashboard será atualizado automaticamente assim que gerar a sua primeira resposta com a nossa IA.
+        </p>
+      </div>
+    );
+  }
 
   // Filtragem de dados baseada no dateRange (Simulação, pois history pode não ter datas antigas suficientes)
   const filteredHistory = history; 
@@ -58,6 +79,39 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
   filteredHistory.forEach(r => {
     toneCounts[r.tone] = (toneCounts[r.tone] || 0) + 1;
   });
+
+  // Calculate Sentiment Distribution
+  const sentimentCounts: Record<string, number> = { Positive: 0, Neutral: 0, Negative: 0 };
+  let hasSentimentData = false;
+  filteredHistory.forEach(r => {
+    if (r.sentiment) {
+      sentimentCounts[r.sentiment] = (sentimentCounts[r.sentiment] || 0) + 1;
+      hasSentimentData = true;
+    }
+  });
+
+  const sentimentData = Object.keys(sentimentCounts).map(key => ({
+    name: key === 'Positive' ? 'Positivo' : key === 'Negative' ? 'Negativo' : 'Neutro',
+    key: key,
+    value: sentimentCounts[key],
+  })).filter(d => d.value > 0);
+
+  // Calculate Top Keywords
+  const keywordCounts: Record<string, number> = {};
+  filteredHistory.forEach(r => {
+    if (r.keywords) {
+      r.keywords.forEach(k => {
+        const normalized = k.trim(); // Keep original casing for display usually, but could lowerCase
+        keywordCounts[normalized] = (keywordCounts[normalized] || 0) + 1;
+      });
+    }
+  });
+  
+  const topKeywords = Object.entries(keywordCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([keyword, count]) => ({ keyword, count }));
+
 
   const platformData = Object.keys(platformCounts).map(key => ({
     name: key,
@@ -176,7 +230,83 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
         </div>
       </div>
 
-      {/* Distribution Lists */}
+      {/* Row 2: Sentiment and Keywords (New) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Sentiment Analysis */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <Heart className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            </div>
+            <h3 className="font-semibold text-slate-800 dark:text-white">Análise de Sentimento</h3>
+          </div>
+          
+          <div className="h-64 w-full flex items-center justify-center">
+            {hasSentimentData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={sentimentData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {sentimentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={SENTIMENT_COLORS[entry.key] || COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '8px', 
+                      border: 'none', 
+                      backgroundColor: '#1e293b', 
+                      color: '#fff' 
+                    }} 
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-slate-400 text-sm">Sem dados de sentimento disponíveis</div>
+            )}
+          </div>
+        </div>
+
+        {/* Top Keywords */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              <Tag className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            </div>
+            <h3 className="font-semibold text-slate-800 dark:text-white">Tópicos Frequentes</h3>
+          </div>
+          
+          {topKeywords.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {topKeywords.map((item, index) => (
+                <div 
+                  key={index} 
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700"
+                >
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.keyword}</span>
+                  <span className="text-xs font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 px-1.5 py-0.5 rounded-full">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-64 items-center justify-center text-slate-400 text-sm">
+              Sem palavras-chave disponíveis
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Row 3: Distribution Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Platform Distribution */}

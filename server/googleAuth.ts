@@ -23,10 +23,10 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
   console.warn("⚠️ AVISO: Variáveis GOOGLE_CLIENT_ID ou GOOGLE_CLIENT_SECRET não definidas. Login Google desativado.");
 }
 
-export function setupGoogleAuth(app: Express) {
+export function setupGoogleAuth(app: any) {
   
   // 1. Redirecionar para Google
-  app.get("/api/auth/google", (req, res) => {
+  app.get("/api/auth/google", (req: any, res: any) => {
     if (!client) {
       return res.status(503).send("Login com Google não configurado neste servidor.");
     }
@@ -41,7 +41,7 @@ export function setupGoogleAuth(app: Express) {
   });
 
   // 2. Callback do Google
-  app.get("/api/auth/google/callback", async (req, res) => {
+  app.get("/api/auth/google/callback", async (req: any, res: any) => {
     if (!client) {
       return res.redirect('/login?error=server_configuration');
     }
@@ -126,7 +126,7 @@ export function setupGoogleAuth(app: Express) {
       }
 
       // Criar sessão Passport
-      req.login(user, (err) => {
+      req.login(user, (err: any) => {
         if (err) {
           console.error("💥 Erro ao criar sessão Google:", err);
           return res.redirect('/login?error=session_error');

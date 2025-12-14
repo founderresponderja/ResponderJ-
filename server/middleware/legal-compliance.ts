@@ -28,7 +28,7 @@ export const COOKIE_RETENTION_PERIODS = {
 /**
  * Headers de compliance legal obrigatórios
  */
-export const legalComplianceHeaders = (req: Request, res: Response, next: NextFunction) => {
+export const legalComplianceHeaders = (req: any, res: any, next: any) => {
   // RGPD Article 25 - Data Protection by Design
   res.setHeader('X-Data-Protection', 'GDPR-Compliant');
   res.setHeader('X-Privacy-Policy', '/privacy');
@@ -50,8 +50,8 @@ export const legalComplianceHeaders = (req: Request, res: Response, next: NextFu
 /**
  * Middleware para cookies seguros (Lei 58/2019 + RGPD)
  */
-export const secureCookieMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const originalSetCookie = res.cookie;
+export const secureCookieMiddleware = (req: any, res: any, next: any) => {
+  const originalSetCookie = res.cookie.bind(res);
   
   (res as any).cookie = function(name: string, value: any, options: any = {}) {
     // Aplicar configurações de segurança obrigatórias
@@ -98,7 +98,7 @@ function getCookieRetentionPeriod(cookieName: string): number {
 /**
  * Verificação de consentimento de cookies (Lei 58/2019)
  */
-export const checkCookieConsent = (req: Request, res: Response, next: NextFunction) => {
+export const checkCookieConsent = (req: any, res: any, next: any) => {
   const hasConsent = req.headers['cookie-consent'] === 'granted' || 
                     (req.cookies && req.cookies['cookie-consent'] === 'granted');
   
@@ -117,7 +117,7 @@ export const checkCookieConsent = (req: Request, res: Response, next: NextFuncti
 /**
  * Auditoria RGPD para logging obrigatório
  */
-export const gdprAuditLog = (req: Request, res: Response, next: NextFunction) => {
+export const gdprAuditLog = (req: any, res: any, next: any) => {
   const auditData = {
     timestamp: new Date().toISOString(),
     ip: req.ip || req.connection.remoteAddress,
@@ -137,7 +137,7 @@ export const gdprAuditLog = (req: Request, res: Response, next: NextFunction) =>
 /**
  * Validação de transferências de dados (RGPD Art. 44-49)
  */
-export const validateDataTransfers = (req: Request, res: Response, next: NextFunction) => {
+export const validateDataTransfers = (req: any, res: any, next: any) => {
   // Lista de países/serviços com adequacy decision
   const adequateCountries = ['US-OpenAI', 'EU', 'UK', 'Canada'];
   
@@ -177,7 +177,7 @@ export const dataSubjectRights = {
 /**
  * Headers informativos sobre direitos RGPD
  */
-export const dataRightsHeaders = (req: Request, res: Response, next: NextFunction) => {
+export const dataRightsHeaders = (req: any, res: any, next: any) => {
   res.setHeader('X-GDPR-Rights-Access', dataSubjectRights.ACCESS);
   res.setHeader('X-GDPR-Rights-Rectification', dataSubjectRights.RECTIFICATION);
   res.setHeader('X-GDPR-Rights-Erasure', dataSubjectRights.ERASURE);

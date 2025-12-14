@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 // Cache para rate limiting de trial (1 crédito/30s)
 const trialRateCache = new Map<string, number>();
 
-export function trialRateLimit(req: Request, res: Response, next: NextFunction) {
+export function trialRateLimit(req: any, res: any, next: any) {
   const user = req.user;
   
   // Se não há usuário ou não está em trial, prosseguir normalmente

@@ -5,7 +5,7 @@ import { ControllerUtils } from "../utils/ControllerUtils";
 
 export class LeadsEmailController {
   // Processar sequência de emails automáticos
-  static async processEmailSequence(req: Request, res: Response) {
+  static async processEmailSequence(req: any, res: any) {
     try {
       const leadsForEmails = await storage.getLeadsForEmailSequence();
       
@@ -19,17 +19,17 @@ export class LeadsEmailController {
       
       res.json({ processed: result.processed, errors: result.errors });
     } catch (error) {
-      ControllerUtils.handleError(error, 'no processamento de emails', res);
+      ControllerUtils.handleError(error, 'no processamento de emails', res, req);
     }
   }
 
   // Enviar email de boas-vindas para novos leads
-  static async sendWelcomeEmails(req: Request, res: Response) {
+  static async sendWelcomeEmails(req: any, res: any) {
     try {
       await sendWelcomeEmailsToNewLeads();
       res.json({ message: 'Emails de boas-vindas enviados' });
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao enviar emails de boas-vindas', res);
+      ControllerUtils.handleError(error, 'ao enviar emails de boas-vindas', res, req);
     }
   }
 }

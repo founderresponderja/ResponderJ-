@@ -4,7 +4,7 @@ import { ControllerUtils } from "../utils/ControllerUtils";
 
 export class LeadsController {
   // Listar leads com paginação
-  static async getLeads(req: Request, res: Response) {
+  static async getLeads(req: any, res: any) {
     try {
       const { page, limit, offset } = ControllerUtils.getPaginationParams(req);
       const status = req.query.status as string;
@@ -27,12 +27,12 @@ export class LeadsController {
         pagination: response.pagination
       });
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao obter leads', res);
+      ControllerUtils.handleError(error, 'ao obter leads', res, req);
     }
   }
 
   // Criar novo lead
-  static async createLead(req: Request, res: Response) {
+  static async createLead(req: any, res: any) {
     try {
       const leadData = req.body;
       
@@ -45,12 +45,12 @@ export class LeadsController {
       const lead = await ControllerUtils.createLeadWithDefaults(leadData, 'manual');
       res.status(201).json(lead);
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao criar lead', res);
+      ControllerUtils.handleError(error, 'ao criar lead', res, req);
     }
   }
 
   // Atualizar lead
-  static async updateLead(req: Request, res: Response) {
+  static async updateLead(req: any, res: any) {
     try {
       const { id } = req.params;
       const updateData = req.body;
@@ -58,23 +58,23 @@ export class LeadsController {
       const lead = await storage.updateLead(id, updateData);
       res.json(lead);
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao atualizar lead', res);
+      ControllerUtils.handleError(error, 'ao atualizar lead', res, req);
     }
   }
 
   // Eliminar lead
-  static async deleteLead(req: Request, res: Response) {
+  static async deleteLead(req: any, res: any) {
     try {
       const { id } = req.params;
       await storage.deleteLead(id);
       res.status(204).send();
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao eliminar lead', res);
+      ControllerUtils.handleError(error, 'ao eliminar lead', res, req);
     }
   }
 
   // Atualizar status do lead
-  static async updateLeadStatus(req: Request, res: Response) {
+  static async updateLeadStatus(req: any, res: any) {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -82,12 +82,12 @@ export class LeadsController {
       const lead = await storage.updateLead(id, { status });
       res.json(lead);
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao atualizar status do lead', res);
+      ControllerUtils.handleError(error, 'ao atualizar status do lead', res, req);
     }
   }
 
   // Obter estatísticas de leads
-  static async getLeadsStats(req: Request, res: Response) {
+  static async getLeadsStats(req: any, res: any) {
     try {
       const total = await storage.getLeadsCount();
       
@@ -107,7 +107,7 @@ export class LeadsController {
         byStatus: statusStats,
       });
     } catch (error) {
-      ControllerUtils.handleError(error, 'ao obter estatísticas', res);
+      ControllerUtils.handleError(error, 'ao obter estatísticas', res, req);
     }
   }
 }

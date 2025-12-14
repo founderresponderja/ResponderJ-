@@ -4,7 +4,7 @@ import { ControllerUtils } from "../utils/ControllerUtils";
 
 export class LeadsCSVController {
   // Importar leads de CSV
-  static async importCSV(req: Request, res: Response) {
+  static async importCSV(req: any, res: any) {
     try {
       const { csvData } = req.body;
       
@@ -15,24 +15,24 @@ export class LeadsCSVController {
       const result = await storage.importLeadsFromCSV(csvData);
       res.json(result);
     } catch (error) {
-      ControllerUtils.handleError(error, 'na importação CSV', res);
+      ControllerUtils.handleError(error, 'na importação CSV', res, req);
     }
   }
 
   // Exportar leads para CSV
-  static async exportCSV(req: Request, res: Response) {
+  static async exportCSV(req: any, res: any) {
     try {
       const csvContent = await storage.exportLeadsToCSV();
       
       ControllerUtils.setCSVHeaders(res, 'leads.csv');
       res.send(csvContent);
     } catch (error) {
-      ControllerUtils.handleError(error, 'na exportação CSV', res);
+      ControllerUtils.handleError(error, 'na exportação CSV', res, req);
     }
   }
 
   // Upload de CSV (simplificado)
-  static async uploadCSV(req: Request, res: Response) {
+  static async uploadCSV(req: any, res: any) {
     try {
       const { csvData, filename } = req.body;
       
@@ -69,7 +69,7 @@ export class LeadsCSVController {
         rowCount: lines.length - 1
       });
     } catch (error) {
-      ControllerUtils.handleError(error, 'no upload CSV', res);
+      ControllerUtils.handleError(error, 'no upload CSV', res, req);
     }
   }
 }

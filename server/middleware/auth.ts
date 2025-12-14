@@ -7,7 +7,7 @@
 import type { Request, Response, NextFunction } from "express";
 
 // Middleware para verificar se o utilizador está autenticado
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export function requireAuth(req: any, res: any, next: any) {
   if (!req.user) {
     return res.status(401).json({ error: 'Autenticação necessária' });
   }
@@ -15,7 +15,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 // Middleware para verificar se o utilizador é administrador
-export function isAdminMiddleware(req: Request, res: Response, next: NextFunction) {
+export function isAdminMiddleware(req: any, res: any, next: any) {
   if (!req.user) {
     return res.status(401).json({ error: 'Autenticação necessária' });
   }
@@ -28,7 +28,7 @@ export function isAdminMiddleware(req: Request, res: Response, next: NextFunctio
 }
 
 // Middleware para verificar se o utilizador é super administrador
-export function isSuperAdminMiddleware(req: Request, res: Response, next: NextFunction) {
+export function isSuperAdminMiddleware(req: any, res: any, next: any) {
   if (!req.user) {
     return res.status(401).json({ error: 'Autenticação necessária' });
   }
@@ -41,7 +41,7 @@ export function isSuperAdminMiddleware(req: Request, res: Response, next: NextFu
 }
 
 // Middleware para verificar se o utilizador é proprietário da agência
-export function isAgencyOwnerMiddleware(req: Request, res: Response, next: NextFunction) {
+export function isAgencyOwnerMiddleware(req: any, res: any, next: any) {
   if (!req.user) {
     return res.status(401).json({ error: 'Autenticação necessária' });
   }

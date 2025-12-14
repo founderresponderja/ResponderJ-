@@ -14,12 +14,12 @@ if (process.env.SENDGRID_API_KEY) {
 const SALT_ROUNDS = 14;
 const BRAND_COLOR = "#0ea5e9"; // Brand-500
 
-export function setupClassicAuth(app: Express) {
+export function setupClassicAuth(app: any) {
   
   // =====================================
   // LOGIN CLÁSSICO
   // =====================================
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
+  app.post("/api/auth/login", async (req: any, res: any) => {
     try {
       const validatedData = newLoginSchema.parse(req.body);
       const { email, password } = validatedData;
@@ -50,7 +50,7 @@ export function setupClassicAuth(app: Express) {
       await storage.updateUser(user.id, { lastLoginAt: new Date() });
 
       // Create session
-      req.login(user, (err) => {
+      req.login(user, (err: any) => {
         if (err) {
           console.error("💥 Erro de sessão:", err);
           return res.status(500).json({ message: "Erro interno do servidor" });
@@ -72,7 +72,7 @@ export function setupClassicAuth(app: Express) {
   // =====================================
   // REGISTO CLÁSSICO
   // =====================================
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
+  app.post("/api/auth/register", async (req: any, res: any) => {
     try {
       const validatedData = newRegisterSchema.parse(req.body);
       const { 
@@ -178,7 +178,7 @@ export function setupClassicAuth(app: Express) {
   // =====================================
   // VERIFICAÇÃO DE EMAIL
   // =====================================
-  app.get("/api/auth/verify-email", async (req: Request, res: Response) => {
+  app.get("/api/auth/verify-email", async (req: any, res: any) => {
     try {
       const { token } = req.query;
       
@@ -214,7 +214,7 @@ export function setupClassicAuth(app: Express) {
   // =====================================
   
   // 1. Solicitar Reset
-  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/forgot-password", async (req: any, res: any) => {
     try {
       const validatedData = forgotPasswordSchema.parse(req.body);
       const { email } = validatedData;
@@ -263,7 +263,7 @@ export function setupClassicAuth(app: Express) {
   });
 
   // 2. Confirmar Reset (Unificado)
-  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+  app.post("/api/auth/reset-password", async (req: any, res: any) => {
     try {
       const validatedData = resetPasswordSchema.parse(req.body);
       const { token, password } = validatedData;
@@ -304,7 +304,7 @@ export function setupClassicAuth(app: Express) {
   // UTILITÁRIOS
   // =====================================
 
-  app.get("/api/auth/user", (req: Request, res: Response) => {
+  app.get("/api/auth/user", (req: any, res: any) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Não autenticado" });
     }
@@ -315,8 +315,8 @@ export function setupClassicAuth(app: Express) {
     res.json(safeUser);
   });
 
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    req.logout((err) => {
+  app.post("/api/auth/logout", (req: any, res: any) => {
+    req.logout((err: any) => {
       if (err) {
         console.error("Logout error:", err);
         return res.status(500).json({ message: "Erro interno" });

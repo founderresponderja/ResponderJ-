@@ -95,7 +95,7 @@ export class AdvancedThreatDetector {
   /**
    * Detecta e classifica ameaças em tempo real
    */
-  static detectThreats(req: Request): {
+  static detectThreats(req: any): {
     threats: Array<{pattern: ThreatPattern, matches: string[]}>,
     threatScore: number,
     shouldBlock: boolean
@@ -189,7 +189,7 @@ export class AdvancedThreatDetector {
   /**
    * Middleware principal de detecção
    */
-  static middleware = (req: Request, res: Response, next: NextFunction) => {
+  static middleware = (req: any, res: any, next: any) => {
     const clientIP = this.getClientIP(req);
     const path = req.path;
     const fullUrl = req.originalUrl || req.url;
@@ -277,7 +277,7 @@ export class AdvancedThreatDetector {
   /**
    * Obter IP real do cliente (considerando proxies/load balancers)
    */
-  private static getClientIP(req: Request): string {
+  private static getClientIP(req: any): string {
     return (
       (req.headers['cf-connecting-ip'] as string) ||
       (req.headers['x-real-ip'] as string) ||

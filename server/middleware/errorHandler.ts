@@ -269,7 +269,7 @@ export class AppError extends Error implements StructuredError {
  * app.use(requestIdMiddleware);
  * // req.requestId estará disponível em todos os middlewares seguintes
  */
-export function requestIdMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function requestIdMiddleware(req: any, res: any, next: any): void {
   req.requestId = Logger.generateRequestId();
   res.setHeader('X-Request-Id', req.requestId);
   next();
@@ -290,7 +290,7 @@ export function requestIdMiddleware(req: Request, res: Response, next: NextFunct
  * app.use(requestLoggerMiddleware);
  * // Logs automáticos: "Incoming request" e "Request completed"
  */
-export function requestLoggerMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function requestLoggerMiddleware(req: any, res: any, next: any): void {
   const timer = Logger.timer(`${req.method} ${req.originalUrl}`);
   const context = Logger.createRequestContext(req);
   
@@ -298,7 +298,7 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
 
   // Log da resposta quando terminar
   const originalSend = res.send;
-  res.send = function(body) {
+  res.send = function(body: any) {
     const duration = timer();
     const responseContext = {
       ...context,
@@ -342,9 +342,9 @@ export function requestLoggerMiddleware(req: Request, res: Response, next: NextF
  */
 export function globalErrorHandler(
   error: Error | AppError,
-  req: Request,
-  res: Response,
-  next: NextFunction
+  req: any,
+  res: any,
+  next: any
 ): void {
   const context = Logger.createRequestContext(req);
   
@@ -441,7 +441,7 @@ export function globalErrorHandler(
 export function asyncHandler<T extends Request, U extends Response>(
   fn: (req: T, res: U, next: NextFunction) => Promise<any>
 ) {
-  return (req: T, res: U, next: NextFunction) => {
+  return (req: any, res: any, next: any) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
@@ -462,7 +462,7 @@ export function asyncHandler<T extends Request, U extends Response>(
  * app.use(notFoundHandler);
  * app.use(globalErrorHandler);
  */
-export function notFoundHandler(req: Request, res: Response, next: NextFunction): void {
+export function notFoundHandler(req: any, res: any, next: any): void {
   const error = AppError.notFound(`Rota ${req.originalUrl}`);
   next(error);
 }
@@ -489,7 +489,7 @@ export function notFoundHandler(req: Request, res: Response, next: NextFunction)
  * });
  */
 export function validateSchema<T>(schema: z.ZodSchema<T>) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: any, res: any, next: any) => {
     try {
       const result = schema.parse(req.body);
       req.validatedData = result;

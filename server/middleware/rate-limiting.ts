@@ -17,7 +17,7 @@ export const authRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => {
+  skip: (req: any) => {
     // Permitir em desenvolvimento local OU IPs internos do Replit
     return process.env.NODE_ENV === 'development' || 
            req.ip === '127.0.0.1' || 
@@ -25,7 +25,7 @@ export const authRateLimit = rateLimit({
            (req.ip && req.ip.startsWith('192.168.')) ||
            (req.ip && req.ip.startsWith('172.'));
   },
-  handler: (req: Request, res: Response) => {
+  handler: (req: any, res: any) => {
     console.log(`🚨 AUTH RATE LIMIT: IP ${req.ip} excedeu limite de login`);
     res.status(429).json({
       error: 'Muitas tentativas de login. Tente novamente em 15 minutos.',
@@ -45,11 +45,11 @@ export const apiRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => {
+  skip: (req: any) => {
     // Permitir em desenvolvimento local
     return process.env.NODE_ENV === 'development' && req.ip === '127.0.0.1';
   },
-  handler: (req: Request, res: Response) => {
+  handler: (req: any, res: any) => {
     console.log(`⚠️ API RATE LIMIT: IP ${req.ip} excedeu limite geral`);
     res.status(429).json({
       error: 'Muitas requisições. Tente novamente em 1 minuto.',
@@ -69,11 +69,11 @@ export const adminRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => {
+  skip: (req: any) => {
     // Permitir em desenvolvimento local
     return process.env.NODE_ENV === 'development' && req.ip === '127.0.0.1';
   },
-  handler: (req: Request, res: Response) => {
+  handler: (req: any, res: any) => {
     console.log(`🔥 ADMIN RATE LIMIT: IP ${req.ip} excedeu limite admin`);
     res.status(429).json({
       error: 'Muitas requisições admin. Tente novamente em 5 minutos.',
@@ -93,7 +93,7 @@ export const contactRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
+  handler: (req: any, res: any) => {
     console.log(`📧 CONTACT RATE LIMIT: IP ${req.ip} excedeu limite de contacto`);
     res.status(429).json({
       error: 'Muitas mensagens de contacto. Tente novamente em 1 hora.',
@@ -113,7 +113,7 @@ export const uploadRateLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req: Request, res: Response) => {
+  handler: (req: any, res: any) => {
     console.log(`📤 UPLOAD RATE LIMIT: IP ${req.ip} excedeu limite de upload`);
     res.status(429).json({
       error: 'Muitos uploads. Tente novamente em 10 minutos.',
@@ -124,7 +124,7 @@ export const uploadRateLimit = rateLimit({
 });
 
 // Middleware inteligente que aplica diferentes rate limits baseado na rota
-export const smartRateLimit = (req: Request, res: Response, next: NextFunction) => {
+export const smartRateLimit = (req: any, res: any, next: any) => {
   const path = req.path.toLowerCase();
   
   // Rate limits específicos por tipo de rota

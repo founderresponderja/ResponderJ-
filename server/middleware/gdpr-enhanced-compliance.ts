@@ -138,7 +138,7 @@ class GDPREnhancedCompliance {
   /**
    * Middleware principal de compliance GDPR
    */
-  static complianceMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  static complianceMiddleware = async (req: any, res: any, next: any) => {
     // Verificar consentimento para cookies não essenciais
     const cookieConsent = req.cookies ? req.cookies['cookie-consent'] : false;
     
@@ -161,7 +161,7 @@ class GDPREnhancedCompliance {
   /**
    * Verificar se request contém dados pessoais
    */
-  private static containsPersonalData(req: Request): boolean {
+  private static containsPersonalData(req: any): boolean {
     const personalDataFields = ['email', 'firstName', 'lastName', 'phone', 'nif', 'address'];
     const body = JSON.stringify(req.body || {}).toLowerCase();
     const query = JSON.stringify(req.query || {}).toLowerCase();
@@ -174,7 +174,7 @@ class GDPREnhancedCompliance {
   /**
    * Log de processamento de dados pessoais (Art. 30 GDPR)
    */
-  private static async logDataProcessing(req: Request) {
+  private static async logDataProcessing(req: any) {
     const clientIP = this.getClientIP(req);
     
     SecurityLogService.addLog({
@@ -346,7 +346,7 @@ class GDPREnhancedCompliance {
   /**
    * Obter IP do cliente
    */
-  private static getClientIP(req: Request): string {
+  private static getClientIP(req: any): string {
     return (
       (req.headers['cf-connecting-ip'] as string) ||
       (req.headers['x-real-ip'] as string) ||
@@ -373,7 +373,7 @@ class GDPREnhancedCompliance {
   /**
    * Registar consentimento GDPR
    */
-  static recordConsent(userId: string, consentType: GDPRConsent['consentType'], granted: boolean, req: Request) {
+  static recordConsent(userId: string, consentType: GDPRConsent['consentType'], granted: boolean, req: any) {
     const consent: GDPRConsent = {
       userId,
       consentType,

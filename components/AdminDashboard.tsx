@@ -21,7 +21,9 @@ import {
   Landmark,
   Clock,
   BookOpen,
-  X
+  X,
+  File,
+  Info
 } from 'lucide-react';
 import { Theme } from '../App';
 import AdminLeadsManagement from './AdminLeadsManagement';
@@ -31,6 +33,9 @@ import AdminApiManagement from './AdminApiManagement';
 import AdminBankingManagement from './AdminBankingManagement';
 import AdminContentManagement from './AdminContentManagement';
 import AdminCriticalSystems from './AdminCriticalSystems';
+import AdminSecurityReports from './AdminSecurityReports';
+import AdminSystemInfo from './AdminSystemInfo';
+import { AdminOverview } from './AdminOverview';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -62,46 +67,6 @@ const MOCK_LOGS = [
   { id: 3, type: 'warning', message: 'Tentativa de login falhada: email@teste.com', timestamp: '2024-01-20 06:35:23' },
 ];
 
-const MOCK_VERSIONS = [
-  { 
-    version: "v2.5.0", 
-    date: "2025-01-20", 
-    status: "current",
-    author: "Luís Pedrosa", 
-    description: "Atualização Major: Integração Gemini 2.5",
-    changes: [
-      "Migração para modelo Gemini 2.5 Flash",
-      "Novo módulo de Gestão Bancária",
-      "Exportação CSV de Leads",
-      "Filtros avançados no CRM"
-    ] 
-  },
-  { 
-    version: "v2.4.5", 
-    date: "2025-01-18", 
-    status: "deployed",
-    author: "Maria Santos", 
-    description: "Hotfix: Correções de Segurança",
-    changes: [
-      "Correção na validação de tokens CSRF",
-      "Rate limiting ajustado para API pública",
-      "Logs de auditoria melhorados"
-    ] 
-  },
-  { 
-    version: "v2.4.0", 
-    date: "2025-01-10", 
-    status: "deployed",
-    author: "Luís Pedrosa", 
-    description: "Feature Release: CRM & Social",
-    changes: [
-      "Lançamento do módulo CRM",
-      "Calendário de Redes Sociais",
-      "Suporte para TikTok e LinkedIn"
-    ] 
-  }
-];
-
 // Mock do utilizador atual (admin)
 const MOCK_CURRENT_USER = {
   id: 999,
@@ -114,8 +79,11 @@ const MOCK_CURRENT_USER = {
 };
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
-  const [activeTab, setActiveTab] = useState("users");
-  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+  };
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'} transition-colors duration-300`}>
@@ -133,17 +101,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
               <h1 className="text-xl font-bold">Backoffice Responder Já</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-full text-sm font-medium flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" />
-                Administrador
+              <span className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm">
+                <ShieldCheck className="w-3 h-3" />
+                Super Administrador
               </span>
-              <button 
-                onClick={() => setIsVersionModalOpen(true)}
-                className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium px-3 py-1 border border-blue-200 dark:border-blue-900/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-              >
-                <GitBranch className="w-4 h-4" />
-                Controlo de Versões
-              </button>
+              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 pl-4 ml-2">
+                <Clock className="w-3 h-3 mr-1" />
+                v2.6.0
+              </div>
             </div>
           </div>
         </div>
@@ -151,51 +116,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center">
-              <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Utilizadores</p>
-                <p className="text-2xl font-bold">{MOCK_STATS.totalUsers}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center">
-              <CircleCheckBig className="h-8 w-8 text-green-600 dark:text-green-400" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Respostas Geradas</p>
-                <p className="text-2xl font-bold">{MOCK_STATS.totalResponses}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Receita Total</p>
-                <p className="text-2xl font-bold">€{MOCK_STATS.totalRevenue}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div className="flex items-center">
-              <Zap className="h-8 w-8 text-orange-600 dark:text-orange-400" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Utilizadores Ativos</p>
-                <p className="text-2xl font-bold">{MOCK_STATS.activeUsers}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Tabs */}
         <div className="flex flex-col space-y-6">
           <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
             <div className="flex space-x-8">
-              {['users', 'roles', 'api-keys', 'analytics', 'banking', 'system', 'monitoring', 'emails', 'leads', 'content', 'settings', 'logs'].map((tab) => (
+              {['overview', 'users', 'roles', 'api-keys', 'analytics', 'banking', 'system', 'monitoring', 'reports', 'info', 'emails', 'leads', 'content', 'settings', 'logs'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -205,19 +130,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
                 >
+                  {tab === 'overview' && <LayoutDashboard className="w-4 h-4" />}
                   {tab === 'content' && <BookOpen className="w-4 h-4" />}
                   {tab === 'monitoring' && <Activity className="w-4 h-4" />}
-                  {tab === 'roles' ? 'Permissões' : 
+                  {tab === 'reports' && <File className="w-4 h-4" />}
+                  {tab === 'info' && <Info className="w-4 h-4" />}
+                  {tab === 'overview' ? 'Visão Geral' :
+                   tab === 'roles' ? 'Permissões' : 
                    tab === 'api-keys' ? 'Checklist APIs' : 
                    tab === 'system' ? 'Gestão de API' : 
                    tab === 'banking' ? 'Bancos' : 
                    tab === 'monitoring' ? 'Monitorização' :
+                   tab === 'reports' ? 'Relatórios' :
+                   tab === 'info' ? 'Info Sistema' :
                    tab === 'content' ? 'Conteúdo' : 
                    tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Content Overview (New) */}
+          {activeTab === 'overview' && (
+            <AdminOverview onNavigate={handleNavigate} />
+          )}
 
           {/* Content Users */}
           {activeTab === 'users' && (
@@ -369,9 +305,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
 
           {/* Content Leads */}
           {activeTab === 'leads' && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <AdminLeadsManagement />
-            </div>
+            <AdminLeadsManagement />
           )}
 
           {/* Content System (Agora usa o novo AdminApiManagement) */}
@@ -392,6 +326,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
           {/* Content Monitoring (New) */}
           {activeTab === 'monitoring' && (
             <AdminCriticalSystems />
+          )}
+
+          {/* Content Security Reports (New) */}
+          {activeTab === 'reports' && (
+            <AdminSecurityReports />
+          )}
+
+          {/* Content System Info (New) */}
+          {activeTab === 'info' && (
+            <AdminSystemInfo />
           )}
 
           {/* Content Settings */}
@@ -473,70 +417,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, theme }) => {
 
         </div>
       </div>
-
-      {/* Version Control Modal */}
-      {isVersionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
-                  <GitBranch className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Histórico de Versões</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Log de alterações e deployments do sistema</p>
-                </div>
-              </div>
-              <button onClick={() => setIsVersionModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto space-y-6">
-              {MOCK_VERSIONS.map((version, index) => (
-                <div key={version.version} className="relative pl-8 border-l-2 border-gray-200 dark:border-gray-800 last:pb-0">
-                  <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-gray-900 ${version.status === 'current' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                  
-                  <div className="mb-1 flex items-center gap-3">
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">{version.version}</span>
-                    {version.status === 'current' && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs font-bold rounded-full uppercase">Atual</span>
-                    )}
-                    <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(version.date).toLocaleDateString('pt-PT')}
-                    </span>
-                  </div>
-                  
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{version.description}</p>
-                  <p className="text-xs text-gray-500 mb-3">Deployed by <span className="font-semibold">{version.author}</span></p>
-                  
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-800">
-                    <ul className="space-y-2">
-                      {version.changes.map((change, i) => (
-                        <li key={i} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
-                          <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-400 dark:bg-gray-500 flex-shrink-0"></span>
-                          {change}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex justify-end">
-              <button 
-                onClick={() => setIsVersionModalOpen(false)}
-                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

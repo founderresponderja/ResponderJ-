@@ -42,7 +42,7 @@ const getAllowedDomains = () => {
 };
 
 // Security headers middleware with custom domain support
-export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
+export const securityHeaders = (req: any, res: any, next: any) => {
   // Content Security Policy
   const nonce = crypto.randomBytes(16).toString('base64');
   const allowedDomains = getAllowedDomains();
@@ -96,7 +96,7 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
 };
 
 // CSRF Protection middleware - HARDENED VERSION
-export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
+export const csrfProtection = (req: any, res: any, next: any) => {
   // Skip para métodos GET, HEAD, OPTIONS
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next();
@@ -171,7 +171,7 @@ export const createRateLimit = (
   windowMs: number, 
   skipSuccessful: boolean = false
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: any, res: any, next: any) => {
     // ✅ EXCEPÇÃO PARA DESENVOLVIMENTO - evitar bloquear durante testes
     if (process.env.NODE_ENV === 'development') {
       // console.log(`🔧 Rate limit bypassed para desenvolvimento: ${req.method} ${req.path}`);
@@ -223,7 +223,7 @@ export const createRateLimit = (
 };
 
 // Input sanitization middleware
-export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+export const sanitizeInput = (req: any, res: any, next: any) => {
   const sanitizeValue = (value: any): any => {
     if (typeof value === 'string') {
       // Remove scripts maliciosos
@@ -258,11 +258,15 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
     req.query = sanitizeValue(req.query);
   }
 
+  if (req.params) {
+    req.params = sanitizeValue(req.params);
+  }
+
   next();
 };
 
 // SQL injection prevention middleware
-export const sqlInjectionProtection = (req: Request, res: Response, next: NextFunction) => {
+export const sqlInjectionProtection = (req: any, res: any, next: any) => {
   const sqlPatterns = [
     /(\s|^)(union|select|insert|update|delete|drop|create|alter|exec|execute)\s/i,
     /(\s|^)(or|and)\s+\d+\s*=\s*\d+/i,
@@ -326,7 +330,7 @@ const anonymizeIp = (ip: string): string => {
 };
 
 // Security logging middleware - SECURE VERSION
-export const securityLogger = (req: Request, res: Response, next: NextFunction) => {
+export const securityLogger = (req: any, res: any, next: any) => {
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
   
@@ -418,7 +422,7 @@ export const securityLogger = (req: Request, res: Response, next: NextFunction) 
 };
 
 // Combined security middleware
-export const applySecurity = (req: Request, res: Response, next: NextFunction) => {
+export const applySecurity = (req: any, res: any, next: any) => {
   securityLogger(req, res, () => {
     securityHeaders(req, res, () => {
       sanitizeInput(req, res, () => {

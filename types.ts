@@ -1,3 +1,4 @@
+
 export enum Platform {
   GOOGLE = 'Google Maps',
   THE_FORK = 'The Fork',
@@ -38,12 +39,15 @@ export interface ReviewData {
   reviewText: string;
   tone: Tone;
   language: Language;
+  extraInstructions?: string;
   generatedResponse?: string;
+  sentiment?: 'Positive' | 'Neutral' | 'Negative';
+  keywords?: string[];
   createdAt: Date;
   isFavorite?: boolean;
 }
 
-export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter';
+export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter' | 'youtube' | 'google' | 'tripadvisor' | 'booking' | 'thefork';
 export type PostStatus = 'draft' | 'scheduled' | 'published';
 export type ContentType = 'image' | 'video' | 'text' | 'carousel';
 
@@ -77,4 +81,25 @@ export interface UserSubscription {
   planId: PlanId;
   creditsUsed: number;
   startDate: Date;
+}
+
+export interface AutomationRule {
+  id: string;
+  userId: string;
+  name: string;
+  platform: string;
+  isActive: boolean;
+  trigger: {
+    type: 'keyword' | 'sentiment' | 'time' | 'rating';
+    value: string;
+    condition: 'contains' | 'equals' | 'greater_than' | 'less_than';
+  };
+  action: {
+    type: 'auto_respond' | 'schedule_response' | 'notify' | 'tag';
+    template: string;
+    delay?: number;
+  };
+  createdAt: string;
+  lastTriggered?: string;
+  triggerCount: number;
 }

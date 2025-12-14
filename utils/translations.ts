@@ -21,7 +21,8 @@ export const translations = {
         accounting: "Contabilidade",
         profile: "Perfil de Negócio",
         calendar: "Calendário Social",
-        crm: "CRM & Clientes"
+        crm: "CRM & Clientes",
+        team: "Gestão de Equipas"
       }
     },
     landing: {
@@ -110,6 +111,10 @@ export const translations = {
         suggested: "Resposta Sugerida",
         copy: "Copiar",
         copied: "Copiado!",
+        edit: "Editar",
+        save: "Guardar",
+        cancel: "Cancelar",
+        regenerate: "Regenerar",
         aiTip: "Dica de IA",
         aiTipDesc: "Verifique sempre os detalhes factuais antes de publicar."
       },
@@ -151,7 +156,8 @@ export const translations = {
         accounting: "Accounting",
         profile: "Business Profile",
         calendar: "Social Calendar",
-        crm: "CRM & Customers"
+        crm: "CRM & Customers",
+        team: "Team Management"
       }
     },
     landing: {
@@ -240,6 +246,10 @@ export const translations = {
         suggested: "Suggested Response",
         copy: "Copy",
         copied: "Copied!",
+        edit: "Edit",
+        save: "Save",
+        cancel: "Cancel",
+        regenerate: "Regenerate",
         aiTip: "AI Tip",
         aiTipDesc: "Always check factual details before publishing."
       },
@@ -281,7 +291,8 @@ export const translations = {
         accounting: "Contabilidad",
         profile: "Perfil de Negocio",
         calendar: "Calendario Social",
-        crm: "CRM y Clientes"
+        crm: "CRM y Clientes",
+        team: "Gestión de Equipos"
       }
     },
     landing: {
@@ -370,6 +381,10 @@ export const translations = {
         suggested: "Respuesta Sugerida",
         copy: "Copiar",
         copied: "¡Copiado!",
+        edit: "Editar",
+        save: "Guardar",
+        cancel: "Cancelar",
+        regenerate: "Regenerar",
         aiTip: "Consejo IA",
         aiTipDesc: "Verifica siempre los detalles factuales antes de publicar."
       },

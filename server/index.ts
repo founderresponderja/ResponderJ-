@@ -1,6 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
-import process from "process";
 import { registerRoutes, setupAuthRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -89,7 +88,7 @@ app.use((req, res, next) => {
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    if (!res.headersSent) {
+    if (!(res as any).headersSent) {
       capturedJsonResponse = bodyJson;
       return originalResJson.apply(res, [bodyJson, ...args]);
     }
@@ -130,7 +129,7 @@ app.use((req, res, next) => {
     await registerRoutes(app);
   } catch (error) {
     console.error("❌ Erro crítico na configuração das rotas:", error);
-    process.exit(1);
+    (process as any).exit(1);
   }
 
   // Tratamento de Erros Centralizado
@@ -139,7 +138,7 @@ app.use((req, res, next) => {
     const message = err.message || "Erro Interno do Servidor";
 
     if (!res.headersSent) {
-      res.status(status).json({ message });
+      (res as any).status(status).json({ message });
     }
     console.error('🚨 Erro na aplicação:', err);
   });
@@ -182,11 +181,11 @@ app.use((req, res, next) => {
     console.log('🛑 A encerrar servidor...');
     server.close(() => {
       console.log('✅ Servidor parado com sucesso.');
-      process.exit(0);
+      (process as any).exit(0);
     });
   };
 
-  process.on('SIGTERM', gracefulShutdown);
-  process.on('SIGINT', gracefulShutdown);
+  (process as any).on('SIGTERM', gracefulShutdown);
+  (process as any).on('SIGINT', gracefulShutdown);
 
 })();
