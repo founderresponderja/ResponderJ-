@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { requireAuth } from "../../auth";
 import archiver from 'archiver';
@@ -5,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import process from 'process';
 
-export function setupTechnicalSpecsRoutes(app: Express) {
+export function setupTechnicalSpecsRoutes(app: any) {
   // Middleware para verificar se é admin
   const requireAdmin = async (req: any, res: any, next: any) => {
     try {
@@ -29,7 +30,7 @@ export function setupTechnicalSpecsRoutes(app: Express) {
   };
 
   // Endpoint para obter especificações técnicas
-  app.get("/api/admin/technical-specs", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/technical-specs", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const specs = {
         version: "2.6.0",
@@ -71,7 +72,7 @@ export function setupTechnicalSpecsRoutes(app: Express) {
   });
 
   // Endpoint para download de código fonte
-  app.get("/api/admin/download-source/:type", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/download-source/:type", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { type } = req.params;
       const validTypes = ['frontend', 'backend', 'mobile', 'database', 'full'];

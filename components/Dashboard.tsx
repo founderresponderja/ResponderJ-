@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
@@ -14,7 +15,8 @@ import {
   Layout,
   Smile,
   Heart,
-  Tag
+  Tag,
+  Bot
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -437,6 +439,56 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
             <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
               <p className="text-slate-400 text-sm">Dados insuficientes para gerar gráfico</p>
             </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Recent History */}
+      <div className="mt-8">
+        <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+          Histórico Recente
+        </h3>
+        <div className="space-y-4">
+          {history.map((review) => (
+            <div key={review.id} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 transition-colors">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-2 py-1 rounded">
+                    {review.platform}
+                  </span>
+                  {/* Visual Indicator for Auto-Replies */}
+                  {review.responseType === 'auto_reply' && (
+                    <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded border border-purple-100 dark:border-purple-900">
+                      <Bot size={12} /> Auto
+                    </span>
+                  )}
+                  {review.isFavorite && (
+                    <Heart size={14} className="text-rose-500" fill="currentColor" />
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    {new Date(review.createdAt).toLocaleDateString()}
+                  </span>
+                  <button className={`text-slate-400 hover:text-rose-500 transition-colors ${review.isFavorite ? 'text-rose-500' : ''}`}>
+                    <Heart size={16} fill={review.isFavorite ? "currentColor" : "none"} />
+                  </button>
+                </div>
+              </div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                {review.rating} ★ - {review.customerName}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 italic">
+                "{review.reviewText}"
+              </p>
+              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded text-sm text-slate-700 dark:text-slate-300 text-sm border-l-4 border-brand-400">
+                {review.generatedResponse}
+              </div>
+            </div>
+          ))}
+          {history.length === 0 && (
+             <p className="text-slate-400 dark:text-slate-500 italic">Ainda não há histórico.</p>
           )}
         </div>
       </div>

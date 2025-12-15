@@ -3,6 +3,7 @@ import { Express } from "express";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { urlBuilder } from "./utils";
 
 // =====================================
 // CONFIGURAÇÃO GOOGLE OAUTH
@@ -10,9 +11,7 @@ import crypto from "crypto";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const CALLBACK_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://responderja.com/api/auth/google/callback'
-  : 'http://localhost:5000/api/auth/google/callback';
+const CALLBACK_URL = urlBuilder.buildAppURL('/api/auth/google/callback');
 
 let client: OAuth2Client | null = null;
 

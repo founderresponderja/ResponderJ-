@@ -337,10 +337,10 @@ class GDPREnhancedCompliance {
    * Adicionar headers GDPR/RGPD
    */
   private static addGDPRHeaders(res: Response) {
-    res.setHeader('X-GDPR-Compliant', 'true');
-    res.setHeader('X-Privacy-Policy', 'https://responderja.pt/privacy');
-    res.setHeader('X-Data-Controller', 'Responder Já - Amplia Solutions');
-    res.setHeader('X-DPO-Contact', 'dpo@responderja.pt');
+    (res as any).setHeader('X-GDPR-Compliant', 'true');
+    (res as any).setHeader('X-Privacy-Policy', 'https://responderja.pt/privacy');
+    (res as any).setHeader('X-Data-Controller', 'Responder Já - Amplia Solutions');
+    (res as any).setHeader('X-DPO-Contact', 'dpo@responderja.pt');
   }
 
   /**

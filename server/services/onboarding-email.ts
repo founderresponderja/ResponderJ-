@@ -1,7 +1,9 @@
 import { emailService } from "./email-service";
+import { urlBuilder } from "../utils";
 
 export const onboardingEmailService = {
   async sendWelcome(user: any) {
+    const dashboardUrl = urlBuilder.getDashboardURL();
     return emailService.sendEmail({
       to: user.email,
       subject: "Comece a usar o Responder Já",
@@ -12,7 +14,7 @@ export const onboardingEmailService = {
           <p>Para começar a poupar tempo, conecte as suas plataformas no painel de controlo.</p>
           <p><strong>Dica rápida:</strong> Configure o "Perfil de Negócio" para que a IA conheça o tom da sua marca.</p>
           <br>
-          <a href="https://responderja.pt/dashboard" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Ir para Dashboard</a>
+          <a href="${dashboardUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Ir para Dashboard</a>
         </div>
       `
     });

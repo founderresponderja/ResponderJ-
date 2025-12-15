@@ -1,12 +1,13 @@
+
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { generateApiKeyGuideHTML } from "../services/pdf-generator";
 import fs from 'fs';
 import path from 'path';
 
-export function registerApiKeysGuideRoutes(app: Express) {
+export function registerApiKeysGuideRoutes(app: any) {
   // Gerar e servir o PDF de instruções das API keys
-  app.get("/api/admin/api-keys-guide/pdf", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/api-keys-guide/pdf", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user?.claims?.sub && !req.user?.id) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -30,7 +31,7 @@ export function registerApiKeysGuideRoutes(app: Express) {
   });
 
   // Endpoint para verificar status das API keys
-  app.get("/api/admin/api-keys/status", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/api-keys/status", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user?.claims?.sub && !req.user?.id) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -155,7 +156,7 @@ export function registerApiKeysGuideRoutes(app: Express) {
   });
 
   // Endpoint para obter detalhes de uma API key específica
-  app.get("/api/admin/api-keys/:keyName/info", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/api-keys/:keyName/info", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user?.claims?.sub && !req.user?.id) {
         return res.status(403).json({ message: "Acesso negado" });

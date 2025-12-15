@@ -3,10 +3,11 @@ import type { Express } from "express";
 import { corporateSocialService } from "../services/corporate-social-service";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
+import { urlBuilder } from "../utils";
 
-export function registerCorporateSocialRoutes(app: Express) {
+export function registerCorporateSocialRoutes(app: any) {
   // Listar configurações das plataformas disponíveis
-  app.get("/api/admin/corporate-social/platforms", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/corporate-social/platforms", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -24,7 +25,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Obter contas corporativas conectadas
-  app.get("/api/admin/corporate-social/accounts", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/corporate-social/accounts", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -56,14 +57,14 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Iniciar conexão OAuth para uma plataforma
-  app.post("/api/admin/corporate-social/connect/:platform", requireAuth, async (req: any, res) => {
+  app.post("/api/admin/corporate-social/connect/:platform", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
       }
 
       const { platform } = req.params;
-      const redirectUri = `${req.protocol}://${req.headers.host}/api/admin/corporate-social/callback/${platform}`;
+      const redirectUri = urlBuilder.buildAppURL(`/api/admin/corporate-social/callback/${platform}`, req);
       const state = `admin_${platform}_${Date.now()}`;
 
       const authUrl = corporateSocialService.generateAuthUrl(platform, redirectUri, state);
@@ -79,7 +80,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Callback OAuth para conectar plataforma
-  app.get("/api/admin/corporate-social/callback/:platform", async (req, res) => {
+  app.get("/api/admin/corporate-social/callback/:platform", async (req: any, res: any) => {
     try {
       const { platform } = req.params;
       const { code, state, error } = req.query;
@@ -98,7 +99,7 @@ export function registerCorporateSocialRoutes(app: Express) {
         return res.redirect(`/admin?error=social_auth_failed&platform=${platform}&message=Estado inválido`);
       }
 
-      const redirectUri = `${req.protocol}://${req.headers.host}/api/admin/corporate-social/callback/${platform}`;
+      const redirectUri = urlBuilder.buildAppURL(`/api/admin/corporate-social/callback/${platform}`, req);
       
       // Trocar código por tokens
       const credentials = await corporateSocialService.exchangeCodeForToken(platform, code as string, redirectUri);
@@ -131,7 +132,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Publicar conteúdo em múltiplas plataformas
-  app.post("/api/admin/corporate-social/publish", requireAuth, async (req: any, res) => {
+  app.post("/api/admin/corporate-social/publish", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -197,7 +198,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Sincronizar dados de uma conta
-  app.post("/api/admin/corporate-social/sync/:accountId", requireAuth, async (req: any, res) => {
+  app.post("/api/admin/corporate-social/sync/:accountId", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -236,7 +237,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Desconectar conta
-  app.delete("/api/admin/corporate-social/accounts/:accountId", requireAuth, async (req: any, res) => {
+  app.delete("/api/admin/corporate-social/accounts/:accountId", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -256,7 +257,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Obter histórico de publicações
-  app.get("/api/admin/corporate-social/posts", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/corporate-social/posts", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });
@@ -279,7 +280,7 @@ export function registerCorporateSocialRoutes(app: Express) {
   });
 
   // Obter estatísticas das redes sociais corporativas
-  app.get("/api/admin/corporate-social/stats", requireAuth, async (req: any, res) => {
+  app.get("/api/admin/corporate-social/stats", requireAuth, async (req: any, res: any) => {
     try {
       if (!req.user.isAdmin) {
         return res.status(403).json({ message: "Acesso negado" });

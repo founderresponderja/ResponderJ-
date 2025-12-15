@@ -1,10 +1,11 @@
+
 import type { Express } from "express";
 import { BillingService } from "../services/billing-service";
 import { requireAuth } from "../auth";
 
-export function registerBillingRoutes(app: Express) {
+export function registerBillingRoutes(app: any) {
   // Criar subscrição
-  app.post("/api/billing/subscription", requireAuth, async (req: any, res) => {
+  app.post("/api/billing/subscription", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { planId, paymentMethodId } = req.body;
@@ -22,7 +23,7 @@ export function registerBillingRoutes(app: Express) {
   });
 
   // Obter informações de billing
-  app.get("/api/billing/info", requireAuth, async (req: any, res) => {
+  app.get("/api/billing/info", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -39,7 +40,7 @@ export function registerBillingRoutes(app: Express) {
   });
 
   // Webhook do Stripe para eventos de pagamento
-  app.post("/api/billing/webhook", async (req: any, res) => {
+  app.post("/api/billing/webhook", async (req: any, res: any) => {
     try {
       const event = req.body;
 
@@ -78,7 +79,7 @@ export function registerBillingRoutes(app: Express) {
   });
 
   // Listar planos disponíveis
-  app.get("/api/billing/plans", async (req: any, res) => {
+  app.get("/api/billing/plans", async (req: any, res: any) => {
     try {
       res.json(BillingService.PAYMENT_PLANS);
     } catch (error: any) {

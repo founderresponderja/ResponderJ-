@@ -179,21 +179,27 @@ export const automationRules = pgTable("automation_rules", {
 export const creditTransactions = pgTable("credit_transactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type").notNull(), // usage, purchase, bonus, refund
+  type: text("type").notNull(), // usage, purchase, bonus, refund, upsell
   amount: integer("amount").notNull(), 
   description: text("description"),
   relatedResponseId: integer("related_response_id"),
   stripePaymentId: text("stripe_payment_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  packageId: text("package_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const creditPackages = pgTable("credit_packages", {
   id: text("id").primaryKey(), 
   name: text("name").notNull(),
-  slug: text("slug").notNull(),
+  slug: text("slug"),
   description: text("description"),
-  creditAmount: integer("credit_amount").notNull(),
+  credits: integer("credits").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+  discount: integer("discount"),
+  features: jsonb("features"),
+  isPopular: boolean("is_popular").default(false),
   isActive: boolean("is_active").default(true),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),

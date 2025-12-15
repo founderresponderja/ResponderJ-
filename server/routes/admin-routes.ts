@@ -16,7 +16,7 @@ import { emailService } from "../services/email-service";
 import { notificationService } from "../services/notification-service";
 import { cronService } from "../services/cron-service";
 
-export function setupAdminRoutes(app: Express) {
+export function setupAdminRoutes(app: any) {
   // Middleware para verificar se é admin (compatível com Replit Auth)
   const requireAdmin = async (req: any, res: any, next: any) => {
     try {
@@ -44,7 +44,7 @@ export function setupAdminRoutes(app: Express) {
   };
 
   // Estatísticas gerais do sistema
-  app.get("/api/admin/stats", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/stats", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const stats = await storage.getSystemStats();
       res.json(stats);
@@ -55,7 +55,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Lista de todos os utilizadores
-  app.get("/api/admin/users", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/users", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Note: storage.getAllUsers might not exist on IStorage interface in storage.ts based on existing files analysis.
       // It has getAllUsersForAdmin.
@@ -70,7 +70,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Gerir utilizador específico
-  app.put("/api/admin/users/:id", requireAuth, requireAdmin, async (req: any, res) => {
+  app.put("/api/admin/users/:id", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const updateData = req.body;
@@ -84,7 +84,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Desativar/Ativar utilizador
-  app.patch("/api/admin/users/:id/toggle-status", requireAuth, requireAdmin, async (req: any, res) => {
+  app.patch("/api/admin/users/:id/toggle-status", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const user = await storage.getUser(id);
@@ -101,7 +101,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Adicionar créditos a um utilizador
-  app.patch("/api/admin/users/:id/add-credits", requireAuth, requireAdmin, async (req: any, res) => {
+  app.patch("/api/admin/users/:id/add-credits", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const { amount, reason } = req.body;
@@ -115,7 +115,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Estado de saúde do sistema
-  app.get("/api/admin/system-health", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/system-health", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const health = {
         database: {
@@ -139,7 +139,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Logs de atividade recente
-  app.get("/api/admin/logs", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/logs", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Mock implementation as getRecentActivityLogs might not exist in storage
       // const logs = await storage.getRecentActivityLogs(parseInt(limit));
@@ -152,7 +152,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Configurações do sistema
-  app.get("/api/admin/settings", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/settings", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Mock implementation
       const settings = { maintenanceMode: false, allowRegistrations: true };
@@ -163,7 +163,7 @@ export function setupAdminRoutes(app: Express) {
     }
   });
 
-  app.put("/api/admin/settings", requireAuth, requireAdmin, async (req: any, res) => {
+  app.put("/api/admin/settings", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Mock implementation
       res.json({ success: true, settings: req.body });
@@ -174,7 +174,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Analytics avançadas
-  app.get("/api/admin/analytics", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/analytics", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Mock implementation
       const analytics = { dailyActiveUsers: 10, revenue: 1000 };
@@ -186,7 +186,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Criar utilizador admin
-  app.post("/api/admin/create-admin", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/create-admin", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { email, firstName, lastName, password } = req.body;
       
@@ -210,7 +210,7 @@ export function setupAdminRoutes(app: Express) {
   // === ROTAS DE GESTÃO DE EMAILS ===
 
   // Enviar email de teste
-  app.post("/api/admin/email/test", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/email/test", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { to, subject, message } = req.body;
       
@@ -229,7 +229,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Enviar campanha de email
-  app.post("/api/admin/email/campaign", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/email/campaign", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { subject, htmlContent, target } = req.body;
       
@@ -246,7 +246,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Enviar newsletter manual
-  app.post("/api/admin/email/newsletter", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/email/newsletter", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       await notificationService.sendWeeklyNewsletter();
       res.json({ message: "Newsletter enviada com sucesso" });
@@ -257,7 +257,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Notificar evento de sistema
-  app.post("/api/admin/notify/system", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/notify/system", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { event, message, priority } = req.body;
       
@@ -273,7 +273,7 @@ export function setupAdminRoutes(app: Express) {
   // === GESTÃO DE TAREFAS AUTOMÁTICAS ===
 
   // Listar tarefas ativas
-  app.get("/api/admin/cron/tasks", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/cron/tasks", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const activeTasks = cronService.getActiveTasks();
       res.json({ tasks: activeTasks });
@@ -284,7 +284,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Executar tarefa manual
-  app.post("/api/admin/cron/execute", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/cron/execute", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { task } = req.body;
       
@@ -307,7 +307,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Configurações de email
-  app.get("/api/admin/email/config", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/email/config", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const config = {
         sendgridConfigured: !!process.env.SENDGRID_API_KEY,
@@ -326,7 +326,7 @@ export function setupAdminRoutes(app: Express) {
   // === GESTÃO DE POTENCIAIS CLIENTES (LEADS) ===
 
   // Listar todos os leads
-  app.get("/api/admin/leads", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/leads", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
@@ -353,7 +353,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Processar upload de CSV
-  app.post("/api/admin/leads/upload-csv", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/leads/upload-csv", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { csvData, filename } = req.body;
       
@@ -386,7 +386,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Estado do upload CSV
-  app.get("/api/admin/leads/upload-status/:uploadId", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/leads/upload-status/:uploadId", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { uploadId } = req.params;
       
@@ -400,7 +400,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Atualizar status do lead
-  app.patch("/api/admin/leads/:leadId/status", requireAuth, requireAdmin, async (req: any, res) => {
+  app.patch("/api/admin/leads/:leadId/status", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { leadId } = req.params;
       const { status } = req.body;
@@ -415,7 +415,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Criar campanha de leads
-  app.post("/api/admin/leads/campaigns", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/leads/campaigns", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Mock implementation
       res.json({ 
@@ -429,7 +429,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Listar campanhas
-  app.get("/api/admin/leads/campaigns", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/leads/campaigns", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       // Mock implementation
       res.json({ campaigns: [] });
@@ -440,7 +440,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Enviar campanha para leads
-  app.post("/api/admin/leads/campaigns/:campaignId/send", requireAuth, requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/leads/campaigns/:campaignId/send", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const { campaignId } = req.params;
       const { targetLeads } = req.body; // 'all', 'non-clients', 'by-status'
@@ -476,7 +476,7 @@ export function setupAdminRoutes(app: Express) {
   });
 
   // Estatísticas de leads
-  app.get("/api/admin/leads/stats", requireAuth, requireAdmin, async (req: any, res) => {
+  app.get("/api/admin/leads/stats", requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const [total, byStatus] = await Promise.all([
         storage.getLeadsCount(),

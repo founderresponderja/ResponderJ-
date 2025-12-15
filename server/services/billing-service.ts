@@ -1,102 +1,249 @@
-import Stripe from 'stripe';
+import Stripe from "stripe";
 import { storage } from "../storage";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_mock', {
-  apiVersion: '2025-07-30.basil' as any,
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
+  apiVersion: "2025-07-30.basil" as any,
 });
 
-export const BillingService = {
-  PAYMENT_PLANS: {
-    trial: { id: 'trial', name: 'Trial', price: 0, credits: 10 },
-    starter: { id: 'starter', name: 'Starter', price: 19.99, credits: 100 },
-    pro: { id: 'pro', name: 'Professional', price: 49.99, credits: 500 },
-    agency: { id: 'agency', name: 'Agency', price: 149.99, credits: 2000 }
-  },
+export class BillingService {
+  static PAYMENT_PLANS = {
+    starter: {
+      id: "starter",
+      name: "Starter",
+      priceId: "price_starter",
+      price: 19.00,
+      currency: "eur",
+      credits: 200,
+      locations: 1,
+      users: 3,
+      byokSupported: true,
+      features: [
+        "200 respostas AI por mês",
+        "1 localização de negócio",
+        "3 utilizadores",
+        "BYOK (IA) opcional",
+        "Suporte por email"
+      ]
+    },
+    pro: {
+      id: "pro", 
+      name: "Pro",
+      priceId: "price_pro",
+      price: 49.00,
+      currency: "eur", 
+      credits: 1000,
+      locations: 3,
+      users: -1, // ilimitado
+      byokSupported: false,
+      features: [
+        "1.000 respostas AI por mês",
+        "3 localizações de negócio",
+        "Utilizadores ilimitados",
+        "Importação CSV em lote",
+        "Memória avançada",
+        "Suporte prioritário"
+      ]
+    },
+    agency: {
+      id: "agency",
+      name: "Agência", 
+      priceId: "price_agency",
+      price: 149.00,
+      currency: "eur",
+      credits: 5000,
+      locations: 10,
+      users: -1, // ilimitado
+      byokSupported: false,
+      features: [
+        "5.000 respostas AI por mês",
+        "10 localizações de negócio",
+        "Utilizadores ilimitados",
+        "Acesso à API completa",
+        "Suporte prioritário 24/7"
+      ]
+    }
+  };
 
-  async createSubscription(userId: string, planId: string, paymentMethodId: string) {
+  static async createSubscription(userId: string, planId: string, paymentMethodId: string) {
+    const plan = this.PAYMENT_PLANS[planId as keyof typeof this.PAYMENT_PLANS];
+    if (!plan) {
+      throw new Error("Plano inválido");
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      throw new Error("Utilizador não encontrado");
+    }
+
+    // Criar customer no Stripe se não existir
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId }
+      });
+      customerId = customer.id;
+      await storage.updateUserStripeCustomerId(userId, customerId);
+    }
+
+    // Attach payment method to customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+
+    // Create subscription
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: plan.priceId }],
+      default_payment_method: paymentMethodId,
+      expand: ['latest_invoice.payment_intent'],
+    });
+
+    // Update user subscription info
+    await storage.updateUserStripeInfo(userId, { customerId, subscriptionId: subscription.id });
+    await storage.updateUser(userId, { subscriptionPlan: planId });
+
+    return {
+      subscriptionId: subscription.id,
+      clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
+      status: subscription.status
+    };
+  }
+
+  static async getUserBillingInfo(userId: string) {
+    const user = await storage.getUser(userId);
+    if (!user) {
+      throw new Error("Utilizador não encontrado");
+    }
+
+    let subscriptionData = null;
+    if (user.stripeSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        subscriptionData = {
+          id: subscription.id,
+          status: subscription.status,
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          plan: this.PAYMENT_PLANS[user.subscriptionPlan as keyof typeof this.PAYMENT_PLANS]
+        };
+      } catch (error) {
+        console.error("Erro ao obter subscrição do Stripe:", error);
+      }
+    }
+
+    // Obter invoices recentes
+    let invoices = [];
+    if (user.stripeCustomerId) {
+      try {
+        const invoiceList = await stripe.invoices.list({
+          customer: user.stripeCustomerId,
+          limit: 10
+        });
+        invoices = invoiceList.data.map(invoice => ({
+          id: invoice.id,
+          amount: invoice.amount_paid / 100,
+          currency: invoice.currency,
+          status: invoice.status,
+          date: new Date(invoice.created * 1000),
+          invoiceUrl: invoice.hosted_invoice_url
+        }));
+      } catch (error) {
+        console.error("Erro ao obter invoices:", error);
+      }
+    }
+
+    return {
+      subscription: subscriptionData,
+      invoices,
+      availablePlans: this.PAYMENT_PLANS,
+      currentPlan: user.subscriptionPlan || null,
+      credits: user.credits || 0
+    };
+  }
+
+  static async handleSuccessfulPayment(subscriptionId: string | any, invoiceId: string) {
     try {
-      const user = await storage.getUser(userId);
-      if (!user) throw new Error("User not found");
-
-      let customerId = (user as any).stripeCustomerId;
-
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email,
-          name: `${user.firstName} ${user.lastName}`,
-          payment_method: paymentMethodId,
-          invoice_settings: { default_payment_method: paymentMethodId }
-        });
-        customerId = customer.id;
-        await storage.updateUserStripeCustomerId(userId, customerId);
-      } else {
-        await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
-        await stripe.customers.update(customerId, {
-          invoice_settings: { default_payment_method: paymentMethodId }
-        });
+      const subId = typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id;
+      const subscription = await stripe.subscriptions.retrieve(subId);
+      const customerId = subscription.customer as string;
+      
+      // Find user by customer ID
+      const user = await storage.getUserByStripeCustomerId(customerId);
+      if (!user) {
+        console.error("Utilizador não encontrado para customer:", customerId);
+        return;
       }
 
-      // Create subscription
-      const subscription = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{ price: this.getPriceId(planId) }],
-        expand: ['latest_invoice.payment_intent']
-      });
+      // Add credits based on plan
+      const plan = this.PAYMENT_PLANS[user.subscriptionPlan as keyof typeof this.PAYMENT_PLANS];
+      if (plan) {
+        await storage.addCreditsToUser(user.id, plan.credits, "subscription_renewal");
+      }
 
-      return {
-        subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as any).payment_intent?.client_secret,
-        status: subscription.status
-      };
-    } catch (error: any) {
-      console.error("Error creating subscription:", error);
-      throw new Error(error.message);
+      console.log(`Pagamento bem-sucedido para utilizador ${user.id}, ${plan?.credits} créditos adicionados`);
+    } catch (error) {
+      console.error("Erro ao processar pagamento bem-sucedido:", error);
     }
-  },
-
-  async getUserBillingInfo(userId: string) {
-    try {
-      const user = await storage.getUser(userId);
-      if (!user) throw new Error("User not found");
-
-      const subscription = await storage.getUserSubscription(userId);
-      const invoices = await this.getUserInvoices(userId);
-
-      return {
-        subscription,
-        invoices,
-        credits: user.credits,
-        plan: user.selectedPlan
-      };
-    } catch (error: any) {
-      console.error("Error getting billing info:", error);
-      throw new Error(error.message);
-    }
-  },
-
-  async handleSuccessfulPayment(subscriptionId: string, invoiceId: string) {
-    // Update subscription status
-    // Add credits to user
-    console.log(`Payment successful for subscription ${subscriptionId}, invoice ${invoiceId}`);
-  },
-
-  async handlePaymentFailure(subscriptionId: string, invoiceId: string, error: any) {
-    console.error(`Payment failed for subscription ${subscriptionId}:`, error);
-    // Update subscription status to past_due or canceled
-  },
-
-  async getUserInvoices(userId: string) {
-    // Mock invoices for now
-    return [];
-  },
-
-  getPriceId(planId: string) {
-    // In production, map planIds to real Stripe Price IDs
-    const priceMap: Record<string, string> = {
-      'starter': process.env.STRIPE_PRICE_STARTER || 'price_starter_mock',
-      'pro': process.env.STRIPE_PRICE_PRO || 'price_pro_mock',
-      'agency': process.env.STRIPE_PRICE_AGENCY || 'price_agency_mock'
-    };
-    return priceMap[planId] || 'price_mock';
   }
-};
+
+  static async handlePaymentFailure(subscriptionId: string | any, invoiceId: string, error: any) {
+    try {
+      const subId = typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id;
+      const subscription = await stripe.subscriptions.retrieve(subId);
+      const customerId = subscription.customer as string;
+      
+      // Find user by customer ID
+      const user = await storage.getUserByStripeCustomerId(customerId);
+      if (!user) {
+        console.error("Utilizador não encontrado para customer:", customerId);
+        return;
+      }
+
+      // Notify user about failed payment
+      // Email notification would be sent here
+      console.log(`Falha no pagamento para utilizador ${user.id}:`, error.message);
+      
+      // If subscription is past due, could temporarily suspend account
+      if (subscription.status === 'past_due') {
+        // Could update user status or limit functionality
+        console.log(`Subscrição em atraso para utilizador ${user.id}`);
+      }
+    } catch (error) {
+      console.error("Erro ao processar falha de pagamento:", error);
+    }
+  }
+
+  static async cancelSubscription(userId: string) {
+    const user = await storage.getUser(userId);
+    if (!user || !user.stripeSubscriptionId) {
+      throw new Error("Nenhuma subscrição activa encontrada");
+    }
+
+    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    return {
+      success: true,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000)
+    };
+  }
+
+  static async reactivateSubscription(userId: string) {
+    const user = await storage.getUser(userId);
+    if (!user || !user.stripeSubscriptionId) {
+      throw new Error("Nenhuma subscrição encontrada");
+    }
+
+    const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    return {
+      success: true,
+      status: subscription.status
+    };
+  }
+}

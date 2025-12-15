@@ -6,7 +6,7 @@ import { Logger, ErrorType } from '../utils/Logger';
 import { ControllerUtils } from '../utils/ControllerUtils';
 import { AppError } from '../middleware/errorHandler';
 
-const router: Router = createRouter();
+const router: any = createRouter();
 
 // Schema para relatórios de erro frontend
 const ErrorReportSchema = z.object({
@@ -178,7 +178,7 @@ function classifyErrorSeverity(errorReport: any): 'low' | 'medium' | 'high' | 'c
  * POST /api/errors/report
  * Receber relatórios de erro do frontend
  */
-router.post('/report', async (req: Request, res: Response) => {
+router.post('/report', async (req: any, res: Response) => {
   try {
     const reportData = ControllerUtils.validateSchema(
       req.body,
@@ -190,7 +190,7 @@ router.post('/report', async (req: Request, res: Response) => {
     const severity = classifyErrorSeverity(reportData);
     
     // Obter contexto da sessão
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
     const sessionId = req.sessionID;
     
     // Armazenar erro
@@ -201,7 +201,7 @@ router.post('/report', async (req: Request, res: Response) => {
         ...reportData,
         ip: req.ip,
         sessionId,
-        requestId: req.requestId
+        requestId: (req as any).requestId
       },
       userId,
       sessionId,
@@ -210,7 +210,7 @@ router.post('/report', async (req: Request, res: Response) => {
 
     // Log estruturado
     Logger.error('Frontend error reported', new Error(reportData.message), {
-      requestId: req.requestId,
+      requestId: (req as any).requestId,
       userId,
       url: reportData.url,
       userAgent: reportData.userAgent,
@@ -224,7 +224,7 @@ router.post('/report', async (req: Request, res: Response) => {
     // Para erros críticos, alertar imediatamente
     if (severity === 'critical') {
       Logger.security(`Critical error reported: ${reportData.message}`, {
-        requestId: req.requestId,
+        requestId: (req as any).requestId,
         userId,
         metadata: {
           errorId,
@@ -244,7 +244,7 @@ router.post('/report', async (req: Request, res: Response) => {
  * POST /api/errors/performance
  * Receber relatórios de performance
  */
-router.post('/performance', async (req: Request, res: Response) => {
+router.post('/performance', async (req: any, res: Response) => {
   try {
     const reportData = ControllerUtils.validateSchema(
       req.body,
@@ -262,7 +262,7 @@ router.post('/performance', async (req: Request, res: Response) => {
         type: 'performance_issue',
         message: `Slow operation: ${reportData.operation} took ${reportData.duration}ms`,
         context: reportData,
-        userId: req.user?.id,
+        userId: (req as any).user?.id,
         sessionId: req.sessionID,
         severity
       });
@@ -270,8 +270,8 @@ router.post('/performance', async (req: Request, res: Response) => {
 
     // Log de performance
     Logger.performance(reportData.operation, reportData.duration, {
-      requestId: req.requestId,
-      userId: req.user?.id,
+      requestId: (req as any).requestId,
+      userId: (req as any).user?.id,
       url: reportData.url,
       metadata: {
         metrics: reportData.metrics
@@ -334,7 +334,7 @@ router.get('/list', async (req: Request, res: Response) => {
       errors.length
     );
 
-    res.json(response);
+    (res as any).json(response);
 
   } catch (error) {
     ControllerUtils.handleError(error, 'list errors', res, req);
@@ -345,7 +345,7 @@ router.get('/list', async (req: Request, res: Response) => {
  * PUT /api/errors/:id/resolve
  * Marcar erro como resolvido (apenas para admins)
  */
-router.put('/:id/resolve', async (req: Request, res: Response) => {
+router.put('/:id/resolve', async (req: any, res: Response) => {
   try {
     const user = ControllerUtils.requireRole(req, ['admin', 'super_admin']);
     
@@ -361,7 +361,7 @@ router.put('/:id/resolve', async (req: Request, res: Response) => {
     }
 
     Logger.info('Error marked as resolved', {
-      requestId: req.requestId,
+      requestId: (req as any).requestId,
       userId: user.id,
       metadata: {
         errorId,

@@ -44,10 +44,10 @@ interface SearchCriteria {
   includeNewRegistrations: boolean;
 }
 
-export function registerDiscoveryRoutes(app: Express) {
+export function registerDiscoveryRoutes(app: any) {
 
   // Rota para descobrir negócios
-  app.post('/api/discovery/discover', requireAuth, async (req: any, res) => {
+  app.post('/api/discovery/discover', requireAuth, async (req: any, res: any) => {
     try {
       const criteria: SearchCriteria = req.body;
 
@@ -81,7 +81,7 @@ export function registerDiscoveryRoutes(app: Express) {
   });
 
   // Rota para exportar negócios descobertos em CSV
-  app.post('/api/discovery/export', requireAuth, async (req: any, res) => {
+  app.post('/api/discovery/export', requireAuth, async (req: any, res: any) => {
     try {
       const { leads } = req.body;
 
@@ -109,7 +109,7 @@ export function registerDiscoveryRoutes(app: Express) {
   });
 
   // Rota para obter estatísticas de descoberta
-  app.get('/api/discovery/stats', requireAuth, async (req: any, res) => {
+  app.get('/api/discovery/stats', requireAuth, async (req: any, res: any) => {
     try {
       // Na implementação real, buscaria estatísticas da base de dados
       const stats = {

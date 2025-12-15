@@ -1,6 +1,7 @@
+
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { subscriptionPlans, creditPacks } from '@shared/schema';
+import { subscriptionPlans, creditPackages } from '@shared/schema';
 import * as schema from '@shared/schema';
 import ws from "ws";
 import process from "process";
@@ -27,8 +28,8 @@ async function seedSubscriptionPlans() {
         name: 'Starter',
         slug: 'starter',
         description: 'Perfeito para pequenos negócios que começam a automatizar respostas',
-        priceMonthly: 19.00,
-        priceYearly: 190.00, // 10 meses + 2 grátis
+        priceMonthly: '19.00',
+        priceYearly: '190.00', // 10 meses + 2 grátis
         monthlyResponses: 200,
         maxLocations: 1,
         maxUsers: 3,
@@ -52,8 +53,8 @@ async function seedSubscriptionPlans() {
         name: 'Pro',
         slug: 'pro', 
         description: 'Para negócios em crescimento que precisam de mais funcionalidades',
-        priceMonthly: 49.00,
-        priceYearly: 490.00, // 10 meses + 2 grátis
+        priceMonthly: '49.00',
+        priceYearly: '490.00', // 10 meses + 2 grátis
         monthlyResponses: 1000,
         maxLocations: 3,
         maxUsers: -1, // ilimitado 
@@ -78,8 +79,8 @@ async function seedSubscriptionPlans() {
         name: 'Agência',
         slug: 'agency',
         description: 'Para agências e grandes empresas com múltiplos clientes',
-        priceMonthly: 149.00,
-        priceYearly: 1490.00, // 10 meses + 2 grátis
+        priceMonthly: '149.00',
+        priceYearly: '1490.00', // 10 meses + 2 grátis
         monthlyResponses: 5000,
         maxLocations: 10,
         maxUsers: -1, // ilimitado
@@ -114,48 +115,56 @@ async function seedSubscriptionPlans() {
 
     console.log('📦 A popular pacotes de créditos...');
 
-    // Inserir pacotes de créditos (só disponíveis para clientes SEM BYOK)
+    // Inserir pacotes de créditos
     const creditPacksData = [
       {
         id: 'pack-1000', 
         name: 'Pack 1000 respostas',
         slug: 'pack-1000',
-        description: 'Pacote adicional de 1000 respostas AI (só sem BYOK)',
-        creditAmount: 1000,
-        price: 15.00,
+        description: 'Pacote adicional de 1000 respostas AI',
+        credits: 1000,
+        price: '15.00',
         isActive: true,
-        orderIndex: 1
+        sortOrder: 1,
+        isPopular: false,
+        originalPrice: '15.00'
       },
       {
         id: 'pack-2500',
         name: 'Pack 2500 respostas',
         slug: 'pack-2500', 
-        description: 'Pacote adicional de 2500 respostas AI (só sem BYOK)',
-        creditAmount: 2500,
-        price: 35.00,
+        description: 'Pacote adicional de 2500 respostas AI',
+        credits: 2500,
+        price: '35.00',
         isActive: true,
-        orderIndex: 3
+        sortOrder: 3,
+        isPopular: true,
+        originalPrice: '37.50',
+        discount: 7
       },
       {
         id: 'pack-5000',
         name: 'Pack 5000 respostas',
         slug: 'pack-5000',
         description: 'Pacote adicional de 5000 respostas AI',
-        creditAmount: 5000,
-        price: 65.00,
+        credits: 5000,
+        price: '65.00',
         isActive: true,
-        orderIndex: 4
+        sortOrder: 4,
+        isPopular: false,
+        originalPrice: '75.00',
+        discount: 13
       }
     ];
 
     // Limpar tabela de pacotes existentes
-    await db.delete(creditPacks);
+    await db.delete(creditPackages);
     console.log('🗑️ Pacotes existentes removidos');
 
     // Inserir novos pacotes
     for (const pack of creditPacksData) {
-      await db.insert(creditPacks).values(pack);
-      console.log(`✅ Pacote "${pack.name}" criado - €${pack.price} (${pack.creditAmount} créditos)`);
+      await db.insert(creditPackages).values(pack);
+      console.log(`✅ Pacote "${pack.name}" criado - €${pack.price} (${pack.credits} créditos)`);
     }
 
     console.log('\n🎉 Todos os planos e pacotes foram criados com sucesso!');
@@ -164,11 +173,9 @@ async function seedSubscriptionPlans() {
     console.log('• Pro: €49/mês - 1000 respostas, 3 locais, 10 users');
     console.log('• Agência: €149/mês - 5000 respostas, 10 locais, users ilimitados');
     console.log('\n💰 Pacotes de créditos adicionais:');
-    console.log('• Pack 500: €7.50');
     console.log('• Pack 1000: €15.00');
     console.log('• Pack 2500: €35.00');
     console.log('• Pack 5000: €65.00');
-    console.log('\n💡 Nota: Pacotes de créditos só estão disponíveis para utilizadores SEM BYOK (Bring Your Own Key)');
 
   } catch (error) {
     console.error('❌ Erro ao criar planos:', error);

@@ -50,7 +50,7 @@ export class ControllerUtils {
         metadata: { ...context.metadata, operation }
       });
       
-      return res.status(error.statusCode).json({
+      return (res as any).status(error.statusCode).json({
         success: false,
         error: {
           message: error.message,
@@ -90,7 +90,7 @@ export class ControllerUtils {
       metadata: { ...context.metadata, operation }
     });
 
-    res.status(appError.statusCode).json({
+    (res as any).status(appError.statusCode).json({
       success: false,
       error: {
         message: appError.message,
@@ -123,8 +123,8 @@ export class ControllerUtils {
    * Configurar headers para download de CSV
    */
   static setCSVHeaders(res: Response, filename: string): void {
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    (res as any).setHeader('Content-Type', 'text/csv');
+    (res as any).setHeader('Content-Disposition', `attachment; filename=${filename}`);
   }
 
   /**
@@ -268,10 +268,10 @@ export class ControllerUtils {
    * // user contém dados do utilizador autenticado
    */
   static requireAuth(req: Request): any {
-    if (!req.user) {
+    if (!(req as any).user) {
       throw AppError.authentication('Utilizador não autenticado');
     }
-    return req.user;
+    return (req as any).user;
   }
 
   /**
@@ -337,12 +337,12 @@ export class ControllerUtils {
     identifier?: string
   ): void {
     // Implementação básica - pode ser expandida com Redis
-    const key = identifier || req.ip;
+    const key = identifier || (req as any).ip;
     const now = Date.now();
     
     // Por agora, apenas log - implementação completa requer cache externo
     Logger.debug(`Rate limit check for ${key}`, {
-      requestId: req.requestId,
+      requestId: (req as any).requestId,
       metadata: {
         maxRequests,
         windowMs,
@@ -380,7 +380,7 @@ export class ControllerUtils {
     if (message) response.message = message;
     if (data !== undefined) response.data = data;
     
-    res.status(statusCode).json(response);
+    (res as any).status(statusCode).json(response);
   }
 
   /**
@@ -404,7 +404,7 @@ export class ControllerUtils {
     if (errorCode) response.error.code = errorCode;
     if (details) response.error.details = details;
     
-    res.status(statusCode).json(response);
+    (res as any).status(statusCode).json(response);
   }
 
   /**
@@ -416,7 +416,7 @@ export class ControllerUtils {
   ): void {
     const success = result.errors.length === 0;
     
-    res.status(success ? 200 : 207).json({
+    (res as any).status(success ? 200 : 207).json({
       success,
       data: {
         imported: result.processed,
@@ -444,8 +444,8 @@ export class ControllerUtils {
    * // page=1, limit=50 (padrão), offset=0
    */
   static getPaginationParams(req: Request): { page: number; limit: number; offset: number } {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const page = Math.max(1, parseInt((req as any).query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt((req as any).query.limit as string) || 50));
     const offset = (page - 1) * limit;
     
     if (page < 1) {
@@ -468,13 +468,13 @@ export class ControllerUtils {
     sortOrder?: 'asc' | 'desc';
     filters: Record<string, any>;
   } {
-    const search = req.query.search as string;
-    const sortBy = req.query.sortBy as string;
-    const sortOrder = (req.query.sortOrder as string) === 'desc' ? 'desc' : 'asc';
+    const search = (req as any).query.search as string;
+    const sortBy = (req as any).query.sortBy as string;
+    const sortOrder = ((req as any).query.sortOrder as string) === 'desc' ? 'desc' : 'asc';
     
     // Extrair outros filtros do query string usando filter e reduce
     const excludedKeys = ['page', 'limit', 'search', 'sortBy', 'sortOrder'];
-    const filters = Object.entries(req.query)
+    const filters = Object.entries((req as any).query)
       .filter(([key]) => !excludedKeys.includes(key))
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {} as Record<string, any>);
     

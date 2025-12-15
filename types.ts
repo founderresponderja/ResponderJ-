@@ -45,6 +45,7 @@ export interface ReviewData {
   keywords?: string[];
   createdAt: Date;
   isFavorite?: boolean;
+  responseType?: string; // auto_reply, manual, etc.
 }
 
 export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter' | 'youtube' | 'google' | 'tripadvisor' | 'booking' | 'thefork';

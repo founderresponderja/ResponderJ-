@@ -1,3 +1,4 @@
+
 import { Express } from "express";
 import bcrypt from "bcrypt";
 import { z } from "zod";
@@ -68,9 +69,9 @@ const verifySuperAdminPassword = async (userId: string, password: string): Promi
 
 const BCRYPT_ROUNDS = 14;
 
-export function setupAdminManagementRoutes(app: Express) {
+export function setupAdminManagementRoutes(app: any) {
   // Obter todos os utilizadores (apenas super admins)
-  app.get("/api/admin/users/all", requireAuth, requireSuperAdmin, async (req, res) => {
+  app.get("/api/admin/users/all", requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const users = await storage.getAllUsersForAdmin();
       
@@ -88,7 +89,7 @@ export function setupAdminManagementRoutes(app: Express) {
   });
 
   // Criar novo utilizador (apenas super admins)
-  app.post("/api/admin/users/create", requireAuth, requireSuperAdmin, async (req, res) => {
+  app.post("/api/admin/users/create", requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const validationResult = createUserSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -101,7 +102,7 @@ export function setupAdminManagementRoutes(app: Express) {
       const { confirmPassword, password, email, ...userData } = validationResult.data;
 
       // Verificar password do super admin
-      const isValidPassword = await verifySuperAdminPassword(req.user.id, confirmPassword);
+      const isValidPassword = await verifySuperAdminPassword((req as any).user.id, confirmPassword);
       if (!isValidPassword) {
         return res.status(401).json({ 
           message: "Password de super administrador incorrecta" 
@@ -145,7 +146,7 @@ export function setupAdminManagementRoutes(app: Express) {
   });
 
   // Editar utilizador (apenas super admins)
-  app.put("/api/admin/users/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
+  app.put("/api/admin/users/:userId", requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const validationResult = editUserSchema.safeParse(req.body);
@@ -160,7 +161,7 @@ export function setupAdminManagementRoutes(app: Express) {
       const { confirmPassword, ...updateData } = validationResult.data;
 
       // Verificar password do super admin
-      const isValidPassword = await verifySuperAdminPassword(req.user.id, confirmPassword);
+      const isValidPassword = await verifySuperAdminPassword((req as any).user.id, confirmPassword);
       if (!isValidPassword) {
         return res.status(401).json({ 
           message: "Password de super administrador incorrecta" 
@@ -197,7 +198,7 @@ export function setupAdminManagementRoutes(app: Express) {
   });
 
   // Apagar utilizador (apenas super admins)
-  app.delete("/api/admin/users/:userId", requireAuth, requireSuperAdmin, async (req, res) => {
+  app.delete("/api/admin/users/:userId", requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const validationResult = deleteUserSchema.safeParse(req.body);
@@ -211,7 +212,7 @@ export function setupAdminManagementRoutes(app: Express) {
       const { confirmPassword } = validationResult.data;
 
       // Verificar password do super admin
-      const isValidPassword = await verifySuperAdminPassword(req.user.id, confirmPassword);
+      const isValidPassword = await verifySuperAdminPassword((req as any).user.id, confirmPassword);
       if (!isValidPassword) {
         return res.status(401).json({ 
           message: "Password de super administrador incorrecta" 
@@ -242,7 +243,7 @@ export function setupAdminManagementRoutes(app: Express) {
   });
 
   // Reset de password (apenas super admins)
-  app.post("/api/admin/users/:userId/reset-password", requireAuth, requireSuperAdmin, async (req, res) => {
+  app.post("/api/admin/users/:userId/reset-password", requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const validationResult = resetPasswordSchema.safeParse(req.body);
@@ -257,7 +258,7 @@ export function setupAdminManagementRoutes(app: Express) {
       const { newPassword, confirmPassword } = validationResult.data;
 
       // Verificar password do super admin
-      const isValidPassword = await verifySuperAdminPassword(req.user.id, confirmPassword);
+      const isValidPassword = await verifySuperAdminPassword((req as any).user.id, confirmPassword);
       if (!isValidPassword) {
         return res.status(401).json({ 
           message: "Password de super administrador incorrecta" 
@@ -303,7 +304,7 @@ export function setupAdminManagementRoutes(app: Express) {
   });
 
   // Alterar role de utilizador (apenas super admins)
-  app.put("/api/admin/users/:userId/role", requireAuth, requireSuperAdmin, async (req, res) => {
+  app.put("/api/admin/users/:userId/role", requireAuth, requireSuperAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const validationResult = changeRoleSchema.safeParse(req.body);
@@ -319,7 +320,7 @@ export function setupAdminManagementRoutes(app: Express) {
       const { isAdmin, isSuperAdmin, confirmPassword, reason } = validationResult.data;
 
       // Early return para password incorrecta
-      const isValidPassword = await verifySuperAdminPassword(req.user.id, confirmPassword);
+      const isValidPassword = await verifySuperAdminPassword((req as any).user.id, confirmPassword);
       if (!isValidPassword) {
         return res.status(401).json({ 
           message: "Password de super administrador incorrecta" 
@@ -333,14 +334,14 @@ export function setupAdminManagementRoutes(app: Express) {
       }
 
       // Early return para prevenir auto-alteração
-      if (existingUser.id === req.user.id) {
+      if (existingUser.id === (req as any).user.id) {
         return res.status(403).json({ 
           message: "Não é possível alterar os próprios privilégios" 
         });
       }
 
       // Log da alteração de role para auditoria
-      console.log(`ROLE CHANGE: Super admin ${req.user.email} changing role of ${existingUser.email} - isAdmin: ${existingUser.isAdmin} -> ${isAdmin}, isSuperAdmin: ${existingUser.isSuperAdmin} -> ${isSuperAdmin}. Reason: ${reason}`);
+      console.log(`ROLE CHANGE: Super admin ${(req as any).user.email} changing role of ${existingUser.email} - isAdmin: ${existingUser.isAdmin} -> ${isAdmin}, isSuperAdmin: ${existingUser.isSuperAdmin} -> ${isSuperAdmin}. Reason: ${reason}`);
 
       // Actualizar role do utilizador
       const updatedUser = await storage.updateUser(userId, {

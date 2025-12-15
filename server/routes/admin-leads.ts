@@ -6,7 +6,7 @@ import { LeadsAIController } from "../controllers/leadsAIController";
 import { LeadsCSVController } from "../controllers/leadsCSVController";
 import { LeadsEmailController } from "../controllers/leadsEmailController";
 
-export function registerAdminLeadsRoutes(app: Express) {
+export function registerAdminLeadsRoutes(app: any) {
   
   // === GESTÃO DE LEADS ===
   
@@ -58,7 +58,7 @@ export function registerAdminLeadsRoutes(app: Express) {
   // === CAMPANHAS (Simplificado) ===
   
   // Listar campanhas
-  app.get('/api/admin/leads/campaigns', isAdminMiddleware, async (req, res) => {
+  app.get('/api/admin/leads/campaigns', isAdminMiddleware, async (req: any, res: any) => {
     try {
       // Retorna lista vazia por enquanto (pode ser implementado depois)
       res.json({ campaigns: [] });
@@ -69,7 +69,7 @@ export function registerAdminLeadsRoutes(app: Express) {
   });
   
   // Criar campanha
-  app.post('/api/admin/leads/campaigns', isAdminMiddleware, async (req, res) => {
+  app.post('/api/admin/leads/campaigns', isAdminMiddleware, async (req: any, res: any) => {
     try {
       const { name, subject, emailTemplate } = req.body;
       
@@ -93,7 +93,7 @@ export function registerAdminLeadsRoutes(app: Express) {
   });
   
   // Enviar campanha
-  app.post('/api/admin/leads/campaigns/:id/send', isAdminMiddleware, async (req, res) => {
+  app.post('/api/admin/leads/campaigns/:id/send', isAdminMiddleware, async (req: any, res: any) => {
     try {
       // Simular envio de campanha
       const sentCount = Math.floor(Math.random() * 50) + 10;

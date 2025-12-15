@@ -5,7 +5,6 @@
  */
 
 import { domainManager } from '../config/domains';
-import process from "process";
 
 export class URLBuilder {
   private static instance: URLBuilder;

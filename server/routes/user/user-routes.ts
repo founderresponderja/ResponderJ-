@@ -9,11 +9,11 @@ import { requireAuth } from "../../auth";
  * Inclui perfil de utilizador, estatísticas, dados pessoais e preferências.
  * Todas as rotas requerem autenticação.
  */
-export function setupUserRoutes(app: Express): void {
+export function setupUserRoutes(app: any): void {
   console.log('👤 Configurando rotas de utilizador...');
 
   // Obter dados do utilizador autenticado
-  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
+  app.get('/api/auth/user', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -38,7 +38,7 @@ export function setupUserRoutes(app: Express): void {
   });
 
   // Estatísticas do utilizador para dashboard
-  app.get('/api/user/stats', requireAuth, async (req: any, res) => {
+  app.get('/api/user/stats', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -65,7 +65,7 @@ export function setupUserRoutes(app: Express): void {
   });
 
   // Rota legacy para compatibilidade
-  app.get('/api/user', requireAuth, async (req: any, res) => {
+  app.get('/api/user', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
@@ -89,7 +89,7 @@ export function setupUserRoutes(app: Express): void {
   });
 
   // Atualizar perfil do utilizador
-  app.put('/api/user/profile', requireAuth, async (req: any, res) => {
+  app.put('/api/user/profile', requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user.id;
       const { firstName, lastName, companyName, phone } = req.body;
@@ -113,7 +113,7 @@ export function setupUserRoutes(app: Express): void {
   });
 
   // Endpoint para fixar roles de utilizadores (debug)
-  app.post('/api/debug/fix-user-roles', async (req, res) => {
+  app.post('/api/debug/fix-user-roles', async (req: any, res: any) => {
     try {
       const fixes = [
         { email: 'trial@amplia.com', plan: 'trial' },

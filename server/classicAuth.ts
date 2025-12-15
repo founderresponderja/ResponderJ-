@@ -4,6 +4,7 @@ import { Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { newLoginSchema, newRegisterSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
 import { MailService } from '@sendgrid/mail';
+import { urlBuilder } from "./utils";
 
 const mailService = new MailService();
 if (process.env.SENDGRID_API_KEY) {
@@ -80,10 +81,10 @@ export function setupClassicAuth(app: any) {
         password, 
         firstName, 
         lastName, 
-        phone,
-        companyName,
-        companyAddress,
-        nif
+        phone, 
+        companyName, 
+        companyAddress, 
+        nif 
       } = validatedData;
 
       console.log(`📝 Novo registo clássico: ${email}`);
@@ -121,7 +122,7 @@ export function setupClassicAuth(app: any) {
 
       // Send verification email
       try {
-        const verificationUrl = `${req.protocol}://${req.get('host')}/api/auth/verify-email?token=${emailVerificationToken}`;
+        const verificationUrl = urlBuilder.buildAppURL(`/api/auth/verify-email?token=${emailVerificationToken}`, req);
         
         if (process.env.SENDGRID_API_KEY) {
             await mailService.send({
@@ -234,7 +235,7 @@ export function setupClassicAuth(app: any) {
       await storage.setPasswordResetToken(user.id, resetToken, resetExpires);
 
       if (process.env.SENDGRID_API_KEY) {
-          const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+          const resetUrl = urlBuilder.buildAppURL(`/reset-password?token=${resetToken}`, req);
           
           await mailService.send({
             to: email,

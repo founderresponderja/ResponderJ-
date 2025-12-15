@@ -1,4 +1,4 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express, { type Request, Response, NextFunction, type RequestHandler } from "express";
 import { createServer } from "http";
 import { registerRoutes, setupAuthRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -51,12 +51,12 @@ app.use((req, res, next) => {
 });
 
 // Headers de Segurança Base
-app.use(securityHeaders);
-app.use(legalComplianceHeaders);
+app.use(securityHeaders as RequestHandler);
+app.use(legalComplianceHeaders as RequestHandler);
 
 // Sistema Avançado de Detecção de Ameaças (Se disponível)
 if (AdvancedThreatDetector?.middleware) {
-  app.use(AdvancedThreatDetector.middleware);
+  app.use(AdvancedThreatDetector.middleware as RequestHandler);
 }
 
 // ==========================================
@@ -67,27 +67,27 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Middlewares de Privacidade (GDPR)
-app.use(secureCookieMiddleware);
-app.use(gdprAuditLog);
+app.use(secureCookieMiddleware as RequestHandler);
+app.use(gdprAuditLog as RequestHandler);
 
 if (GDPREnhancedCompliance?.complianceMiddleware) {
-  app.use(GDPREnhancedCompliance.complianceMiddleware);
+  app.use(GDPREnhancedCompliance.complianceMiddleware as RequestHandler);
 }
 
 // Proteção CSRF Global
-app.use(csrfProtection);
+app.use(csrfProtection as RequestHandler);
 
 // ==========================================
 // 3. LOGGING E MONITORIZAÇÃO
 // ==========================================
 
-app.use((req, res, next) => {
+app.use((req: any, res: any, next: any) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
+  res.json = function (bodyJson: any, ...args: any[]) {
     if (!(res as any).headersSent) {
       capturedJsonResponse = bodyJson;
       return originalResJson.apply(res, [bodyJson, ...args]);
@@ -95,7 +95,7 @@ app.use((req, res, next) => {
     return res;
   };
 
-  res.on("finish", () => {
+  (res as any).on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;

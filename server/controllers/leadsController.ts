@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { storage } from "../storage";
-import { ControllerUtils } from "../utils/ControllerUtils";
+import { ControllerUtils, AppError } from "../utils/ControllerUtils";
 
 export class LeadsController {
   // Listar leads com paginação
@@ -35,6 +35,11 @@ export class LeadsController {
   static async createLead(req: any, res: any) {
     try {
       const leadData = req.body;
+
+      // Validação de formato de email
+      if (!ControllerUtils.validateEmail(leadData.email)) {
+        throw AppError.validation('Formato de email inválido', 'email', leadData.email);
+      }
       
       // Verificar se já existe
       const exists = await ControllerUtils.validateLeadExists(leadData.email);
@@ -54,6 +59,11 @@ export class LeadsController {
     try {
       const { id } = req.params;
       const updateData = req.body;
+
+      // Validação de formato de email se estiver a ser atualizado
+      if (updateData.email && !ControllerUtils.validateEmail(updateData.email)) {
+        throw AppError.validation('Formato de email inválido', 'email', updateData.email);
+      }
       
       const lead = await storage.updateLead(id, updateData);
       res.json(lead);

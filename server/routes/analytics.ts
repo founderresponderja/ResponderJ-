@@ -1,10 +1,11 @@
+
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
 
-export function registerAnalyticsRoutes(app: Express) {
+export function registerAnalyticsRoutes(app: any) {
   // Dashboard analytics
-  app.get("/api/analytics/dashboard", requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/dashboard", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -77,7 +78,7 @@ export function registerAnalyticsRoutes(app: Express) {
   });
 
   // Análise detalhada de performance
-  app.get("/api/analytics/performance", requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/performance", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -118,7 +119,7 @@ export function registerAnalyticsRoutes(app: Express) {
   });
 
   // Relatório de engagement
-  app.get("/api/analytics/engagement", requireAuth, async (req: any, res) => {
+  app.get("/api/analytics/engagement", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { period = 'week' } = req.query;

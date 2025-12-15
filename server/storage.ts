@@ -1,286 +1,147 @@
 
-
-import { eq, and, desc, asc, sql, like, count, lte } from "drizzle-orm";
-import { db } from "./db";
-import {
-  users,
-  agencies,
-  agencyMembers,
-  agencyInvitations,
-  agencyAdminDelegations,
-  establishments,
-  reviews,
-  responses,
-  responseTemplates,
-  creditTransactions,
-  creditPackages,
-  referrals,
-  leads,
-  sessions,
-  invoices,
-  invoiceItems,
-  invoiceSettings,
-  subscriptions,
-  emailSequences,
-  pageContents,
-  corporateSocialAccounts,
-  corporatePosts,
-  automationRules,
-  type User,
-  type InsertUser,
-  type Agency,
-  type InsertAgency,
-  type Establishment,
-  type InsertEstablishment,
-  type CreditTransaction,
-  type InsertCreditTransaction,
-  type CreditPackage,
-  type InsertCreditPackage,
-  type Referral,
-  type InsertReferral,
-  type Lead,
-  type InsertLead,
-  type Invoice,
-  type InsertInvoice,
-  type InvoiceItem,
-  type InsertInvoiceItem,
-  type InvoiceSettings,
-  type InsertInvoiceSettings,
-  type Subscription,
-  type InsertSubscription,
-  type RegisterData,
-  type UpdateUser,
-  type EmailSequence,
-  type InsertEmailSequence,
-  type AutomationRule,
-  type InsertAutomationRule,
+import { 
+  users, leads, automationRules, responses, establishments, creditTransactions, 
+  subscriptions, corporateSocialAccounts, corporatePosts, agencyMembers, 
+  agencyInvitations, agencyAdminDelegations, referrals, pageContents, 
+  InsertUser, User, InsertLead, Lead, InsertAutomationRule, AutomationRule,
+  InsertResponse, Response, InsertEstablishment, Establishment, 
+  InsertCreditTransaction, CreditTransaction, InsertSubscription, Subscription,
+  InsertEmailSequence, EmailSequence, InsertInvoice, Invoice, InsertInvoiceItem, 
+  InsertInvoiceSettings, InvoiceSettings, InsertReferral, Referral,
+  creditPackages, InsertCreditPackage, CreditPackage
 } from "@shared/schema";
+import { db, pool } from "./db";
+import { eq, ilike, or, and, desc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import crypto from "crypto";
 
 const PostgresSessionStore = connectPg(session);
 
-// Interfaces for Corporate Social (Mock Tables) - Defined in schema now but keeping interfaces for compatibility if needed
-interface CorporateSocialAccount {
-  id: string;
-  platform: string;
-  username: string;
-  accessToken: string;
-  refreshToken?: string | null;
-  tokenExpiresAt?: Date;
-  followerCount: number;
-  isConnected: boolean;
-  isActive: boolean;
-  profileImageUrl?: string;
-  lastSync: Date;
-  createdAt: Date;
-}
-
-interface CorporatePost {
-  id: string;
-  content: string;
-  mediaUrls: string[];
-  platforms: string[];
-  publishResults: any[];
-  scheduledFor?: Date;
-  publishedAt: Date;
-  createdBy: number; // Changed to number
-  createdAt: Date;
-}
-
 export interface IStorage {
-  // User Management
+  sessionStore: session.Store;
+  
+  // User methods
   getUser(id: string | number): Promise<User | undefined>;
-  getUserById(id: string | number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getAllUsersForAdmin(): Promise<User[]>;
-  createUser(userData: RegisterData): Promise<User>;
-  updateUser(id: string | number, userData: Partial<UpdateUser>): Promise<User>;
+  getUserById(id: string | number): Promise<User | undefined>;
+  getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string | number, user: Partial<User>): Promise<User>;
   deleteUser(id: string | number): Promise<void>;
-  updateUserCredits(userId: string | number, credits: number): Promise<void>;
-  addCreditsToUser(userId: string | number, amount: number, description: string): Promise<void>;
-  upsertUser(userData: InsertUser): Promise<User>;
-  getTotalUsersCount(): Promise<number>;
-
-  // Agency System
-  createAgency(agencyData: InsertAgency): Promise<Agency>;
-  getAgency(id: string | number): Promise<Agency | undefined>;
-  updateAgency(id: string | number, agencyData: Partial<InsertAgency>): Promise<Agency>;
-  deleteAgency(id: string | number): Promise<void>;
-  getAgencyMembers(agencyId: string | number): Promise<any[]>;
-  addAgencyMember(agencyId: string | number, userId: string | number): Promise<void>;
-  removeAgencyMember(agencyId: string | number, userId: string | number): Promise<void>;
-  getAgencyMemberCount(agencyId: string | number): Promise<{ activeMembers: number; pendingInvitations: number; total: number }>;
-  getAgencyDelegations(agencyId: string | number): Promise<any[]>;
-  createAgencyDelegation(delegationData: any): Promise<any>;
-  inviteAgencyMember(agencyId: string | number, email: string, role: string, invitedBy: string | number): Promise<any>;
-  updateAgencyMember(memberId: string | number, memberData: any): Promise<any>;
-  createAgencyInvitation(invitationData: any): Promise<any>;
-  getAgencyInvitationByToken(token: string): Promise<any>;
-  acceptAgencyInvitation(token: string, userId: string | number): Promise<any>;
-
-  // Subscriptions
-  createSubscription(subscriptionData: InsertSubscription): Promise<Subscription>;
-  getSubscription(id: string | number): Promise<Subscription | undefined>;
-  getUserSubscription(userId: string | number): Promise<Subscription | undefined>;
-  updateSubscription(id: string | number, subscriptionData: Partial<InsertSubscription>): Promise<Subscription>;
-  cancelSubscription(id: string | number): Promise<void>;
-
-  // Establishments
-  createEstablishment(establishmentData: InsertEstablishment): Promise<Establishment>;
-  getEstablishment(id: string | number): Promise<Establishment | undefined>;
-  getUserEstablishments(userId: string | number): Promise<Establishment[]>;
-  updateEstablishment(id: string | number, establishmentData: Partial<InsertEstablishment>): Promise<Establishment>;
-  deleteEstablishment(id: string | number): Promise<void>;
-
-  // Credits
-  createCreditTransaction(transactionData: InsertCreditTransaction): Promise<CreditTransaction>;
-  getCreditTransaction(id: string | number): Promise<CreditTransaction | undefined>;
-  getUserCreditTransactions(userId: string | number, limit?: number): Promise<CreditTransaction[]>;
-  getUserCreditBalance(userId: string | number): Promise<number>;
-
-  // Credit Packages
-  createCreditPackage(packageData: InsertCreditPackage): Promise<CreditPackage>;
-  getCreditPackage(id: string): Promise<CreditPackage | undefined>;
-  getAllCreditPackages(): Promise<CreditPackage[]>;
-  getActiveCreditPackages(): Promise<CreditPackage[]>;
-  updateCreditPackage(id: string, packageData: Partial<InsertCreditPackage>): Promise<CreditPackage>;
-  getCreditPackages(): Promise<CreditPackage[]>;
-
-  // Referrals
-  createReferral(referralData: InsertReferral): Promise<Referral>;
-  getReferral(id: string | number): Promise<Referral | undefined>;
-  getReferralByCode(code: string): Promise<Referral | undefined>;
-  getUserReferrals(userId: string | number): Promise<Referral[]>;
-  updateReferral(id: string | number, referralData: Partial<InsertReferral>): Promise<Referral>;
-  processReferralSignup(referralCode: string, newUserId: string | number): Promise<void>;
-
-  // Additional Methods
-  updateUserPlan(userId: string | number, plan: string): Promise<User>;
-  updateUserStripeCustomerId(userId: string | number, customerId: string): Promise<User>;
-  updateUserStripeInfo(userId: string | number, info: any): Promise<User>;
-  setPasswordResetToken(userId: string | number, token: string | null, expires: Date | null): Promise<void>;
+  getAllUsersForAdmin(): Promise<User[]>;
+  
+  // Auth methods
+  setPasswordResetToken(userId: number, token: string | null, expires: Date | null): Promise<void>;
   getUserByPasswordResetToken(token: string): Promise<User | undefined>;
+  resetUserPassword(userId: number, password: string): Promise<void>;
   getUserByEmailVerificationToken(token: string): Promise<User | undefined>;
-  resetUserPassword(userId: string | number, newPassword: string): Promise<void>;
-
-  // Leads
-  createLead(leadData: InsertLead): Promise<Lead>;
-  getLead(id: string | number): Promise<Lead | undefined>;
-  getAllLeads(): Promise<Lead[]>;
-  getLeads(offset?: number, limit?: number): Promise<Lead[]>;
+  
+  // Lead methods
+  getLeads(offset: number, limit: number): Promise<Lead[]>;
   getLeadsCount(): Promise<number>;
-  updateLead(id: string | number, leadData: Partial<InsertLead>): Promise<Lead>;
-  deleteLead(id: string | number): Promise<void>;
-  searchLeads(searchTerm: string): Promise<Lead[]>;
-  getLeadsByStatus(status: string): Promise<Lead[]>;
-  getLeadsByEmailStatus(emailStatus: string): Promise<Lead[]>;
-  updateLeadEmailStatus(id: string | number, emailStatus: string, timestamp: Date): Promise<Lead>;
-  getLeadsForEmailSequence(): Promise<Lead[]>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: number | string, lead: Partial<Lead>): Promise<Lead>;
+  deleteLead(id: number | string): Promise<void>;
   checkLeadExists(email: string): Promise<boolean>;
+  searchLeads(query: string): Promise<Lead[]>;
+  getLeadsByStatus(status: string): Promise<Lead[]>;
   importLeadsFromCSV(csvData: any[]): Promise<{ imported: number; skipped: number; errors: string[] }>;
   exportLeadsToCSV(): Promise<string>;
-
-  // Stats
-  getTotalUsers(): Promise<number>;
-  getTotalActiveUsers(): Promise<number>;
-  getUserStats(userId: string | number): Promise<any>;
-  getSystemStats(): Promise<any>;
-
-  // CSV Upload (Stub)
-  createCsvUpload(uploadData: any): Promise<any>;
-  getCsvUpload(id: string): Promise<any>;
-
-  // Invoicing
-  getInvoiceSettings(userId: string | number): Promise<InvoiceSettings | undefined>;
-  createInvoiceSettings(settingsData: InsertInvoiceSettings): Promise<InvoiceSettings>;
-  updateInvoiceSettings(userId: string | number, settingsData: Partial<InsertInvoiceSettings>): Promise<InvoiceSettings>;
-  createInvoice(invoiceData: InsertInvoice): Promise<Invoice>;
-  getInvoice(id: number): Promise<Invoice | undefined>;
-  getInvoiceWithDetails(id: number): Promise<Invoice & { items: InvoiceItem[] } | undefined>;
-  updateInvoiceStatus(id: number, status: string): Promise<Invoice>;
-  updateInvoiceSequence(settingsId: number, sequence: number): Promise<void>;
-  updateInvoicePdfPath(id: number, pdfPath: string): Promise<Invoice>;
-  updateInvoiceEmailSent(id: number, emailSent: boolean): Promise<Invoice>;
-  updateInvoiceATData(id: number, atDocumentId: string, atQrCode?: string): Promise<Invoice>;
-  updateInvoiceATError(id: number, atError: string): Promise<Invoice>;
-  createInvoiceItem(itemData: InsertInvoiceItem): Promise<InvoiceItem>;
-  createInvoiceAuditLog(logData: any): Promise<void>;
-  createAuditLog(logData: any): Promise<void>;
-
-  // Corporate Social (New)
-  getCorporateSocialAccounts(): Promise<any[]>;
-  saveCorporateSocialAccount(data: any): Promise<any>;
-  getCorporateSocialAccountsByPlatforms(platforms: string[]): Promise<any[]>;
-  getCorporateSocialAccount(id: string): Promise<any | undefined>;
-  updateCorporateSocialAccount(id: string, data: any): Promise<any>;
-  deleteCorporateSocialAccount(id: string): Promise<void>;
-  createCorporatePost(data: any): Promise<any>;
-  getCorporatePosts(params: { page: number; limit: number }): Promise<any[]>;
-  getCorporateSocialStats(): Promise<any>;
-
-  // Session
-  sessionStore: any;
-
-  // Stubs/Placeholders
-  getBusinessProfile(userId: string | number): Promise<any>;
-  createBusinessProfile(data: any): Promise<any>;
-  updateBusinessProfile(id: string | number, data: any): Promise<any>;
-  createAiResponse(data: any): Promise<any>;
-  getUserAiResponses(userId: string | number, limit?: number): Promise<any[]>;
-  updateAiResponse(id: string | number, data: any): Promise<any>;
-  getPageContent(page: string): Promise<any>;
-  updatePageContent(page: string, content: string): Promise<any>;
-  createPageContent(data: any): Promise<any>;
-  getAllPageContents(): Promise<any[]>;
-  createSentimentAnalysis(data: any): Promise<any>;
-  getSentimentAnalysisByUser(userId: string | number): Promise<any[]>;
-  createEngagementPrediction(data: any): Promise<any>;
-  getInteractionHistoryByUser(userId: string | number): Promise<any[]>;
-  createLinkedinBusinessConfig(data: any): Promise<any>;
-  getLinkedinBusinessConfigByUser(userId: string | number): Promise<any>;
-  createCrmContact(data: any): Promise<any>;
-  getCrmContactsByUser(userId: string | number): Promise<any[]>;
-  getSalesPipelineByUser(userId: string | number): Promise<any[]>;
-
-  // Email Sequences
-  createEmailSequence(data: InsertEmailSequence): Promise<EmailSequence>;
-  getPendingEmailSequences(beforeDate: Date): Promise<EmailSequence[]>;
-  updateEmailSequenceStatus(id: number, status: 'pending' | 'sent' | 'failed' | 'cancelled', sentAt?: Date | null, errorMessage?: string): Promise<void>;
-  cancelEmailSequenceForUser(userId: string | number): Promise<void>;
-  getEmailSequenceStats(): Promise<{ total: number; pending: number; sent: number; failed: number; cancelled: number; }>;
-  getUserEmailSequences(userId: string | number): Promise<EmailSequence[]>;
-
+  getLeadsForEmailSequence(): Promise<Lead[]>;
+  updateLeadEmailStatus(id: number | string, status: string, date?: Date): Promise<void>;
+  getLeadsByEmailStatus(status: string): Promise<Lead[]>;
+  
   // Automation Rules
-  createAutomationRule(ruleData: InsertAutomationRule): Promise<AutomationRule>;
-  getAutomationRules(userId: string | number): Promise<AutomationRule[]>;
-  updateAutomationRule(id: string | number, ruleData: Partial<InsertAutomationRule>): Promise<AutomationRule>;
-  deleteAutomationRule(id: string | number): Promise<void>;
+  getAutomationRules(userId: number | string): Promise<AutomationRule[]>;
+  createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule>;
+  updateAutomationRule(id: number | string, rule: Partial<AutomationRule>): Promise<AutomationRule>;
+  deleteAutomationRule(id: number | string): Promise<void>;
+  
+  // Responses & AI
+  getUserAiResponses(userId: number | string, limit?: number): Promise<Response[]>;
+  createAiResponse(response: InsertResponse): Promise<Response>;
+  updateAiResponse(id: number | string, response: Partial<Response>): Promise<Response>;
+  
+  // Credit & Billing
+  getUserCreditTransactions(userId: number | string): Promise<CreditTransaction[]>;
+  createCreditTransaction(transaction: InsertCreditTransaction): Promise<CreditTransaction>;
+  addCreditsToUser(userId: number | string, amount: number, description: string): Promise<void>;
+  updateUserCredits(userId: number | string, credits: number): Promise<void>;
+  getUserCreditBalance(userId: number | string): Promise<number>;
+  getUserSubscription(userId: number | string): Promise<Subscription | undefined>;
+  updateUserStripeInfo(userId: number | string, info: { customerId?: string, subscriptionId?: string }): Promise<void>;
+  updateUserStripeCustomerId(userId: number | string, customerId: string): Promise<void>;
+  
+  // Credit Packages
+  getAllCreditPackages(): Promise<CreditPackage[]>;
+  getCreditPackage(id: string): Promise<CreditPackage | undefined>;
+  getCreditPackages(): Promise<CreditPackage[]>;
+  createCreditPackage(pkg: InsertCreditPackage): Promise<CreditPackage>;
+  getUserRecentCreditTransactions(userId: number | string, days: number): Promise<CreditTransaction[]>;
+  getCreditSalesStats(): Promise<any>;
+
+  // Business Profile / Establishment
+  getBusinessProfile(userId: number | string): Promise<Establishment | undefined>;
+  createBusinessProfile(profile: InsertEstablishment): Promise<Establishment>;
+  
+  // Sentiment
+  createSentimentAnalysis(data: any): Promise<any>;
+  
+  // Audit
+  createAuditLog(log: any): Promise<void>;
+  
+  // Agency
+  getAgencyInvitationByToken(token: string): Promise<any>;
+  acceptAgencyInvitation(token: string, userId: number | string): Promise<void>;
+  getAgencyMembers(agencyId: number | string): Promise<any[]>;
+  getAgencyMemberCount(agencyId: number | string): Promise<{ total: number }>;
+  inviteAgencyMember(agencyId: number | string, email: string, role: string, invitedBy: number | string): Promise<any>;
+  updateAgencyMember(memberId: number | string, updates: any): Promise<any>;
+  getAgencyDelegations(agencyId: number | string): Promise<any[]>;
+  createAgencyDelegation(delegation: any): Promise<any>;
+  
+  // Corporate Social
+  getCorporateSocialAccounts(): Promise<any[]>;
+  getCorporateSocialAccountsByPlatforms(platforms: string[]): Promise<any[]>;
+  getCorporateSocialAccount(id: string): Promise<any>;
+  saveCorporateSocialAccount(account: any): Promise<void>;
+  updateCorporateSocialAccount(id: string, updates: any): Promise<void>;
+  deleteCorporateSocialAccount(id: string): Promise<void>;
+  createCorporatePost(post: any): Promise<void>;
+  getCorporatePosts(params: { page: number, limit: number }): Promise<any[]>;
+  getCorporateSocialStats(): Promise<any>;
+  
+  // Referral
+  getReferralByCode(code: string): Promise<Referral | undefined>;
+  updateReferral(id: number, updates: Partial<Referral>): Promise<void>;
+  
+  // Stats
+  getSystemStats(): Promise<any>;
+  getUserStats(userId: number | string): Promise<any>;
+  
+  // CSV Uploads
+  createCsvUpload(data: any): Promise<any>;
+  getCsvUpload(id: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
-  public sessionStore: any;
+  sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({
-      conString: process.env.DATABASE_URL!,
+      pool,
       createTableIfMissing: true,
-      tableName: "sessions",
-      ttl: 7 * 24 * 60 * 60, 
     });
   }
 
-  private ensureId(id: string | number): number {
-    return typeof id === 'string' ? parseInt(id, 10) : id;
+  // Users
+  async getUser(id: string | number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, Number(id)));
+    return user;
   }
 
-  // =====================================
-  // GESTÃO DE UTILIZADORES
-  // =====================================
-
-  async getUser(id: string | number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, this.ensureId(id)));
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
@@ -288,471 +149,35 @@ export class DatabaseStorage implements IStorage {
     return this.getUser(id);
   }
 
-  async getAllUsersForAdmin(): Promise<User[]> {
-    try {
-      const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
-      return allUsers;
-    } catch (error) {
-      console.error("❌ Erro ao obter todos os utilizadores:", error);
-      return [];
-    }
-  }
-
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+  async getUserByStripeCustomerId(customerId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.stripeCustomerId, customerId));
     return user;
   }
 
-  async createUser(userData: RegisterData): Promise<User> {
-    const extraData = userData as any;
-    
-    const insertData: InsertUser = {
-      email: userData.email.toLowerCase(),
-      password: userData.password,
-      firstName: userData.firstName || "",
-      lastName: userData.lastName || "",
-      nif: userData.nif,
-      credits: extraData.credits !== undefined ? extraData.credits : 50,
-      emailVerified: extraData.emailVerified !== undefined ? extraData.emailVerified : false,
-      isActive: extraData.isActive !== undefined ? extraData.isActive : true,
-      isAdmin: extraData.isAdmin || false,
-      isSuperAdmin: extraData.isSuperAdmin || false,
-      selectedPlan: extraData.subscriptionPlan || "trial",
-      subscriptionPlan: extraData.subscriptionPlan || "trial",
-      emailVerificationToken: extraData.emailVerificationToken || null
-    };
-
-    const [newUser] = await db.insert(users).values(insertData).returning();
-
-    await this.createSubscription({
-      userId: newUser.id,
-      planType: extraData.subscriptionPlan || "trial",
-      status: extraData.subscriptionStatus || "trial",
-    });
-
-    return newUser;
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
   }
 
-  async updateUser(id: string | number, userData: Partial<UpdateUser>): Promise<User> {
-    const [updatedUser] = await db
-      .update(users)
-      .set({ ...userData, updatedAt: new Date() })
-      .where(eq(users.id, this.ensureId(id)))
-      .returning();
-    return updatedUser;
+  async updateUser(id: string | number, updateUser: Partial<User>): Promise<User> {
+    const [user] = await db.update(users).set(updateUser).where(eq(users.id, Number(id))).returning();
+    return user;
   }
 
   async deleteUser(id: string | number): Promise<void> {
-    await db.delete(users).where(eq(users.id, this.ensureId(id)));
+    await db.delete(users).where(eq(users.id, Number(id)));
   }
 
-  async updateUserCredits(userId: string | number, credits: number): Promise<void> {
-    await db.update(users).set({ credits }).where(eq(users.id, this.ensureId(userId)));
+  async getAllUsersForAdmin(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
-  async addCreditsToUser(userId: string | number, amount: number, description: string): Promise<void> {
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("Utilizador não encontrado");
-
-    const newBalance = user.credits + amount;
-    await this.updateUserCredits(userId, newBalance);
-    await this.createCreditTransaction({
-      userId: this.ensureId(userId),
-      type: amount > 0 ? "bonus" : "usage",
-      amount,
-      description,
-    });
-  }
-
-  async upsertUser(userData: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...userData,
-        updatedAt: new Date()
-      })
-      .onConflictDoUpdate({
-        target: users.email,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
-  }
-
-  async getTotalUsersCount(): Promise<number> {
-    const result = await db.execute(sql`SELECT COUNT(*) as count FROM users WHERE is_active = true`);
-    return parseInt((result.rows[0] as any)?.count || '0');
-  }
-
-  // =====================================
-  // SISTEMA DE AGÊNCIAS
-  // =====================================
-
-  async createAgency(agencyData: InsertAgency): Promise<Agency> {
-    const [newAgency] = await db.insert(agencies).values(agencyData).returning();
-    await this.updateUser(agencyData.ownerId, { 
-      agencyId: newAgency.id,
-      isAgencyOwner: true
-    });
-    return newAgency;
-  }
-
-  async getAgency(id: string | number): Promise<Agency | undefined> {
-    const [agency] = await db.select().from(agencies).where(eq(agencies.id, this.ensureId(id)));
-    return agency;
-  }
-
-  async updateAgency(id: string | number, agencyData: Partial<InsertAgency>): Promise<Agency> {
-    const [updatedAgency] = await db
-      .update(agencies)
-      .set({ ...agencyData, updatedAt: new Date() })
-      .where(eq(agencies.id, this.ensureId(id)))
-      .returning();
-    return updatedAgency;
-  }
-
-  async deleteAgency(id: string | number): Promise<void> {
-    const agencyId = this.ensureId(id);
-    await db.update(users).set({ agencyId: null, isAgencyOwner: false }).where(eq(users.agencyId, agencyId));
-    await db.delete(agencies).where(eq(agencies.id, agencyId));
-  }
-
-  async getAgencyMembers(agencyId: string | number): Promise<any[]> {
-    const result = await db.execute(sql`
-      SELECT am.id, am.user_id, am.role, am.status, am.joined_at,
-        u.id as user_id, u.first_name, u.last_name, u.email, u.profile_image_url
-      FROM agency_members am
-      JOIN users u ON am.user_id = u.id
-      WHERE am.agency_id = ${this.ensureId(agencyId)}
-      ORDER BY am.created_at ASC
-    `);
-    
-    return result.rows.map((row: any) => ({
-      id: row.id,
-      userId: row.user_id,
-      role: row.role,
-      status: row.status,
-      joinedAt: row.joined_at,
-      user: {
-        id: row.user_id,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        email: row.email,
-        profileImageUrl: row.profile_image_url
-      }
-    }));
-  }
-
-  async addAgencyMember(agencyId: string | number, userId: string | number): Promise<void> {
-    await this.updateUser(userId, { agencyId: this.ensureId(agencyId) });
-  }
-
-  async removeAgencyMember(agencyId: string | number, userId: string | number): Promise<void> {
-    await this.updateUser(userId, { agencyId: null });
-  }
-
-  async getAgencyMemberCount(agencyId: string | number): Promise<{ activeMembers: number; pendingInvitations: number; total: number }> {
-    const id = this.ensureId(agencyId);
-    const activeMembersResult = await db.execute(sql`SELECT COUNT(*) as count FROM users WHERE agency_id = ${id} AND is_active = true`);
-    const pendingInvitationsResult = await db.execute(sql`SELECT COUNT(*) as count FROM agency_invitations WHERE agency_id = ${id} AND status = 'pending' AND expires_at > NOW()`);
-    const activeMembers = parseInt((activeMembersResult.rows[0] as any)?.count || '0');
-    const pendingInvitations = parseInt((pendingInvitationsResult.rows[0] as any)?.count || '0');
-    return { activeMembers, pendingInvitations, total: activeMembers + pendingInvitations };
-  }
-
-  async getAgencyDelegations(agencyId: string | number): Promise<any[]> {
-    const result = await db.execute(sql`
-      SELECT ad.id, ad.delegated_to, ad.type, ad.start_date, ad.end_date, ad.status, u.first_name, u.last_name, u.email
-      FROM agency_admin_delegations ad
-      JOIN users u ON ad.delegated_to = u.id
-      WHERE ad.agency_id = ${this.ensureId(agencyId)} AND ad.status = 'active'
-      ORDER BY ad.created_at DESC
-    `);
-    return result.rows.map((row: any) => ({
-      id: row.id,
-      delegatedTo: row.delegated_to,
-      type: row.type,
-      startDate: row.start_date,
-      endDate: row.end_date,
-      status: row.status,
-      user: { firstName: row.first_name, lastName: row.last_name, email: row.email }
-    }));
-  }
-
-  async createAgencyDelegation(delegationData: any): Promise<any> {
-    const { agencyId, delegatedBy, delegatedTo, type, days, permissions } = delegationData;
-    let endDate = null;
-    if (type === 'temporary' && days) {
-      endDate = new Date();
-      endDate.setDate(endDate.getDate() + parseInt(days));
-    }
-    const [delegation] = await db.insert(agencyAdminDelegations).values({
-        agencyId: this.ensureId(agencyId),
-        delegatedBy: this.ensureId(delegatedBy),
-        delegatedTo: this.ensureId(delegatedTo),
-        type,
-        endDate,
-        permissions: permissions,
-        status: 'active'
-    }).returning();
-    return delegation;
-  }
-
-  async inviteAgencyMember(agencyId: string | number, email: string, role: string, invitedBy: string | number): Promise<any> {
-    const token = crypto.randomBytes(32).toString('hex');
-    const invitation = await this.createAgencyInvitation({ agencyId, email, role, token, invitedBy });
-    return { ...invitation, token };
-  }
-
-  async updateAgencyMember(memberId: string | number, memberData: any): Promise<any> {
-    const [updated] = await db.update(agencyMembers)
-        .set({ ...memberData, updatedAt: new Date() })
-        .where(eq(agencyMembers.id, this.ensureId(memberId)))
-        .returning();
-    return updated;
-  }
-
-  async createAgencyInvitation(invitationData: any): Promise<any> {
-    const { agencyId, email, firstName, lastName, role, token, invitedBy } = invitationData;
-    const aId = this.ensureId(agencyId);
-    
-    const existingInvite = await db.select().from(agencyInvitations)
-        .where(and(
-            eq(agencyInvitations.agencyId, aId),
-            eq(agencyInvitations.email, email),
-            eq(agencyInvitations.status, 'pending')
-        ));
-    
-    if (existingInvite.length > 0) throw new Error('Já existe um convite pendente para este email nesta agência');
-    
-    const existingUser = await this.getUserByEmail(email);
-    if (existingUser) {
-      const existingMember = await db.select().from(agencyMembers)
-        .where(and(
-            eq(agencyMembers.agencyId, aId),
-            eq(agencyMembers.userId, existingUser.id)
-        ));
-      if (existingMember.length > 0) throw new Error('Este utilizador já é membro da agência');
-    }
-    
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-    
-    const [invitation] = await db.insert(agencyInvitations).values({
-        agencyId: aId,
-        email,
-        firstName: firstName || null,
-        lastName: lastName || null,
-        role,
-        token,
-        invitedBy: this.ensureId(invitedBy),
-        expiresAt,
-        status: 'pending'
-    }).returning();
-    
-    return invitation;
-  }
-
-  async getAgencyInvitationByToken(token: string): Promise<any> {
-    const result = await db.execute(sql`
-      SELECT ai.*, a.name as agency_name, u.first_name as inviter_name, u.email as inviter_email
-      FROM agency_invitations ai JOIN agencies a ON ai.agency_id = a.id JOIN users u ON ai.invited_by = u.id
-      WHERE ai.token = ${token} AND ai.status = 'pending' AND ai.expires_at > NOW()
-    `);
-    if (result.rows.length === 0) return null;
-    return { ...result.rows[0], agencyName: result.rows[0].agency_name, inviterName: result.rows[0].inviter_name, inviterEmail: result.rows[0].inviter_email };
-  }
-
-  async acceptAgencyInvitation(token: string, userId: string | number): Promise<any> {
-    const invitation = await this.getAgencyInvitationByToken(token);
-    if (!invitation) throw new Error('Convite inválido ou expirado');
-    
-    const uId = this.ensureId(userId);
-    
-    await db.update(agencyInvitations)
-        .set({ status: 'accepted', acceptedAt: new Date(), acceptedBy: uId })
-        .where(eq(agencyInvitations.token, token));
-        
-    await db.insert(agencyMembers).values({
-        agencyId: invitation.agency_id,
-        userId: uId,
-        role: invitation.role,
-        invitedBy: invitation.invited_by,
-        status: 'active',
-        permissions: 'view_responses,create_responses',
-        joinedAt: new Date()
-    });
-    
-    await this.updateUser(uId, { agencyId: invitation.agency_id });
-    return invitation;
-  }
-
-  // =====================================
-  // SUBSCRIÇÕES
-  // =====================================
-
-  async createSubscription(subscriptionData: InsertSubscription): Promise<Subscription> {
-    const [subscription] = await db.insert(subscriptions).values(subscriptionData).returning();
-    return subscription;
-  }
-
-  async getSubscription(id: string | number): Promise<Subscription | undefined> {
-    const [subscription] = await db.select().from(subscriptions).where(eq(subscriptions.id, this.ensureId(id)));
-    return subscription;
-  }
-
-  async getUserSubscription(userId: string | number): Promise<Subscription | undefined> {
-    const [subscription] = await db.select().from(subscriptions).where(eq(subscriptions.userId, this.ensureId(userId)));
-    return subscription;
-  }
-
-  async updateSubscription(id: string | number, subscriptionData: Partial<InsertSubscription>): Promise<Subscription> {
-    const [updated] = await db.update(subscriptions).set({ ...subscriptionData, updatedAt: new Date() }).where(eq(subscriptions.id, this.ensureId(id))).returning();
-    return updated;
-  }
-
-  async cancelSubscription(id: string | number): Promise<void> {
-    await this.updateSubscription(id, { status: "cancelled" });
-  }
-
-  // =====================================
-  // ESTABELECIMENTOS
-  // =====================================
-
-  async createEstablishment(establishmentData: InsertEstablishment): Promise<Establishment> {
-    const [establishment] = await db.insert(establishments).values(establishmentData).returning();
-    return establishment;
-  }
-
-  async getEstablishment(id: string | number): Promise<Establishment | undefined> {
-    const [establishment] = await db.select().from(establishments).where(eq(establishments.id, this.ensureId(id)));
-    return establishment;
-  }
-
-  async getUserEstablishments(userId: string | number): Promise<Establishment[]> {
-    return await db.select().from(establishments).where(eq(establishments.userId, this.ensureId(userId)));
-  }
-
-  async updateEstablishment(id: string | number, establishmentData: Partial<InsertEstablishment>): Promise<Establishment> {
-    const [updated] = await db.update(establishments).set({ ...establishmentData, updatedAt: new Date() }).where(eq(establishments.id, this.ensureId(id))).returning();
-    return updated;
-  }
-
-  async deleteEstablishment(id: string | number): Promise<void> {
-    await db.delete(establishments).where(eq(establishments.id, this.ensureId(id)));
-  }
-
-  // =====================================
-  // CRÉDITOS
-  // =====================================
-
-  async createCreditTransaction(transactionData: InsertCreditTransaction): Promise<CreditTransaction> {
-    const [transaction] = await db.insert(creditTransactions).values(transactionData).returning();
-    return transaction;
-  }
-
-  async getCreditTransaction(id: string | number): Promise<CreditTransaction | undefined> {
-    const [transaction] = await db.select().from(creditTransactions).where(eq(creditTransactions.id, this.ensureId(id)));
-    return transaction;
-  }
-
-  async getUserCreditTransactions(userId: string | number, limit = 100): Promise<CreditTransaction[]> {
-    return await db.select().from(creditTransactions).where(eq(creditTransactions.userId, this.ensureId(userId))).orderBy(desc(creditTransactions.createdAt)).limit(limit);
-  }
-
-  async getUserCreditBalance(userId: string | number): Promise<number> {
-    const user = await this.getUser(userId);
-    return user?.credits || 0;
-  }
-
-  // =====================================
-  // PACOTES CRÉDITOS
-  // =====================================
-
-  async createCreditPackage(packageData: InsertCreditPackage): Promise<CreditPackage> {
-    const [creditPackage] = await db.insert(creditPackages).values(packageData).returning();
-    return creditPackage;
-  }
-
-  async getCreditPackage(id: string): Promise<CreditPackage | undefined> {
-    const [creditPackage] = await db.select().from(creditPackages).where(eq(creditPackages.id, id));
-    return creditPackage;
-  }
-
-  async getAllCreditPackages(): Promise<CreditPackage[]> {
-    return await db.select().from(creditPackages).orderBy(asc(creditPackages.sortOrder));
-  }
-
-  async getActiveCreditPackages(): Promise<CreditPackage[]> {
-    return await db.select().from(creditPackages).where(eq(creditPackages.isActive, true)).orderBy(asc(creditPackages.sortOrder));
-  }
-
-  async updateCreditPackage(id: string, packageData: Partial<InsertCreditPackage>): Promise<CreditPackage> {
-    const [updated] = await db.update(creditPackages).set({ ...packageData, updatedAt: new Date() }).where(eq(creditPackages.id, id)).returning();
-    return updated;
-  }
-
-  async getCreditPackages(): Promise<CreditPackage[]> {
-    return this.getAllCreditPackages();
-  }
-
-  // =====================================
-  // REFERÊNCIAS
-  // =====================================
-
-  async createReferral(referralData: InsertReferral): Promise<Referral> {
-    const [referral] = await db.insert(referrals).values(referralData).returning();
-    return referral;
-  }
-
-  async getReferral(id: string | number): Promise<Referral | undefined> {
-    const [referral] = await db.select().from(referrals).where(eq(referrals.id, this.ensureId(id)));
-    return referral;
-  }
-
-  async getReferralByCode(code: string): Promise<Referral | undefined> {
-    const [referral] = await db.select().from(referrals).where(eq(referrals.referralCode, code));
-    return referral;
-  }
-
-  async getUserReferrals(userId: string | number): Promise<Referral[]> {
-    return await db.select().from(referrals).where(eq(referrals.referrerId, this.ensureId(userId)));
-  }
-
-  async updateReferral(id: string | number, referralData: Partial<InsertReferral>): Promise<Referral> {
-    const [updated] = await db.update(referrals).set({ ...referralData }).where(eq(referrals.id, this.ensureId(id))).returning();
-    return updated;
-  }
-
-  async processReferralSignup(referralCode: string, newUserId: string | number): Promise<void> {
-    const referral = await this.getReferralByCode(referralCode);
-    if (!referral) throw new Error("Código de referência inválido");
-    await this.addCreditsToUser(referral.referrerId, 25, "Referência bem-sucedida");
-    await this.addCreditsToUser(newUserId, 25, "Bónus de registo via referência");
-    await this.updateReferral(referral.id, { referredUserId: this.ensureId(newUserId), status: "completed", completedAt: new Date() });
-  }
-
-  // =====================================
-  // ADDITIONAL METHODS
-  // =====================================
-
-  async updateUserPlan(userId: string | number, plan: string): Promise<User> {
-    return await this.updateUser(userId, { selectedPlan: plan, subscriptionPlan: plan });
-  }
-
-  async updateUserStripeCustomerId(userId: string | number, customerId: string): Promise<User> {
-    return await this.updateUser(userId, { stripeCustomerId: customerId });
-  }
-
-  async updateUserStripeInfo(userId: string | number, info: any): Promise<User> {
-    return await this.updateUser(userId, { stripeCustomerId: info.customerId, stripeSubscriptionId: info.subscriptionId });
-  }
-
-  async setPasswordResetToken(userId: string | number, token: string | null, expires: Date | null): Promise<void> {
-    await this.updateUser(userId, { passwordResetToken: token, passwordResetExpires: expires });
+  // Auth
+  async setPasswordResetToken(userId: number, token: string | null, expires: Date | null): Promise<void> {
+    await db.update(users).set({
+      passwordResetToken: token,
+      passwordResetExpires: expires
+    }).where(eq(users.id, userId));
   }
 
   async getUserByPasswordResetToken(token: string): Promise<User | undefined> {
@@ -760,96 +185,79 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async resetUserPassword(userId: number, password: string): Promise<void> {
+    await db.update(users).set({
+      password,
+      passwordResetToken: null,
+      passwordResetExpires: null
+    }).where(eq(users.id, userId));
+  }
+
   async getUserByEmailVerificationToken(token: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.emailVerificationToken, token));
     return user;
   }
 
-  async resetUserPassword(userId: string | number, newPassword: string): Promise<void> {
-    await this.updateUser(userId, { password: newPassword });
-  }
-
-  // =====================================
-  // LEADS
-  // =====================================
-
-  async createLead(leadData: InsertLead): Promise<Lead> {
-    const [lead] = await db.insert(leads).values(leadData).returning();
-    return lead;
-  }
-
-  async getLead(id: string | number): Promise<Lead | undefined> {
-    const [lead] = await db.select().from(leads).where(eq(leads.id, this.ensureId(id)));
-    return lead;
-  }
-
-  async getAllLeads(): Promise<Lead[]> {
-    return await db.select().from(leads).orderBy(desc(leads.createdAt));
-  }
-
-  async getLeads(offset: number = 0, limit: number = 50): Promise<Lead[]> {
-    return await db.select().from(leads).orderBy(desc(leads.createdAt)).limit(limit).offset(offset);
+  // Leads
+  async getLeads(offset: number, limit: number): Promise<Lead[]> {
+    return await db.select().from(leads).limit(limit).offset(offset);
   }
 
   async getLeadsCount(): Promise<number> {
-    const [result] = await db.select({ count: count() }).from(leads);
-    return result.count;
+    const [result] = await db.select({ count: sql<number>`count(*)` }).from(leads);
+    return Number(result.count);
   }
 
-  async updateLead(id: string | number, leadData: Partial<InsertLead>): Promise<Lead> {
-    const [updated] = await db.update(leads).set({ ...leadData, updatedAt: new Date() }).where(eq(leads.id, this.ensureId(id))).returning();
-    return updated;
+  async createLead(lead: InsertLead): Promise<Lead> {
+    const [newLead] = await db.insert(leads).values(lead).returning();
+    return newLead;
   }
 
-  async deleteLead(id: string | number): Promise<void> {
-    await db.delete(leads).where(eq(leads.id, this.ensureId(id)));
+  async updateLead(id: number | string, leadData: Partial<Lead>): Promise<Lead> {
+    const [updatedLead] = await db.update(leads).set(leadData).where(eq(leads.id, Number(id))).returning();
+    return updatedLead;
   }
 
-  async searchLeads(searchTerm: string): Promise<Lead[]> {
-    return await db.select().from(leads).where(sql`(LOWER(${leads.companyName}) LIKE LOWER(${`%${searchTerm}%`}) OR LOWER(${leads.contactName}) LIKE LOWER(${`%${searchTerm}%`}) OR LOWER(${leads.email}) LIKE LOWER(${`%${searchTerm}%`}))`).orderBy(desc(leads.createdAt));
-  }
-
-  async getLeadsByStatus(status: string): Promise<Lead[]> {
-    return await db.select().from(leads).where(eq(leads.status, status)).orderBy(desc(leads.createdAt));
-  }
-
-  async getLeadsByEmailStatus(emailStatus: string): Promise<Lead[]> {
-    return await db.select().from(leads).where(eq(leads.emailStatus, emailStatus)).orderBy(desc(leads.createdAt));
-  }
-
-  async updateLeadEmailStatus(id: string | number, emailStatus: string, timestamp: Date): Promise<Lead> {
-    const updateData: any = { emailStatus, updatedAt: new Date() };
-    if (emailStatus === 'first_sent') updateData.firstEmailSentAt = timestamp;
-    else if (emailStatus === 'second_sent') updateData.secondEmailSentAt = timestamp;
-    else if (emailStatus === 'third_sent') updateData.thirdEmailSentAt = timestamp;
-    const [updated] = await db.update(leads).set(updateData).where(eq(leads.id, this.ensureId(id))).returning();
-    return updated;
-  }
-
-  async getLeadsForEmailSequence(): Promise<Lead[]> {
-    return await db.select().from(leads).where(sql`
-      ((${leads.emailStatus} = 'pending' AND ${leads.firstEmailSentAt} IS NULL) OR
-      (${leads.emailStatus} = 'first_sent' AND ${leads.firstEmailSentAt} <= NOW() - INTERVAL '7 days' AND ${leads.secondEmailSentAt} IS NULL) OR
-      (${leads.emailStatus} = 'second_sent' AND ${leads.secondEmailSentAt} <= NOW() - INTERVAL '30 days' AND ${leads.thirdEmailSentAt} IS NULL))
-    `).orderBy(desc(leads.createdAt));
+  async deleteLead(id: number | string): Promise<void> {
+    await db.delete(leads).where(eq(leads.id, Number(id)));
   }
 
   async checkLeadExists(email: string): Promise<boolean> {
-    const [existingLead] = await db.select({ id: leads.id }).from(leads).where(eq(leads.email, email.toLowerCase()));
-    const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, email.toLowerCase()));
-    return !!(existingLead || existingUser);
+    const [lead] = await db.select().from(leads).where(eq(leads.email, email));
+    return !!lead;
+  }
+
+  async searchLeads(query: string): Promise<Lead[]> {
+    return await db.select().from(leads).where(
+      or(
+        ilike(leads.companyName, `%${query}%`),
+        ilike(leads.email, `%${query}%`),
+        ilike(leads.contactName, `%${query}%`)
+      )
+    );
+  }
+
+  async getLeadsByStatus(status: string): Promise<Lead[]> {
+    return await db.select().from(leads).where(eq(leads.status, status));
   }
 
   async importLeadsFromCSV(csvData: any[]): Promise<{ imported: number; skipped: number; errors: string[] }> {
     const rowPromises = csvData.map(async (row, index) => {
       try {
         if (!row.email || !row.companyName) return { status: 'error', error: `Linha ${index + 1}: falta email ou nome da empresa` };
+        
+        // Validação de email
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(row.email.trim())) {
+          return { status: 'error', error: `Linha ${index + 1}: Email inválido (${row.email})` };
+        }
+
         const exists = await this.checkLeadExists(row.email);
         if (exists) return { status: 'skipped' };
         await this.createLead({
           companyName: row.companyName,
           contactName: row.contactName || '',
-          email: row.email.toLowerCase(),
+          email: row.email.toLowerCase().trim(),
           phone: row.phone || '',
           website: row.website || '',
           industry: row.industry || '',
@@ -874,337 +282,349 @@ export class DatabaseStorage implements IStorage {
   }
 
   async exportLeadsToCSV(): Promise<string> {
-    const allLeads = await this.getAllLeads();
-    if (allLeads.length === 0) return 'companyName,contactName,email,phone,website,industry,region,businessType,status,emailStatus,createdAt\n';
-    const headers = 'companyName,contactName,email,phone,website,industry,region,businessType,status,emailStatus,createdAt\n';
-    const rows = allLeads.map(lead => `"${lead.companyName}","${lead.contactName || ''}","${lead.email}","${lead.phone || ''}","${lead.website || ''}","${lead.industry || ''}","${lead.region || ''}","${lead.businessType || ''}","${lead.status}","${lead.emailStatus}","${lead.createdAt}"`).join('\n');
-    return headers + rows;
+    const allLeads = await db.select().from(leads);
+    if (allLeads.length === 0) return "";
+    
+    const headers = Object.keys(allLeads[0]).join(",");
+    const rows = allLeads.map(l => Object.values(l).map(v => typeof v === 'string' ? `"${v}"` : v).join(","));
+    return [headers, ...rows].join("\n");
   }
 
-  // =====================================
-  // STATS
-  // =====================================
-
-  async getTotalUsers(): Promise<number> {
-    const [result] = await db.select({ count: count() }).from(users);
-    return result.count;
+  async getLeadsForEmailSequence(): Promise<Lead[]> {
+    return await db.select().from(leads).where(
+      or(
+        eq(leads.emailStatus, 'pending'),
+        eq(leads.emailStatus, 'first_sent'),
+        eq(leads.emailStatus, 'second_sent')
+      )
+    );
   }
 
-  async getTotalActiveUsers(): Promise<number> {
-    const [result] = await db.select({ count: count() }).from(users).where(eq(users.isActive, true));
-    return result.count;
+  async updateLeadEmailStatus(id: number | string, status: string, date?: Date): Promise<void> {
+    const updateData: any = { emailStatus: status };
+    if (date) {
+      if (status === 'first_sent') updateData.firstEmailSentAt = date;
+      if (status === 'second_sent') updateData.secondEmailSentAt = date;
+      if (status === 'third_sent') updateData.thirdEmailSentAt = date;
+    }
+    await db.update(leads).set(updateData).where(eq(leads.id, Number(id)));
   }
 
-  async getUserStats(userId: string | number): Promise<any> {
-    const id = this.ensureId(userId);
-    const user = await this.getUser(id);
-    const transactions = await this.getUserCreditTransactions(id, 100);
-    const establishments = await this.getUserEstablishments(id);
-    return {
-      user,
-      totalCreditsUsed: transactions.filter(t => t.type === "usage").reduce((sum, t) => sum + Math.abs(t.amount), 0),
-      establishments: establishments.length,
-      recentTransactions: transactions.slice(0, 10),
-    };
+  async getLeadsByEmailStatus(status: string): Promise<Lead[]> {
+    return await db.select().from(leads).where(eq(leads.emailStatus, status));
   }
 
-  async getSystemStats(): Promise<any> {
-    const totalUsers = await this.getTotalUsers();
-    const totalActiveUsers = await this.getTotalActiveUsers();
-    const planStats = await db.select({ planType: subscriptions.planType, count: count() }).from(subscriptions).groupBy(subscriptions.planType);
-    return { totalUsers, totalActiveUsers, planStats, systemHealth: "operational", lastUpdated: new Date() };
+  // Automation Rules
+  async getAutomationRules(userId: number | string): Promise<AutomationRule[]> {
+    return await db.select().from(automationRules).where(eq(automationRules.userId, Number(userId)));
   }
 
-  // =====================================
-  // CSV UPLOAD STUB
-  // =====================================
-
-  async createCsvUpload(uploadData: any): Promise<any> {
-    return { id: "csv-upload-id", ...uploadData };
+  async createAutomationRule(rule: InsertAutomationRule): Promise<AutomationRule> {
+    const [newRule] = await db.insert(automationRules).values(rule).returning();
+    return newRule;
   }
 
-  async getCsvUpload(id: string): Promise<any> {
-    return { id, status: "processed" };
+  async updateAutomationRule(id: number | string, rule: Partial<AutomationRule>): Promise<AutomationRule> {
+    const [updatedRule] = await db.update(automationRules).set(rule).where(eq(automationRules.id, Number(id))).returning();
+    return updatedRule;
   }
 
-  // =====================================
-  // INVOICING
-  // =====================================
-
-  async getInvoiceSettings(userId: string | number): Promise<InvoiceSettings | undefined> {
-    const [settings] = await db.select().from(invoiceSettings).where(eq(invoiceSettings.userId, this.ensureId(userId)));
-    return settings;
+  async deleteAutomationRule(id: number | string): Promise<void> {
+    await db.delete(automationRules).where(eq(automationRules.id, Number(id)));
   }
 
-  async createInvoiceSettings(settingsData: InsertInvoiceSettings): Promise<InvoiceSettings> {
-    const [settings] = await db.insert(invoiceSettings).values(settingsData).returning();
-    return settings;
+  // Responses & AI
+  async getUserAiResponses(userId: number | string, limit: number = 100): Promise<Response[]> {
+    return await db.select().from(responses).where(eq(responses.userId, Number(userId))).limit(limit).orderBy(desc(responses.createdAt));
   }
 
-  async updateInvoiceSettings(userId: string | number, settingsData: Partial<InsertInvoiceSettings>): Promise<InvoiceSettings> {
-    const [updated] = await db.update(invoiceSettings).set({ ...settingsData, updatedAt: new Date() }).where(eq(invoiceSettings.userId, this.ensureId(userId))).returning();
-    return updated;
+  async createAiResponse(response: InsertResponse): Promise<Response> {
+    const [newResponse] = await db.insert(responses).values(response).returning();
+    return newResponse;
   }
 
-  async createInvoice(invoiceData: InsertInvoice): Promise<Invoice> {
-    const [invoice] = await db.insert(invoices).values(invoiceData).returning();
-    return invoice;
+  async updateAiResponse(id: number | string, response: Partial<Response>): Promise<Response> {
+    const [updatedResponse] = await db.update(responses).set(response).where(eq(responses.id, Number(id))).returning();
+    return updatedResponse;
   }
 
-  async getInvoice(id: number): Promise<Invoice | undefined> {
-    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
-    return invoice;
+  // Credit & Billing
+  async getUserCreditTransactions(userId: number | string): Promise<CreditTransaction[]> {
+    return await db.select().from(creditTransactions).where(eq(creditTransactions.userId, Number(userId))).orderBy(desc(creditTransactions.createdAt));
   }
 
-  async getInvoiceWithDetails(id: number): Promise<Invoice & { items: InvoiceItem[] } | undefined> {
-    const invoice = await this.getInvoice(id);
-    if (!invoice) return undefined;
-    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, id));
-    return { ...invoice, items };
+  async createCreditTransaction(transaction: InsertCreditTransaction): Promise<CreditTransaction> {
+    const [newTransaction] = await db.insert(creditTransactions).values(transaction).returning();
+    return newTransaction;
   }
 
-  async updateInvoiceStatus(id: number, status: string): Promise<Invoice> {
-    const [updated] = await db.update(invoices).set({ status, updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
-    return updated;
-  }
-
-  async updateInvoiceSequence(settingsId: number, sequence: number): Promise<void> {
-    await db.update(invoiceSettings).set({ invoiceSequence: sequence }).where(eq(invoiceSettings.id, settingsId));
-  }
-
-  async updateInvoicePdfPath(id: number, pdfPath: string): Promise<Invoice> {
-    const [updated] = await db.update(invoices).set({ pdfPath, updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
-    return updated;
-  }
-
-  async updateInvoiceEmailSent(id: number, emailSent: boolean): Promise<Invoice> {
-    const [updated] = await db.update(invoices).set({ emailSent, emailSentAt: emailSent ? new Date() : null, updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
-    return updated;
-  }
-
-  async updateInvoiceATData(id: number, atDocumentId: string, atQrCode?: string): Promise<Invoice> {
-    const [updated] = await db.update(invoices).set({ atDocumentId, atQrCode, atSubmittedAt: new Date(), updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
-    return updated;
-  }
-
-  async updateInvoiceATError(id: number, atError: string): Promise<Invoice> {
-    const [updated] = await db.update(invoices).set({ atError, updatedAt: new Date() }).where(eq(invoices.id, id)).returning();
-    return updated;
-  }
-
-  async createInvoiceItem(itemData: InsertInvoiceItem): Promise<InvoiceItem> {
-    const [item] = await db.insert(invoiceItems).values(itemData).returning();
-    return item;
-  }
-
-  async createInvoiceAuditLog(logData: any): Promise<void> {
-    console.log("Invoice audit log:", logData);
-  }
-
-  async createAuditLog(logData: any): Promise<void> {
-    console.log("Audit log:", {
-      userId: logData.userId,
-      action: logData.action,
-      resourceType: logData.resourceType,
-      resourceId: logData.resourceId,
-      details: logData.details,
-      timestamp: new Date().toISOString()
+  async addCreditsToUser(userId: number | string, amount: number, description: string): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user) return;
+    
+    await this.updateUserCredits(userId, (user.credits || 0) + amount);
+    await this.createCreditTransaction({
+      userId: Number(userId),
+      type: 'bonus',
+      amount,
+      description
     });
   }
 
-  // =====================================
-  // CORPORATE SOCIAL (NEW)
-  // =====================================
+  async updateUserCredits(userId: number | string, credits: number): Promise<void> {
+    await db.update(users).set({ credits }).where(eq(users.id, Number(userId)));
+  }
 
+  async getUserCreditBalance(userId: number | string): Promise<number> {
+    const user = await this.getUser(userId);
+    return user?.credits || 0;
+  }
+
+  async getUserSubscription(userId: number | string): Promise<Subscription | undefined> {
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.userId, Number(userId)));
+    return sub;
+  }
+
+  async updateUserStripeInfo(userId: number | string, info: { customerId?: string, subscriptionId?: string }): Promise<void> {
+    const updateData: any = {};
+    if (info.customerId) updateData.stripeCustomerId = info.customerId;
+    if (info.subscriptionId) updateData.stripeSubscriptionId = info.subscriptionId;
+    
+    await db.update(users).set(updateData).where(eq(users.id, Number(userId)));
+  }
+
+  async updateUserStripeCustomerId(userId: number | string, customerId: string): Promise<void> {
+    await this.updateUserStripeInfo(userId, { customerId });
+  }
+
+  // Credit Packages
+  async getAllCreditPackages(): Promise<CreditPackage[]> {
+    return await db.select().from(creditPackages).orderBy(creditPackages.sortOrder);
+  }
+
+  async getCreditPackages(): Promise<CreditPackage[]> {
+    return this.getAllCreditPackages();
+  }
+
+  async getCreditPackage(id: string): Promise<CreditPackage | undefined> {
+    const [pkg] = await db.select().from(creditPackages).where(eq(creditPackages.id, id));
+    return pkg;
+  }
+
+  async createCreditPackage(pkg: InsertCreditPackage): Promise<CreditPackage> {
+      // Generate ID if missing (assuming not strictly auto-generated by DB for text PK)
+      const pkgWithId = { ...pkg };
+      if (!pkgWithId.id) {
+         pkgWithId.id = pkg.name ? pkg.name.toLowerCase().replace(/\s+/g, '-') : Math.random().toString(36).substr(2, 8);
+      }
+      const [newPkg] = await db.insert(creditPackages).values(pkgWithId).returning();
+      return newPkg;
+  }
+
+  async getUserRecentCreditTransactions(userId: number | string, days: number): Promise<CreditTransaction[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return await db.select().from(creditTransactions)
+      .where(and(
+        eq(creditTransactions.userId, Number(userId)),
+        sql`${creditTransactions.createdAt} >= ${cutoffDate}`
+      ))
+      .orderBy(desc(creditTransactions.createdAt));
+  }
+
+  async getCreditSalesStats(): Promise<any> {
+    const sales = await db.select().from(creditTransactions).where(eq(creditTransactions.type, 'upsell'));
+    const totalSales = sales.length;
+    const totalCredits = sales.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+    return {
+        totalSales,
+        totalCredits,
+        totalRevenue: 0,
+        topPackages: []
+    };
+  }
+
+  // Business Profile
+  async getBusinessProfile(userId: number | string): Promise<Establishment | undefined> {
+    const [profile] = await db.select().from(establishments).where(eq(establishments.userId, Number(userId)));
+    return profile;
+  }
+
+  async createBusinessProfile(profile: InsertEstablishment): Promise<Establishment> {
+    const existing = await this.getBusinessProfile(profile.userId);
+    if (existing) {
+      const [updated] = await db.update(establishments).set(profile).where(eq(establishments.id, existing.id)).returning();
+      return updated;
+    }
+    const [newProfile] = await db.insert(establishments).values(profile).returning();
+    return newProfile;
+  }
+
+  // Sentiment
+  async createSentimentAnalysis(data: any): Promise<any> {
+    // For now, just logging or fake saving if table doesn't exist
+    return { ...data, id: Date.now() };
+  }
+
+  // Audit
+  async createAuditLog(log: any): Promise<void> {
+    // Ideally insert into an audit_logs table
+  }
+
+  // Agency
+  async getAgencyInvitationByToken(token: string): Promise<any> {
+    const [invite] = await db.select().from(agencyInvitations).where(eq(agencyInvitations.token, token));
+    return invite;
+  }
+
+  async acceptAgencyInvitation(token: string, userId: number | string): Promise<void> {
+    const invite = await this.getAgencyInvitationByToken(token);
+    if (!invite) throw new Error("Invite not found");
+    
+    await db.update(agencyInvitations).set({ 
+      status: 'accepted', 
+      acceptedAt: new Date(), 
+      acceptedBy: Number(userId) 
+    }).where(eq(agencyInvitations.token, token));
+    
+    await db.insert(agencyMembers).values({
+      agencyId: invite.agencyId,
+      userId: Number(userId),
+      role: invite.role,
+      status: 'active',
+      invitedBy: invite.invitedBy,
+      joinedAt: new Date()
+    });
+  }
+
+  async getAgencyMembers(agencyId: number | string): Promise<any[]> {
+    return await db.select().from(agencyMembers).where(eq(agencyMembers.agencyId, Number(agencyId)));
+  }
+
+  async getAgencyMemberCount(agencyId: number | string): Promise<{ total: number }> {
+    const members = await this.getAgencyMembers(agencyId);
+    return { total: members.length };
+  }
+
+  async inviteAgencyMember(agencyId: number | string, email: string, role: string, invitedBy: number | string): Promise<any> {
+    const token = Math.random().toString(36).substring(2);
+    const [invite] = await db.insert(agencyInvitations).values({
+      agencyId: Number(agencyId),
+      email,
+      role,
+      token,
+      invitedBy: Number(invitedBy),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }).returning();
+    return invite;
+  }
+
+  async updateAgencyMember(memberId: number | string, updates: any): Promise<any> {
+    const [member] = await db.update(agencyMembers).set(updates).where(eq(agencyMembers.id, Number(memberId))).returning();
+    return member;
+  }
+
+  async getAgencyDelegations(agencyId: number | string): Promise<any[]> {
+    return await db.select().from(agencyAdminDelegations).where(eq(agencyAdminDelegations.agencyId, Number(agencyId)));
+  }
+
+  async createAgencyDelegation(delegation: any): Promise<any> {
+    const [newDelegation] = await db.insert(agencyAdminDelegations).values(delegation).returning();
+    return newDelegation;
+  }
+
+  // Corporate Social
   async getCorporateSocialAccounts(): Promise<any[]> {
-    const [result] = await db.select().from(corporateSocialAccounts);
     return await db.select().from(corporateSocialAccounts);
   }
 
-  async saveCorporateSocialAccount(data: any): Promise<any> {
-     const [account] = await db.insert(corporateSocialAccounts)
-        .values({
-            id: data.id || crypto.randomUUID(),
-            ...data
-        })
-        .onConflictDoUpdate({
-            target: corporateSocialAccounts.id,
-            set: {
-                ...data,
-                lastSync: new Date()
-            }
-        })
-        .returning();
-     return account;
-  }
-
   async getCorporateSocialAccountsByPlatforms(platforms: string[]): Promise<any[]> {
-    const accounts = await db.select().from(corporateSocialAccounts);
-    return accounts.filter(acc => platforms.includes(acc.platform) && acc.isConnected);
+    const accounts = await this.getCorporateSocialAccounts();
+    return accounts.filter(acc => platforms.includes(acc.platform));
   }
 
-  async getCorporateSocialAccount(id: string): Promise<any | undefined> {
+  async getCorporateSocialAccount(id: string): Promise<any> {
     const [account] = await db.select().from(corporateSocialAccounts).where(eq(corporateSocialAccounts.id, id));
     return account;
   }
 
-  async updateCorporateSocialAccount(id: string, data: any): Promise<any> {
-     const [updated] = await db.update(corporateSocialAccounts)
-        .set(data)
-        .where(eq(corporateSocialAccounts.id, id))
-        .returning();
-     return updated;
+  async saveCorporateSocialAccount(account: any): Promise<void> {
+    const existing = await this.getCorporateSocialAccount(account.id || "0");
+    if (existing || (account.id && await this.getCorporateSocialAccount(account.id))) {
+       await this.updateCorporateSocialAccount(account.id || existing.id, account);
+    } else {
+       if (!account.id) account.id = Math.random().toString(36).substring(7);
+       await db.insert(corporateSocialAccounts).values(account);
+    }
+  }
+
+  async updateCorporateSocialAccount(id: string, updates: any): Promise<void> {
+    await db.update(corporateSocialAccounts).set(updates).where(eq(corporateSocialAccounts.id, id));
   }
 
   async deleteCorporateSocialAccount(id: string): Promise<void> {
     await db.delete(corporateSocialAccounts).where(eq(corporateSocialAccounts.id, id));
   }
 
-  async createCorporatePost(data: any): Promise<any> {
-    const [post] = await db.insert(corporatePosts).values({
-        id: data.id || crypto.randomUUID(),
-        ...data,
-        createdAt: new Date()
-    }).returning();
-    return post;
+  async createCorporatePost(post: any): Promise<void> {
+    if (!post.id) post.id = Math.random().toString(36).substring(7);
+    await db.insert(corporatePosts).values(post);
   }
 
-  async getCorporatePosts(params: { page: number; limit: number }): Promise<any[]> {
-    const offset = (params.page - 1) * params.limit;
-    return await db.select().from(corporatePosts).limit(params.limit).offset(offset).orderBy(desc(corporatePosts.createdAt));
+  async getCorporatePosts(params: { page: number, limit: number }): Promise<any[]> {
+    return await db.select().from(corporatePosts).limit(params.limit).offset((params.page - 1) * params.limit).orderBy(desc(corporatePosts.createdAt));
   }
 
   async getCorporateSocialStats(): Promise<any> {
-    const accounts = await this.getCorporateSocialAccounts();
-    const posts = await db.select({ count: count() }).from(corporatePosts);
-    
     return {
-      connectedAccounts: accounts.length,
-      totalFollowers: accounts.reduce((sum, acc) => sum + (acc.followerCount || 0), 0),
-      postsPublished: posts[0].count,
-      recentActivity: [] 
+      connectedAccounts: (await this.getCorporateSocialAccounts()).length,
+      totalPosts: 0,
+      engagement: 0
     };
   }
 
-  // =====================================
-  // STUBS
-  // =====================================
+  // Referral
+  async getReferralByCode(code: string): Promise<Referral | undefined> {
+    const [referral] = await db.select().from(referrals).where(eq(referrals.referralCode, code));
+    return referral;
+  }
 
-  async getBusinessProfile(userId: string | number): Promise<any> {
+  async updateReferral(id: number, updates: Partial<Referral>): Promise<void> {
+    await db.update(referrals).set(updates).where(eq(referrals.id, id));
+  }
+
+  // Stats
+  async getSystemStats(): Promise<any> {
+    const usersCount = (await db.select({ count: sql<number>`count(*)` }).from(users))[0].count;
+    const leadsCount = await this.getLeadsCount();
+    return {
+      users: Number(usersCount),
+      leads: leadsCount,
+      revenue: 0
+    };
+  }
+
+  async getUserStats(userId: number | string): Promise<any> {
     const user = await this.getUser(userId);
-    return user ? { id: user.id, companyName: user.companyName || '', companyAddress: user.companyAddress || '', companyPhone: user.phone || '', nif: user.nif } : null;
+    return {
+      credits: user?.credits || 0,
+      plan: user?.selectedPlan
+    };
   }
 
-  async createBusinessProfile(data: any): Promise<any> { return { id: Date.now(), ...data }; }
-  async updateBusinessProfile(id: string | number, data: any): Promise<any> { return { id, ...data }; }
+  // CSV Uploads
+  private csvUploads = new Map<string, any>();
   
-  async createAiResponse(data: any): Promise<any> { 
-      const [response] = await db.insert(responses).values(data).returning();
-      return response;
-  }
-  
-  async getUserAiResponses(userId: string | number, limit = 100): Promise<any[]> { 
-      return await db.select().from(responses).where(eq(responses.userId, this.ensureId(userId))).orderBy(desc(responses.createdAt)).limit(limit);
-  }
-  
-  async updateAiResponse(id: string | number, data: any): Promise<any> { 
-      const [updated] = await db.update(responses).set(data).where(eq(responses.id, this.ensureId(id))).returning();
-      return updated;
-  }
-  
-  async getPageContent(page: string): Promise<any> { 
-      const [content] = await db.select().from(pageContents).where(eq(pageContents.pageKey, page));
-      return content;
-  }
-  
-  async updatePageContent(page: string, content: string): Promise<any> { 
-      const [updated] = await db.insert(pageContents)
-        .values({ pageKey: page, content })
-        .onConflictDoUpdate({ target: pageContents.pageKey, set: { content, updatedAt: new Date() } })
-        .returning();
-      return updated;
-  }
-  
-  async createPageContent(data: any): Promise<any> { 
-      const [content] = await db.insert(pageContents).values(data).returning();
-      return content;
-  }
-  
-  async getAllPageContents(): Promise<any[]> { 
-      return await db.select().from(pageContents);
-  }
-  
-  async createSentimentAnalysis(data: any): Promise<any> { return { id: Date.now(), ...data }; }
-  async getSentimentAnalysisByUser(userId: string | number): Promise<any[]> { return []; }
-  async createEngagementPrediction(data: any): Promise<any> { return { id: Date.now(), ...data }; }
-  async getInteractionHistoryByUser(userId: string | number): Promise<any[]> { return []; }
-  async createLinkedinBusinessConfig(data: any): Promise<any> { return { id: Date.now(), ...data }; }
-  async getLinkedinBusinessConfigByUser(userId: string | number): Promise<any> { return null; }
-  async createCrmContact(data: any): Promise<any> { return { id: Date.now(), ...data }; }
-  async getCrmContactsByUser(userId: string | number): Promise<any[]> { return []; }
-  async getSalesPipelineByUser(userId: string | number): Promise<any[]> { return []; }
-
-  // =====================================
-  // EMAIL SEQUENCES
-  // =====================================
-
-  async createEmailSequence(data: InsertEmailSequence): Promise<EmailSequence> {
-    const [sequence] = await db.insert(emailSequences).values(data).returning();
-    return sequence;
+  async createCsvUpload(data: any): Promise<any> {
+    const id = Math.random().toString(36).substring(7);
+    const upload = { ...data, id, createdAt: new Date() };
+    this.csvUploads.set(id, upload);
+    return upload;
   }
 
-  async getPendingEmailSequences(beforeDate: Date): Promise<EmailSequence[]> {
-    return await db.select().from(emailSequences).where(and(eq(emailSequences.status, 'pending'), lte(emailSequences.scheduledAt, beforeDate)));
-  }
-
-  async updateEmailSequenceStatus(id: number, status: 'pending' | 'sent' | 'failed' | 'cancelled', sentAt?: Date | null, errorMessage?: string): Promise<void> {
-    await db.update(emailSequences).set({ status, sentAt, errorMessage, updatedAt: new Date() }).where(eq(emailSequences.id, id));
-  }
-
-  async cancelEmailSequenceForUser(userId: string | number): Promise<void> {
-    await db.update(emailSequences).set({ status: 'cancelled', updatedAt: new Date() }).where(and(eq(emailSequences.userId, this.ensureId(userId)), eq(emailSequences.status, 'pending')));
-  }
-
-  async getEmailSequenceStats(): Promise<{ total: number; pending: number; sent: number; failed: number; cancelled: number; }> {
-    const results = await db.select({ status: emailSequences.status, count: count() }).from(emailSequences).groupBy(emailSequences.status);
-    const stats = { total: 0, pending: 0, sent: 0, failed: 0, cancelled: 0 };
-    results.forEach(r => {
-      stats.total += r.count;
-      if (r.status === 'pending') stats.pending = r.count;
-      else if (r.status === 'sent') stats.sent = r.count;
-      else if (r.status === 'failed') stats.failed = r.count;
-      else if (r.status === 'cancelled') stats.cancelled = r.count;
-    });
-    return stats;
-  }
-
-  async getUserEmailSequences(userId: string | number): Promise<EmailSequence[]> {
-    return await db.select().from(emailSequences).where(eq(emailSequences.userId, this.ensureId(userId))).orderBy(desc(emailSequences.createdAt));
-  }
-
-  // =====================================
-  // AUTOMATION RULES
-  // =====================================
-
-  async createAutomationRule(ruleData: InsertAutomationRule): Promise<AutomationRule> {
-    const [rule] = await db.insert(automationRules).values(ruleData).returning();
-    return rule;
-  }
-
-  async getAutomationRules(userId: string | number): Promise<AutomationRule[]> {
-    return await db.select().from(automationRules).where(eq(automationRules.userId, this.ensureId(userId)));
-  }
-
-  async updateAutomationRule(id: string | number, ruleData: Partial<InsertAutomationRule>): Promise<AutomationRule> {
-    const [updated] = await db.update(automationRules)
-      .set({ ...ruleData }) // Trigger and Action are JSONB, so pass full object
-      .where(eq(automationRules.id, this.ensureId(id)))
-      .returning();
-    return updated;
-  }
-
-  async deleteAutomationRule(id: string | number): Promise<void> {
-    await db.delete(automationRules).where(eq(automationRules.id, this.ensureId(id)));
+  async getCsvUpload(id: string): Promise<any> {
+    return this.csvUploads.get(id);
   }
 }
 

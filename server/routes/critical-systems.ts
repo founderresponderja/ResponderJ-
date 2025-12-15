@@ -1,3 +1,4 @@
+
 import { Express } from 'express';
 import { requireAuth } from '../auth';
 // These services might need to be created if they don't exist, but we assume they are part of the project structure
@@ -5,12 +6,12 @@ import { businessMetricsService } from '../services/business-metrics-service';
 import { distributedCache, responseCache, sessionCache, apiCache } from '../services/distributed-cache-service';
 import { createHash } from 'crypto';
 
-export function registerCriticalSystemsRoutes(app: Express): void {
+export function registerCriticalSystemsRoutes(app: any): void {
   
   // === ROTAS DE MÉTRICAS DE NEGÓCIO ===
 
   // Dashboard principal de métricas
-  app.get('/api/admin/metrics/dashboard', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/metrics/dashboard', requireAuth, async (req: any, res: any) => {
     try {
       const dashboard = await businessMetricsService.getCriticalMetricsDashboard();
       res.json(dashboard);
@@ -21,7 +22,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Métricas por categoria
-  app.get('/api/admin/metrics/:category', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/metrics/:category', requireAuth, async (req: any, res: any) => {
     try {
       const { category } = req.params;
       const metrics = await businessMetricsService.getMetricsByCategory(category as any);
@@ -33,7 +34,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Alertas ativos
-  app.get('/api/admin/metrics/alerts', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/metrics/alerts', requireAuth, async (req: any, res: any) => {
     try {
       const alerts = businessMetricsService.getActiveAlerts();
       res.json(alerts);
@@ -44,7 +45,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Reconhecer alerta
-  app.post('/api/admin/metrics/alerts/:alertId/acknowledge', requireAuth, async (req: any, res) => {
+  app.post('/api/admin/metrics/alerts/:alertId/acknowledge', requireAuth, async (req: any, res: any) => {
     try {
       const { alertId } = req.params;
       const userId = req.user?.claims?.sub || req.user?.id;
@@ -62,7 +63,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Resolver alerta
-  app.post('/api/admin/metrics/alerts/:alertId/resolve', requireAuth, async (req: any, res) => {
+  app.post('/api/admin/metrics/alerts/:alertId/resolve', requireAuth, async (req: any, res: any) => {
     try {
       const { alertId } = req.params;
       await businessMetricsService.resolveAlert(alertId);
@@ -74,7 +75,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Forçar atualização de métricas
-  app.post('/api/admin/metrics/refresh', requireAuth, async (req: any, res) => {
+  app.post('/api/admin/metrics/refresh', requireAuth, async (req: any, res: any) => {
     try {
       await businessMetricsService.forceMetricsUpdate();
       res.json({ success: true, message: 'Métricas atualizadas com sucesso' });
@@ -87,7 +88,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   // === ROTAS DE CACHE DISTRIBUÍDO ===
 
   // Estatísticas do cache
-  app.get('/api/admin/cache/stats', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/cache/stats', requireAuth, async (req: any, res: any) => {
     try {
       const stats = {
         main: distributedCache.getStats(),
@@ -103,7 +104,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Relatório detalhado do cache
-  app.get('/api/admin/cache/report', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/cache/report', requireAuth, async (req: any, res: any) => {
     try {
       const report = {
         main: distributedCache.generateReport(),
@@ -119,7 +120,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Otimizar cache
-  app.post('/api/admin/cache/optimize', requireAuth, async (req: any, res) => {
+  app.post('/api/admin/cache/optimize', requireAuth, async (req: any, res: any) => {
     try {
       const results = {
         main: distributedCache.optimize(),
@@ -135,7 +136,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Limpar cache por tipo
-  app.delete('/api/admin/cache/:type', requireAuth, async (req: any, res) => {
+  app.delete('/api/admin/cache/:type', requireAuth, async (req: any, res: any) => {
     try {
       const { type } = req.params;
       
@@ -170,7 +171,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Remover item específico do cache
-  app.delete('/api/admin/cache/:type/:key', requireAuth, async (req: any, res) => {
+  app.delete('/api/admin/cache/:type/:key', requireAuth, async (req: any, res: any) => {
     try {
       const { type, key } = req.params;
       let success = false;
@@ -202,7 +203,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   // === ROTAS DE SISTEMA GERAL ===
 
   // Status geral dos sistemas críticos
-  app.get('/api/admin/critical-systems/status', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/critical-systems/status', requireAuth, async (req: any, res: any) => {
     try {
       const dashboard = await businessMetricsService.getCriticalMetricsDashboard();
       const cacheStats = {
@@ -244,7 +245,7 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   });
 
   // Health check dos sistemas críticos
-  app.get('/api/admin/critical-systems/health', requireAuth, async (req: any, res) => {
+  app.get('/api/admin/critical-systems/health', requireAuth, async (req: any, res: any) => {
     try {
       const healthStatus = {
         metrics: {
@@ -286,13 +287,13 @@ export function registerCriticalSystemsRoutes(app: Express): void {
   // === CACHE INTELIGENTE PARA RESPOSTAS IA ===
 
   // Middleware para cache automático de respostas IA
-  app.use('/api/ai/generate-response', async (req: any, res: any, next) => {
+  app.use('/api/ai/generate-response', async (req: any, res: any, next: any) => {
     try {
       // Criar chave de cache baseada no input
       const cacheKey = `ai_response_${createHash('md5').update(JSON.stringify(req.body)).digest('hex')}`;
       
       // Tentar obter do cache
-      const cachedResponse = await responseCache.get(cacheKey);
+      const cachedResponse = await responseCache.get<Record<string, any>>(cacheKey);
       if (cachedResponse) {
         return res.json({
           ...cachedResponse,

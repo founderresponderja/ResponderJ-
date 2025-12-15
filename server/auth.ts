@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { User, registerUserSchema, loginUserSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import { emailSequenceService } from './services/email-sequence-service';
+import { urlBuilder } from "./utils";
 
 // Estende a tipagem do Express para incluir o User na Request
 declare global {
@@ -183,7 +184,7 @@ export function setupAuth(app: any) {
 
       // Login automático pós-registo
       req.login(user as any, (err: any) => {
-        if (err) return next(err);
+        if (err) return (next as any)(err);
 
         // Disparar sequência de emails (Async)
         emailSequenceService.createSequenceForUser(user.id).catch(err => {
@@ -222,14 +223,14 @@ export function setupAuth(app: any) {
     }
 
     passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return next(err);
+      if (err) return (next as any)(err);
       
       if (!user) {
         return res.status(401).json({ message: info?.message || "Credenciais inválidas" });
       }
 
       req.logIn(user, (err: any) => {
-        if (err) return next(err);
+        if (err) return (next as any)(err);
 
         console.log(`✅ Sessão iniciada: ${user.email} [${user.role}]`);
         
@@ -245,7 +246,7 @@ export function setupAuth(app: any) {
   const handleLogout = (req: any, res: any, next: any) => {
     const user = req.user;
     req.logout((err: any) => {
-      if (err) return next(err);
+      if (err) return (next as any)(err);
       
       if (user) {
         console.log(`👋 Logout: ${user.email}`);

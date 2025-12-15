@@ -1,3 +1,4 @@
+import { SecurityService } from './security-service';
 
 export class SecurityLogService {
   static addLog(log: {
@@ -10,8 +11,19 @@ export class SecurityLogService {
     statusCode?: number;
     userId?: string;
   }) {
-    // Implementação básica de log para consola
-    const timestamp = new Date().toISOString();
-    console.log(`[SECURITY][${log.level.toUpperCase()}] ${timestamp} - ${log.type}: ${log.details} (IP: ${log.ip}${log.userId ? `, User: ${log.userId}` : ''})`);
+    // Map to SecurityLogEntry format
+    const logEntry = {
+      level: (log.level as any) || 'info',
+      type: (log.type as any) || 'access',
+      ip: log.ip || 'unknown',
+      userAgent: log.userAgent || 'unknown',
+      endpoint: log.endpoint || 'unknown',
+      details: log.details || '',
+      statusCode: log.statusCode,
+      userId: log.userId
+    };
+    
+    // Use the central SecurityService which handles threats and alerts automatically
+    SecurityService.addLog(logEntry);
   }
 }

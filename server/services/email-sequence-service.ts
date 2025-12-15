@@ -1,5 +1,6 @@
 import { storage } from "../storage";
 import { emailService } from "./email-service";
+import { urlBuilder } from "../utils";
 
 export const emailSequenceService = {
   async createSequenceForUser(userId: string) {
@@ -7,6 +8,8 @@ export const emailSequenceService = {
     
     const user = await storage.getUser(userId);
     if (!user) return;
+
+    const dashboardUrl = urlBuilder.getDashboardURL();
 
     // Send Welcome Email immediately
     await emailService.sendEmail({
@@ -18,7 +21,7 @@ export const emailSequenceService = {
             <p>Bem-vindo à plataforma que vai revolucionar a sua gestão de reviews.</p>
             <p>A sua conta foi criada e o período de teste de 7 dias começou.</p>
             <br>
-            <a href="https://responderja.pt/dashboard" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aceder ao Dashboard</a>
+            <a href="${dashboardUrl}" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aceder ao Dashboard</a>
           </div>
         `
     });
@@ -36,5 +39,20 @@ export const emailSequenceService = {
       
       // Mock processing
       return { processed: 0, sent: 0, errors: 0 };
+  },
+
+  async processScheduledEmails() {
+    return this.processPendingSequences();
+  },
+
+  async getSequenceStats() {
+    // Mock stats
+    return {
+      total: 150,
+      pending: 12,
+      sent: 135,
+      failed: 2,
+      cancelled: 1
+    };
   }
 };

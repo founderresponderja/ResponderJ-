@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 
@@ -21,9 +22,9 @@ interface ContentPost {
 // Armazenamento temporário em memória (em produção seria na base de dados)
 let contentPosts: ContentPost[] = [];
 
-export function registerContentRoutes(app: Express) {
+export function registerContentRoutes(app: any) {
   // Listar posts do calendário
-  app.get("/api/content/calendar", requireAuth, async (req: any, res) => {
+  app.get("/api/content/calendar", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -40,7 +41,7 @@ export function registerContentRoutes(app: Express) {
   });
 
   // Criar novo post
-  app.post("/api/content/posts", requireAuth, async (req: any, res) => {
+  app.post("/api/content/posts", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -90,7 +91,7 @@ export function registerContentRoutes(app: Express) {
   });
 
   // Actualizar post
-  app.patch("/api/content/posts/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/content/posts/:id", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
@@ -121,7 +122,7 @@ export function registerContentRoutes(app: Express) {
   });
 
   // Eliminar post
-  app.delete("/api/content/posts/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/content/posts/:id", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
@@ -147,7 +148,7 @@ export function registerContentRoutes(app: Express) {
   });
 
   // Publicar post agendado
-  app.post("/api/content/posts/:id/publish", requireAuth, async (req: any, res) => {
+  app.post("/api/content/posts/:id/publish", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
@@ -199,7 +200,7 @@ export function registerContentRoutes(app: Express) {
   });
 
   // Obter estatísticas do calendário
-  app.get("/api/content/stats", requireAuth, async (req: any, res) => {
+  app.get("/api/content/stats", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
 

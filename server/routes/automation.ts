@@ -1,13 +1,13 @@
 
 import type { Express } from "express";
 import { requireAuth } from "../auth";
-import { aiResponseService } from "../services/ai-response-service";
 import { storage } from "../storage";
 import { InsertAutomationRule } from "@shared/schema";
+import { automationService } from "../services/automation-service";
 
-export function registerAutomationRoutes(app: Express) {
+export function registerAutomationRoutes(app: any) {
   // Listar regras de automação
-  app.get("/api/automation/rules", requireAuth, async (req: any, res) => {
+  app.get("/api/automation/rules", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
@@ -23,7 +23,7 @@ export function registerAutomationRoutes(app: Express) {
   });
 
   // Criar nova regra de automação
-  app.post("/api/automation/rules", requireAuth, async (req: any, res) => {
+  app.post("/api/automation/rules", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
@@ -51,12 +51,11 @@ export function registerAutomationRoutes(app: Express) {
   });
 
   // Actualizar regra de automação
-  app.patch("/api/automation/rules/:id", requireAuth, async (req: any, res) => {
+  app.patch("/api/automation/rules/:id", requireAuth, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
 
-      // Ensure ownership
       const rules = await storage.getAutomationRules(userId);
       const rule = rules.find(r => r.id === parseInt(id));
 
@@ -73,12 +72,11 @@ export function registerAutomationRoutes(app: Express) {
   });
 
   // Eliminar regra de automação
-  app.delete("/api/automation/rules/:id", requireAuth, async (req: any, res) => {
+  app.delete("/api/automation/rules/:id", requireAuth, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
       
-      // Ensure ownership
       const rules = await storage.getAutomationRules(userId);
       const rule = rules.find(r => r.id === parseInt(id));
 
@@ -94,84 +92,22 @@ export function registerAutomationRoutes(app: Express) {
     }
   });
 
-  // Executar regras de automação (Simulador)
-  app.post("/api/automation/execute", requireAuth, async (req: any, res) => {
+  // Executar regras de automação (Simulador e Teste)
+  app.post("/api/automation/execute", requireAuth, async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { text, platform, sentiment, rating } = req.body;
 
-      // Obter regras da DB para este utilizador
-      const userRules = await storage.getAutomationRules(userId);
-      const activeRules = userRules.filter(rule => rule.isActive && rule.platform === platform);
-      const triggeredRules = [];
-
-      for (const rule of activeRules) {
-        let shouldTrigger = false;
-        
-        // Type casting for JSONB fields
-        const trigger = rule.trigger as any;
-        const action = rule.action as any;
-
-        switch (trigger.type) {
-          case 'keyword':
-            const keywords = (trigger.value as string).split('|');
-            shouldTrigger = keywords.some(keyword => 
-              text.toLowerCase().includes(keyword.toLowerCase())
-            );
-            break;
-          
-          case 'sentiment':
-            shouldTrigger = sentiment === trigger.value;
-            break;
-          
-          case 'rating':
-            const ratingValue = parseFloat(trigger.value as string);
-            const inputRating = parseFloat(rating);
-            switch (trigger.condition) {
-              case 'less_than': shouldTrigger = inputRating < ratingValue; break;
-              case 'greater_than': shouldTrigger = inputRating > ratingValue; break;
-              case 'equals': shouldTrigger = inputRating === ratingValue; break;
-            }
-            break;
-        }
-
-        if (shouldTrigger) {
-          // Actualizar contador de triggers na DB
-          await storage.updateAutomationRule(rule.id, {
-             triggerCount: (rule.triggerCount || 0) + 1,
-             lastTriggered: new Date()
-          });
-          
-          let responseText = action.template;
-
-          // Se a ação for responder automaticamente, usar a IA para gerar a resposta
-          if (action.type === 'auto_respond') {
-            try {
-              const aiResult = await aiResponseService.generateResponse({
-                comment: text,
-                platform: platform,
-                tone: 'professional', // Pode ser parametrizado na regra futuramente
-                extraInstructions: `Diretriz da regra de automação: ${action.template}`,
-                responseType: 'reply'
-              });
-              responseText = aiResult.response;
-            } catch (error) {
-              console.error("Failed to generate AI response for automation:", error);
-              responseText = "Erro ao gerar resposta automática. (Fallback)";
-            }
-          }
-
-          triggeredRules.push({
-            ruleId: rule.id,
-            ruleName: rule.name,
-            action: action.type,
-            template: action.template,
-            generatedResponse: responseText
-          });
-        }
-      }
+      const triggeredRules = await automationService.executeAutomation(userId, {
+        text,
+        platform,
+        rating: rating ? parseFloat(rating) : undefined,
+        sentiment,
+        author: 'Simulador'
+      });
 
       res.json({
+        success: true,
         triggeredRules,
         executedCount: triggeredRules.length
       });
