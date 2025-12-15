@@ -53,8 +53,8 @@ app.use((req, res, next) => {
 });
 
 // Headers de Segurança Base
-app.use(securityHeaders as RequestHandler);
-app.use(legalComplianceHeaders as RequestHandler);
+app.use(securityHeaders);
+app.use(legalComplianceHeaders);
 
 // Sistema Avançado de Detecção de Ameaças (Se disponível)
 if (AdvancedThreatDetector?.middleware) {
@@ -69,8 +69,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Middlewares de Privacidade (GDPR)
-app.use(secureCookieMiddleware as any);
-app.use(gdprAuditLog as any);
+app.use(secureCookieMiddleware);
+app.use(gdprAuditLog);
 
 if (GDPREnhancedCompliance?.complianceMiddleware) {
   app.use(GDPREnhancedCompliance.complianceMiddleware as any);

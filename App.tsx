@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
@@ -9,6 +10,7 @@ import CookieManagementPage from './components/CookieManagementPage';
 import InvitePage from './components/InvitePage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import TermsAndConditionsPage from './components/TermsAndConditionsPage';
+import SofiaChat from './components/SofiaChat';
 import { Language } from './utils/translations';
 
 type ViewState = 'landing' | 'login' | 'register' | 'app' | 'about' | 'admin' | 'cookies' | 'invite' | 'privacy' | 'terms';
@@ -16,9 +18,11 @@ export type Theme = 'light' | 'dark';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>('landing');
+  const [returnView, setReturnView] = useState<ViewState>('landing'); // Guarda a view anterior para páginas "folha"
   const [currentLang, setCurrentLang] = useState<Language>('pt');
   const [theme, setTheme] = useState<Theme>('light');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Handle Dark Mode Class
   useEffect(() => {
@@ -45,113 +49,125 @@ function App() {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  const navigateToLogin = () => setCurrentView('login');
-  const navigateToRegister = () => setCurrentView('register');
-  const navigateToLanding = () => {
-    window.history.pushState({}, '', '/');
-    setCurrentView('landing');
+  const handleNavigation = (view: ViewState) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      if (view === 'landing') {
+        window.history.pushState({}, '', '/');
+      }
+      setCurrentView(view);
+      setIsTransitioning(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 200); 
   };
-  const navigateToAbout = () => setCurrentView('about');
-  const navigateToCookies = () => setCurrentView('cookies');
-  const navigateToPrivacy = () => setCurrentView('privacy');
-  const navigateToTerms = () => setCurrentView('terms');
-  const handleLoginSuccess = () => setCurrentView('app');
-  const handleLogout = () => {
-    window.history.pushState({}, '', '/');
-    setCurrentView('landing');
+
+  // Navegação inteligente para páginas informativas (preserva o estado de login se vier da app)
+  const navigateToLeaf = (view: ViewState) => {
+    setReturnView(currentView === 'login' || currentView === 'register' ? 'landing' : currentView);
+    handleNavigation(view);
   };
-  const navigateToAdmin = () => setCurrentView('admin');
+
+  const handleLeafBack = () => {
+    handleNavigation(returnView);
+  };
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300`}>
-      {currentView === 'landing' && (
-        <LandingPage 
-          onNavigateToLogin={navigateToLogin} 
-          onNavigateToAbout={navigateToAbout}
-          onNavigateToCookies={navigateToCookies}
-          onNavigateToPrivacy={navigateToPrivacy}
-          onNavigateToTerms={navigateToTerms}
-          lang={currentLang} 
-          setLang={setCurrentLang}
-          theme={theme}
-          toggleTheme={toggleTheme}
-        />
-      )}
-      
-      {currentView === 'login' && (
-        <LoginPage 
-          onLoginSuccess={handleLoginSuccess} 
-          onBack={navigateToLanding}
-          onRegister={navigateToRegister}
-          lang={currentLang}
-          theme={theme}
-        />
-      )}
+    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors duration-300 relative`}>
+      <div className={`transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+        {currentView === 'landing' && (
+          <LandingPage 
+            onNavigateToLogin={() => handleNavigation('login')} 
+            onNavigateToAbout={() => navigateToLeaf('about')}
+            onNavigateToCookies={() => navigateToLeaf('cookies')}
+            onNavigateToPrivacy={() => navigateToLeaf('privacy')}
+            onNavigateToTerms={() => navigateToLeaf('terms')}
+            lang={currentLang} 
+            setLang={setCurrentLang}
+            theme={theme}
+            toggleTheme={toggleTheme}
+          />
+        )}
+        
+        {currentView === 'login' && (
+          <LoginPage 
+            onLoginSuccess={() => handleNavigation('app')} 
+            onBack={() => handleNavigation('landing')}
+            onRegister={() => handleNavigation('register')}
+            lang={currentLang}
+            theme={theme}
+          />
+        )}
 
-      {currentView === 'register' && (
-        <RegisterPage 
-          onRegisterSuccess={handleLoginSuccess} 
-          onLoginClick={navigateToLogin}
-          lang={currentLang}
-          theme={theme}
-        />
-      )}
+        {currentView === 'register' && (
+          <RegisterPage 
+            onRegisterSuccess={() => handleNavigation('app')} 
+            onLoginClick={() => handleNavigation('login')}
+            onBack={() => handleNavigation('login')}
+            lang={currentLang}
+            theme={theme}
+          />
+        )}
 
-      {currentView === 'app' && (
-        <MainApp 
-          onLogout={handleLogout}
-          onNavigateToAdmin={navigateToAdmin}
-          lang={currentLang}
-          setLang={setCurrentLang}
-          theme={theme}
-          toggleTheme={toggleTheme}
-          onNavigateToPrivacy={navigateToPrivacy}
-          onNavigateToTerms={navigateToTerms}
-        />
-      )}
+        {currentView === 'app' && (
+          <MainApp 
+            onLogout={() => handleNavigation('landing')}
+            onNavigateToAdmin={() => handleNavigation('admin')}
+            lang={currentLang}
+            setLang={setCurrentLang}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            onNavigateToPrivacy={() => navigateToLeaf('privacy')}
+            onNavigateToTerms={() => navigateToLeaf('terms')}
+          />
+        )}
 
-      {currentView === 'about' && (
-        <AboutPage 
-          onBack={navigateToLanding}
-          theme={theme}
-        />
-      )}
+        {currentView === 'about' && (
+          <AboutPage 
+            onBack={handleLeafBack}
+            theme={theme}
+          />
+        )}
 
-      {currentView === 'cookies' && (
-        <CookieManagementPage 
-          onBack={navigateToLanding}
-        />
-      )}
+        {currentView === 'cookies' && (
+          <CookieManagementPage 
+            onBack={handleLeafBack}
+          />
+        )}
 
-      {currentView === 'privacy' && (
-        <PrivacyPolicyPage 
-          onBack={navigateToLanding}
-        />
-      )}
+        {currentView === 'privacy' && (
+          <PrivacyPolicyPage 
+            onBack={handleLeafBack}
+          />
+        )}
 
-      {currentView === 'terms' && (
-        <TermsAndConditionsPage 
-          onBack={navigateToLanding}
-        />
-      )}
+        {currentView === 'terms' && (
+          <TermsAndConditionsPage 
+            onBack={handleLeafBack}
+          />
+        )}
 
-      {currentView === 'admin' && (
-        <AdminDashboard 
-          onBack={handleLoginSuccess} // Back to app
-          theme={theme}
-        />
-      )}
+        {currentView === 'admin' && (
+          <AdminDashboard 
+            onBack={() => handleNavigation('app')} 
+            theme={theme}
+          />
+        )}
 
-      {currentView === 'invite' && inviteToken && (
-        <InvitePage
-          token={inviteToken}
-          onNavigateToLogin={navigateToLogin}
-          onSuccess={handleLoginSuccess}
-          theme={theme}
-        />
-      )}
+        {currentView === 'invite' && inviteToken && (
+          <InvitePage
+            token={inviteToken}
+            onNavigateToLogin={() => handleNavigation('login')}
+            onSuccess={() => handleNavigation('app')}
+            theme={theme}
+          />
+        )}
+      </div>
+
+      {/* Sofia Chatbot Global Component */}
+      <SofiaChat />
     </div>
   );
 }
 
 export default App;
+    

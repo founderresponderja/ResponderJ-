@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Mail, Lock, User, Building, ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
@@ -7,11 +8,12 @@ import { Logo } from './Logo';
 interface RegisterPageProps {
   onRegisterSuccess: () => void;
   onLoginClick: () => void;
+  onBack: () => void;
   lang: Language;
   theme: Theme;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginClick, lang, theme }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginClick, onBack, lang, theme }) => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -38,7 +40,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div className="p-8">
           <button 
-            onClick={onLoginClick}
+            onClick={onBack}
             className="flex items-center gap-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 text-sm mb-6 transition-colors"
           >
             <ArrowLeft size={16} /> Voltar
@@ -168,3 +170,4 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onLoginC
 };
 
 export default RegisterPage;
+    
