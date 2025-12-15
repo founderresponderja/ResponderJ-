@@ -7,11 +7,11 @@ const router = Router();
 export function registerAdminSystemRoutes(app: any) {
     // System status overview
     app.get("/api/admin/system/status", requireAuth, requireAdmin, (req: any, res: any) => {
-        const memoryUsage = process.memoryUsage();
+        const memoryUsage = (process as any).memoryUsage();
         
         res.json({
             status: "online",
-            uptime: process.uptime(),
+            uptime: (process as any).uptime(),
             timestamp: new Date(),
             environment: process.env.NODE_ENV,
             memory: {
@@ -19,7 +19,7 @@ export function registerAdminSystemRoutes(app: any) {
                 heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + "MB",
                 heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + "MB"
             },
-            version: process.version
+            version: (process as any).version
         });
     });
 

@@ -1,3 +1,4 @@
+
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
@@ -15,28 +16,38 @@ if (!process.env.DATABASE_URL) {
 
 console.log("🔌 A iniciar ligação à base de dados Neon...");
 
-// Configuração otimizada do Pool
+// Configuração otimizada do Pool para alta performance
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 5000, // 5 segundos timeout
-  max: 20, // Limite máximo de conexões simultâneas
+  idleTimeoutMillis: 30000, // Fechar conexões inativas após 30s
+  max: 20, // Limite máximo de conexões simultâneas (ajustado para Neon)
+  ssl: true // Forçar SSL para segurança
 });
 
 // Prevenir crash da aplicação em erros inesperados de conexão
 pool.on('error', (err) => {
   console.error('💥 Erro inesperado no cliente da base de dados:', err);
+  // Não sair do processo, permitir que o pool tente reconectar
 });
 
-// Inicialização do ORM com logging apenas em desenvolvimento
-export const db = drizzle({ 
-  client: pool, 
+// Inicialização do ORM com logging apenas em desenvolvimento para evitar IO overhead em produção
+export const db = drizzle(pool, { 
   schema,
-  logger: process.env.NODE_ENV !== 'production' // Logs SQL ativos apenas em dev
+  logger: process.env.NODE_ENV === 'development' 
 });
 
 // Verificação de saúde da conexão no arranque
-pool.query('SELECT NOW()').then(() => {
-  console.log("✅ Base de dados conectada e operacional!");
-}).catch((err) => {
-  console.error("❌ Falha crítica ao conectar à base de dados:", err);
-});
+(async () => {
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('SELECT NOW()');
+      console.log("✅ Base de dados conectada e operacional!");
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error("❌ Falha crítica ao conectar à base de dados:", err);
+  }
+})();

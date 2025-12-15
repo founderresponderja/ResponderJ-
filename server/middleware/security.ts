@@ -1,3 +1,4 @@
+
 /**
  * MIDDLEWARE DE SEGURANÇA AVANÇADA - RESPONDER JÁ
  * Implementa headers de segurança, proteção CSRF, e validação de entrada
@@ -42,14 +43,14 @@ const getAllowedDomains = () => {
 };
 
 // Security headers middleware with custom domain support
-export const securityHeaders = (req: any, res: any, next: any) => {
+export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
   // Content Security Policy
   const nonce = crypto.randomBytes(16).toString('base64');
   const allowedDomains = getAllowedDomains();
   
   // CSP para desenvolvimento - MELHORADA (remover unsafe-eval)
   if (process.env.NODE_ENV === 'development') {
-    res.setHeader('Content-Security-Policy', [
+    (res as any).setHeader('Content-Security-Policy', [
       `default-src 'self' ${allowedDomains.join(' ')}`,
       `script-src 'self' 'unsafe-inline' *.stripe.com *.google.com *.googleapis.com ${allowedDomains.join(' ')} 'wasm-unsafe-eval'`,
       `style-src 'self' 'unsafe-inline' fonts.googleapis.com ${allowedDomains.join(' ')}`,
@@ -63,7 +64,7 @@ export const securityHeaders = (req: any, res: any, next: any) => {
     ].join('; '));
   } else {
     // CSP mais restritiva para produção
-    res.setHeader('Content-Security-Policy', [
+    (res as any).setHeader('Content-Security-Policy', [
       `default-src 'self' ${allowedDomains.join(' ')}`,
       `script-src 'self' 'nonce-${nonce}' *.stripe.com *.google.com *.googleapis.com ${allowedDomains.join(' ')}`,
       `style-src 'self' 'unsafe-inline' fonts.googleapis.com ${allowedDomains.join(' ')}`,
@@ -77,20 +78,20 @@ export const securityHeaders = (req: any, res: any, next: any) => {
   }
 
   // Security headers
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  (res as any).setHeader('X-Frame-Options', 'DENY');
+  (res as any).setHeader('X-Content-Type-Options', 'nosniff');
+  (res as any).setHeader('X-XSS-Protection', '1; mode=block');
+  (res as any).setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  (res as any).setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   
   // HSTS (apenas em HTTPS)
-  if (req.secure || req.get('X-Forwarded-Proto') === 'https') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  if ((req as any).secure || (req as any).get('X-Forwarded-Proto') === 'https') {
+    (res as any).setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
 
   // Remove headers que revelam informação do servidor
-  res.removeHeader('X-Powered-By');
-  res.removeHeader('Server');
+  (res as any).removeHeader('X-Powered-By');
+  (res as any).removeHeader('Server');
 
   next();
 };
@@ -112,6 +113,12 @@ export const csrfProtection = (req: any, res: any, next: any) => {
     '/api/auth/login',   // Login directo
     '/api/admin/downloads' // Downloads administrativos
   ];
+  
+  // Debug para downloads
+  if (req.path.startsWith('/api/admin/downloads')) {
+    console.log(`🔓 CSRF BYPASS para downloads: ${req.method} ${req.path}`);
+    return next();
+  }
   
   if (exemptPaths.includes(req.path) || exemptPaths.some(path => req.path.startsWith(path))) {
     return next();

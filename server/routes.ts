@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireSuperAdmin } from "./auth";
@@ -37,7 +38,7 @@ import { registerAdminLeadsRoutes } from "./routes/admin-leads";
 import { registerAdminSystemRoutes } from "./routes/admin-system";
 import { setupAdminManagementRoutes } from "./routes/admin-management";
 import { registerDownloadRoutes } from "./routes/downloads";
-import { setupTechnicalSpecsRoutes } from "./routes/admin/technical"; // Added import
+import { setupTechnicalSpecsRoutes } from "./routes/admin/technical";
 import { setupEmailSequenceRoutes } from './routes/email-sequence';
 import { registerAnalyticsRoutes } from "./routes/analytics"; 
 import { registerApiKeysGuideRoutes } from "./routes/api-keys-guide"; 
@@ -49,7 +50,10 @@ import { registerCorporateSocialRoutes } from "./routes/corporate-social";
 import { registerCriticalSystemsRoutes } from "./routes/critical-systems";
 import reviewsRouter from "./routes/reviews";
 import reviewsAiRouter from "./routes/reviews-ai"; 
+import qualityFeedbackRouter from "./routes/quality-feedback";
 import errorRoutes from "./routes/errors";
+import sofiaChatRoutes from "./routes/ai-chat"; // NEW IMPORT
+
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
@@ -340,6 +344,9 @@ export async function setupAuthRoutes(app: any): Promise<void> {
 export async function registerRoutes(app: any): Promise<void> {
   app.use(legalComplianceHeaders);
   app.use(protectDatabaseQueries);
+  
+  // SOFIA AI CHAT ROUTE
+  app.use("/api/ai", sofiaChatRoutes);
   
   app.use((req: any, res: any, next: any) => {
     if (req.path === '/api/suggestions' && req.method === 'POST') return next();
@@ -802,7 +809,7 @@ export async function registerRoutes(app: any): Promise<void> {
     registerSecurityDashboardRoutes(app);
     registerSystemRoutes(app);
     setupAdminManagementRoutes(app);
-    setupTechnicalSpecsRoutes(app); // New route
+    setupTechnicalSpecsRoutes(app);
     const adminSocialMediaRoutes = (await import("./routes/admin-social-media")).default;
     app.use("/api/admin/social-media", adminSocialMediaRoutes);
     const reportsRoutes = (await import("./routes/reports")).default;
@@ -813,6 +820,7 @@ export async function registerRoutes(app: any): Promise<void> {
 
     app.use("/api/reviews", reviewsRouter);
     app.use("/api/reviews-ai", reviewsAiRouter); 
+    app.use("/api/quality-feedback", qualityFeedbackRouter); // Register quality feedback route
     app.use("/api/errors", errorRoutes);
 
     registerAnalyticsRoutes(app);

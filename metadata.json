@@ -1,5 +1,21 @@
 {
   "name": "Responder Já",
-  "description": "Uma ferramenta inteligente para PMEs responderem automaticamente a comentários e avaliações em plataformas como Google, The Fork e Booking usando IA.",
+  "short_name": "Responder Já",
+  "description": "Software de IA líder em Portugal para gestão de reputação online. Responda automaticamente a reviews no Google, TripAdvisor e Booking. Aumente o seu SEO local.",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#0ea5e9",
+  "background_color": "#ffffff",
+  "display": "standalone",
   "requestFramePermissions": []
 }

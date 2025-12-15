@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Building2, 
@@ -239,7 +240,7 @@ const AdminBankingManagement: React.FC = () => {
         </div>
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Contas Activas</span>
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Contas Ativas</span>
             <Wallet className="h-4 w-4 text-purple-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">{stats.activeAccounts}</div>
@@ -318,7 +319,7 @@ const AdminBankingManagement: React.FC = () => {
                           )}
                           {!account.isActive && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                              INACTIVA
+                              INATIVA
                             </span>
                           )}
                         </div>

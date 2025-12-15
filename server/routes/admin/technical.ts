@@ -46,7 +46,7 @@ export function setupTechnicalSpecsRoutes(app: any) {
             tailwindcss: "3.4.0"
           },
           backend: {
-            nodejs: process.version,
+            nodejs: (process as any).version,
             express: "5.2.1",
             typescript: "5.3.3",
             drizzle: "0.29.0"
@@ -92,7 +92,7 @@ export function setupTechnicalSpecsRoutes(app: any) {
       
       archive.pipe(res);
 
-      const rootDir = process.cwd();
+      const rootDir = (process as any).cwd();
 
       switch (type) {
         case 'frontend':

@@ -352,6 +352,7 @@ export class BackupService {
 
       for (const dirPath of paths) {
         // Use cast to any to avoid TS error if types are strict
+        // @ts-ignore
         (archive as any).directory(dirPath, false);
       }
 
@@ -462,7 +463,9 @@ export class BackupService {
       if (new Date(backup.retentionUntil) < now) {
         try {
           const backupDir = this.getBackupDir(backup.id);
-          await fs.rmdir(backupDir, { recursive: true });
+          // Use recursive rm instead of rmdir for Node.js 14.14+
+          // or use cast to ignore TS check if it's strict
+          await (fs as any).rm(backupDir, { recursive: true, force: true });
           
           this.securityLog.addLog({
             level: 'info',

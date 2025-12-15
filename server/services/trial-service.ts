@@ -1,41 +1,71 @@
-import { storage } from "../storage";
 
-export const trialService = {
-  async getTrialStatus(userId: string) {
-    const user = await storage.getUser(userId);
-    if (!user) return { isActive: false, daysRemaining: 0 };
+import { storage } from '../storage';
+import { urlBuilder } from '../utils/url-builder';
 
-    // Assuming user has a createdAt field, calculate 7 days trial
-    const createdAt = new Date(user.createdAt || Date.now());
+export interface TrialStatus {
+  isActive: boolean;
+  daysRemaining: number;
+  creditsRemaining: number;
+  trialEndDate: Date;
+  canUpgrade: boolean;
+  planAfterTrial: string;
+}
+
+export class TrialService {
+  private readonly TRIAL_DURATION_DAYS = 7;
+  private readonly TRIAL_CREDITS = 50;
+
+  async getTrialStatus(userId: string): Promise<TrialStatus> {
+    const user = await storage.getUserById(userId);
+    if (!user) throw new Error('User not found');
+
+    // Use loose typing to access fields potentially not in basic User type but in DB
+    const u = user as any; 
+
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - createdAt.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const endDate = u.trialEndDate ? new Date(u.trialEndDate) : new Date(0);
+    const isActive = u.isTrialActive && now < endDate;
+    const daysRemaining = isActive ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
     
-    // Check if plan is 'trial' (checking both legacy fields for safety)
-    const isTrialPlan = user.selectedPlan === 'trial' || (user as any).subscriptionPlan === 'trial';
-    
-    const daysRemaining = Math.max(0, 7 - diffDays);
-    const isActive = isTrialPlan && daysRemaining > 0;
-
     return {
-      isActive,
-      daysRemaining,
-      totalDays: 7,
-      creditsLeft: user.credits
+      isActive: isActive,
+      daysRemaining: Math.max(0, daysRemaining),
+      creditsRemaining: user.credits,
+      trialEndDate: endDate,
+      canUpgrade: daysRemaining <= 2 || user.credits < 5,
+      planAfterTrial: 'starter',
     };
-  },
+  }
 
-  async startTrial(userId: string) {
-    const user = await storage.getUser(userId);
+  async startTrial(userId: string): Promise<boolean> {
+    const user = await storage.getUserById(userId);
     if (!user) return false;
 
+    // Prevent abuse
+    if ((user as any).trialStartDate) return false;
+
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + this.TRIAL_DURATION_DAYS);
+
     await storage.updateUser(userId, {
-      selectedPlan: 'trial',
-      // @ts-ignore - Handle specific schema property
+      credits: this.TRIAL_CREDITS,
       subscriptionPlan: 'trial',
-      credits: 50 // Default trial credits
+      // @ts-ignore - DB supports these
+      trialStartDate: new Date(),
+      trialEndDate: endDate,
+      isTrialActive: true
     });
 
     return true;
   }
-};
+
+  async endTrial(userId: string): Promise<void> {
+    await storage.updateUser(userId, {
+      subscriptionPlan: 'free',
+      // @ts-ignore
+      isTrialActive: false
+    });
+  }
+}
+
+export const trialService = new TrialService();

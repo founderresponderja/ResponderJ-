@@ -289,36 +289,39 @@ const MainApp: React.FC<MainAppProps> = ({
         else if (tab) setActiveTab(tab);
         setIsMobileMenuOpen(false);
       }}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 group relative ${
         activeTab === tab && !onClick
           ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300' 
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
       }`}
     >
-      <Icon size={20} />
+      {activeTab === tab && !onClick && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-brand-500 rounded-r-full" />
+      )}
+      <Icon size={20} className={`transition-transform duration-300 ${activeTab === tab ? 'scale-110' : 'group-hover:scale-105'}`} />
       {label}
     </button>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300 flex overflow-hidden">
       
       {/* Sidebar for Desktop */}
-      <nav className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transform transition-transform duration-300 md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800 flex flex-col transform transition-transform duration-300 md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-brand-600 dark:text-brand-400 flex items-center gap-2">
-              <Logo className="w-8 h-8" />
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400 flex items-center gap-2">
+              <Logo className="w-8 h-8 text-brand-600 dark:text-brand-400" />
               Responder Já
             </h1>
-            <p className="text-xs text-slate-400 mt-1">IA para Gestão de Reviews</p>
+            <p className="text-xs text-slate-400 mt-1 pl-10">IA para Gestão de Reviews</p>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400">
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
             <X size={24} />
           </button>
         </div>
 
-        <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+        <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto scrollbar-hide">
           <NavButton tab="overview" icon={LayoutDashboard} label="Visão Geral" />
           <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
           <NavButton tab="social-manager" icon={Share2} label="Gestão de Redes" />
@@ -340,50 +343,50 @@ const MainApp: React.FC<MainAppProps> = ({
           {onNavigateToAdmin && (
             <button
               onClick={onNavigateToAdmin}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 mt-1"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 mt-1 group"
             >
-              <ShieldCheck size={20} />
+              <ShieldCheck size={20} className="group-hover:text-indigo-500 transition-colors" />
               Admin
             </button>
           )}
         </div>
 
-        <div className="px-4 pb-4 space-y-4">
+        <div className="px-4 pb-4 space-y-4 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-900 dark:via-slate-900">
              {/* Usage Bar */}
-             <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{nav.usage}</span>
+             <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{nav.usage}</span>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{subscription.creditsUsed}/{creditLimit}</span>
                 </div>
                 <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div 
-                        className={`h-full rounded-full transition-all duration-500 ${usagePercentage > 90 ? 'bg-red-500' : 'bg-brand-500'}`}
+                        className={`h-full rounded-full transition-all duration-700 ease-out ${usagePercentage > 90 ? 'bg-red-500' : 'bg-gradient-to-r from-brand-500 to-indigo-500'}`}
                         style={{ width: `${usagePercentage}%` }}
                     ></div>
                 </div>
                 {subscription.planId === 'trial' && (
                     <button 
                         onClick={() => setActiveTab('pricing')}
-                        className="mt-2 w-full text-xs flex items-center justify-center gap-1 bg-gradient-to-r from-brand-600 to-indigo-600 text-white py-1.5 rounded hover:shadow-md transition-all font-bold"
+                        className="mt-3 w-full text-xs flex items-center justify-center gap-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2 rounded-lg hover:opacity-90 transition-all font-bold shadow-sm"
                     >
                         <Zap size={12} fill="currentColor" /> {nav.upgrade}
                     </button>
                 )}
              </div>
 
-             <div className="flex items-center justify-between px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg">
+             <div className="flex items-center justify-between px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-800/50">
                 <button 
                     onClick={toggleTheme}
-                    className="p-1.5 text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="p-2 text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400 rounded-full hover:bg-white dark:hover:bg-slate-700 transition-colors"
                 >
                     {theme === 'light' ? <Moon size={16}/> : <Sun size={16} />}
                 </button>
-                <div className="flex gap-1">
+                <div className="flex gap-1 bg-white dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
                     {(['pt', 'en', 'es'] as Language[]).map((l) => (
                         <button
                             key={l}
                             onClick={() => setLang(l)}
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lang === l ? 'bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                            className={`text-[10px] font-bold px-2 py-1 rounded-md transition-all ${lang === l ? 'bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                         >
                             {l.toUpperCase()}
                         </button>
@@ -391,9 +394,9 @@ const MainApp: React.FC<MainAppProps> = ({
                 </div>
              </div>
 
-             <div className="flex justify-center gap-4 text-xs text-slate-400 dark:text-slate-500">
+             <div className="flex justify-center gap-4 text-[10px] text-slate-400 dark:text-slate-500">
                 <button onClick={onNavigateToPrivacy} className="hover:text-brand-600 dark:hover:text-brand-400 transition-colors flex items-center gap-1">
-                  <Shield size={10} /> Privacidade
+                  Privacidade
                 </button>
                 <span>•</span>
                 {onNavigateToTerms ? (
@@ -405,21 +408,21 @@ const MainApp: React.FC<MainAppProps> = ({
 
             <button
                 onClick={onLogout}
-                className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/50"
             >
-                <LogOut size={20} />
+                <LogOut size={16} />
                 {nav.logout}
             </button>
         </div>
-      </nav>
+      </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
         
         {/* Mobile Header */}
-        <header className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 sticky top-0 z-40 flex justify-between items-center">
+        <header className="md:hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 p-4 sticky top-0 z-40 flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600 dark:text-slate-300">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-slate-600 dark:text-slate-300 active:scale-95 transition-transform">
               <Menu size={24} />
             </button>
             <h1 className="text-xl font-bold text-brand-600 dark:text-brand-400 flex items-center gap-2">
@@ -428,16 +431,16 @@ const MainApp: React.FC<MainAppProps> = ({
             </h1>
           </div>
           <div className="flex items-center gap-2">
-             <div className="flex flex-col items-end mr-2">
-               <span className="text-[10px] uppercase font-bold text-slate-400">Créditos</span>
+             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+               <Coins size={14} className="text-amber-500" />
                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{creditsLeft}</span>
              </div>
           </div>
         </header>
 
         {/* Desktop Header */}
-        <header className="hidden md:flex bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-4 px-8 justify-between items-center sticky top-0 z-30 shadow-sm">
-           <div>
+        <header className="hidden md:flex bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 py-4 px-8 justify-between items-center sticky top-0 z-30 transition-all duration-300">
+           <div className="animate-fade-in">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
                 {activeTab === 'overview' && 'Visão Geral'}
                 {activeTab === 'generate' && 'Gerar Resposta'}
@@ -455,7 +458,7 @@ const MainApp: React.FC<MainAppProps> = ({
               </h2>
            </div>
            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3 px-3 py-1.5 bg-white dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
                  <div className="flex items-center gap-2 pr-3 border-r border-slate-200 dark:border-slate-700">
                     <Crown className={`w-4 h-4 ${subscription.planId === 'trial' ? 'text-amber-500' : 'text-purple-500'}`} />
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-200 capitalize">{subscription.planId}</span>
@@ -466,141 +469,102 @@ const MainApp: React.FC<MainAppProps> = ({
                  </div>
               </div>
               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-sm">
+                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-100 to-indigo-100 dark:from-brand-900 dark:to-indigo-900 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold text-sm shadow-inner border border-white dark:border-slate-700">
                     US
                  </div>
               </div>
            </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
           
+          {/* Use key to trigger animation on tab change */}
+          <div key={activeTab} className="animate-fade-in-up">
           {activeTab === 'overview' && (
-            <div className="space-y-8 animate-fade-in">
+            <div className="space-y-8">
               {/* Welcome Section */}
-              <div className="bg-gradient-to-r from-brand-600 to-purple-600 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
+              <div className="bg-gradient-to-r from-brand-600 to-indigo-600 rounded-2xl p-8 text-white shadow-xl shadow-brand-500/10 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2 group-hover:scale-110 transition-transform duration-700"></div>
                 <div className="relative z-10">
-                  <h2 className="text-3xl font-bold mb-2">Bem-vindo ao Responder Já</h2>
-                  <p className="text-brand-100 max-w-xl text-lg">
+                  <h2 className="text-3xl font-bold mb-2 tracking-tight">Bem-vindo ao Responder Já</h2>
+                  <p className="text-brand-100 max-w-xl text-lg mb-8">
                     A sua central de inteligência artificial para gestão de reputação. 
-                    Você tem <span className="font-bold text-white">{creditsLeft} créditos</span> disponíveis para usar hoje.
+                    Tem <span className="font-bold text-white border-b border-white/30">{creditsLeft} créditos</span> disponíveis.
                   </p>
-                  <div className="flex gap-4 mt-6">
+                  <div className="flex flex-wrap gap-4">
                     <button 
                         onClick={() => setActiveTab('generate')}
-                        className="bg-white text-brand-600 px-6 py-2.5 rounded-lg font-bold hover:bg-brand-50 transition-colors shadow-md inline-flex items-center gap-2"
+                        className="bg-white text-brand-600 px-6 py-3 rounded-xl font-bold hover:bg-brand-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 inline-flex items-center gap-2"
                     >
                         Começar a Gerar <ArrowRight size={18} />
                     </button>
                     <button 
                         onClick={() => setActiveTab('discovery')}
-                        className="bg-brand-700/50 backdrop-blur-sm text-white px-6 py-2.5 rounded-lg font-bold hover:bg-brand-700 transition-colors border border-brand-500 inline-flex items-center gap-2"
+                        className="bg-brand-700/50 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-700 transition-all border border-brand-500 inline-flex items-center gap-2 hover:border-white/50"
                     >
                         Encontrar Leads <Compass size={18} />
                     </button>
                   </div>
                 </div>
-                <div className="absolute right-0 bottom-0 opacity-10">
-                  <Bot size={200} />
+                <div className="absolute right-8 bottom-[-20px] opacity-10 transform rotate-12 transition-transform duration-500 group-hover:rotate-6 group-hover:scale-110">
+                  <Bot size={220} />
                 </div>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-xl text-green-600 dark:text-green-400">
-                      <Coins className="w-6 h-6" />
+                {[
+                  { title: "Créditos", value: creditsLeft, icon: Coins, color: "text-green-600", bg: "bg-green-100", darkBg: "dark:bg-green-900/30", darkText: "dark:text-green-400", sub: "Disponível" },
+                  { title: "Respostas", value: history.length, icon: MessageSquareText, color: "text-blue-600", bg: "bg-blue-100", darkBg: "dark:bg-blue-900/30", darkText: "dark:text-blue-400", sub: "Geradas total" },
+                  { title: "Modelo IA", value: "Gemini 2.5", icon: Bot, color: "text-purple-600", bg: "bg-purple-100", darkBg: "dark:bg-purple-900/30", darkText: "dark:text-purple-400", sub: "Latest ver." },
+                  { title: "Plano", value: subscription.planId, icon: Crown, color: "text-amber-600", bg: "bg-amber-100", darkBg: "dark:bg-amber-900/30", darkText: "dark:text-amber-400", sub: "Ativo", capitalize: true }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`p-3 ${stat.bg} ${stat.darkBg} rounded-xl ${stat.color} ${stat.darkText}`}>
+                        <stat.icon className="w-6 h-6" />
+                      </div>
+                      {stat.title === "Plano" ? (
+                        <button onClick={() => setActiveTab('pricing')} className="text-xs font-bold text-brand-600 hover:underline">Gerir</button>
+                      ) : (
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${stat.bg} ${stat.color} ${stat.darkBg} ${stat.darkText} bg-opacity-50`}>{stat.sub}</span>
+                      )}
                     </div>
-                    <span className="text-xs font-bold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
-                      Disponível
-                    </span>
+                    <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">{stat.title}</h3>
+                    <p className={`text-3xl font-bold text-slate-900 dark:text-white mt-1 ${stat.capitalize ? 'capitalize' : ''}`}>{stat.value}</p>
                   </div>
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Créditos</h3>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{creditsLeft}</p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl text-blue-600 dark:text-blue-400">
-                      <MessageSquareText className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Respostas Geradas</h3>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{history.length}</p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400">
-                      <Bot className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-bold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
-                      v2.7
-                    </span>
-                  </div>
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Modelo IA</h3>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white">Gemini</p>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl text-amber-600 dark:text-amber-400">
-                      <Crown className="w-6 h-6" />
-                    </div>
-                    <button onClick={() => setActiveTab('pricing')} className="text-xs font-bold text-brand-600 hover:underline">
-                      Gerir
-                    </button>
-                  </div>
-                  <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium">Plano Ativo</h3>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white capitalize">{subscription.planId}</p>
-                </div>
+                ))}
               </div>
 
               {/* Quick Actions */}
               <div>
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Ações Rápidas</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <button 
-                    onClick={() => setActiveTab('generate')}
-                    className="group p-6 bg-gradient-to-br from-purple-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-xl border border-purple-100 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 transition-all text-left shadow-sm hover:shadow-md"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4 group-hover:scale-110 transition-transform">
-                      <MessageSquareText size={24} />
-                    </div>
-                    <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Gerar Resposta</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Crie respostas inteligentes para as suas reviews em segundos.</p>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('discovery')}
-                    className="group p-6 bg-gradient-to-br from-indigo-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-xl border border-indigo-100 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left shadow-sm hover:shadow-md"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-110 transition-transform">
-                      <Compass size={24} />
-                    </div>
-                    <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Descoberta (Novo)</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Encontre novos clientes potenciais na sua região com IA.</p>
-                  </button>
-
-                  <button 
-                    onClick={() => setActiveTab('business-profile')}
-                    className="group p-6 bg-gradient-to-br from-green-50 to-white dark:from-slate-800 dark:to-slate-900 rounded-xl border border-green-100 dark:border-slate-700 hover:border-green-300 dark:hover:border-green-700 transition-all text-left shadow-sm hover:shadow-md"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400 mb-4 group-hover:scale-110 transition-transform">
-                      <Store size={24} />
-                    </div>
-                    <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1">Perfil de Negócio</h4>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Configure a voz e informações da sua empresa para a IA.</p>
-                  </button>
+                  {[
+                    { title: "Gerar Resposta", desc: "Crie respostas inteligentes em segundos.", icon: MessageSquareText, color: "purple", action: () => setActiveTab('generate') },
+                    { title: "Descoberta (Novo)", desc: "Encontre novos clientes potenciais com IA.", icon: Compass, color: "indigo", action: () => setActiveTab('discovery') },
+                    { title: "Perfil de Negócio", desc: "Configure a voz da sua empresa.", icon: Store, color: "green", action: () => setActiveTab('business-profile') }
+                  ].map((action, i) => (
+                    <button 
+                      key={i}
+                      onClick={action.action}
+                      className={`group p-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-${action.color}-300 dark:hover:border-${action.color}-700 transition-all text-left shadow-sm hover:shadow-lg`}
+                    >
+                      <div className={`w-12 h-12 rounded-2xl bg-${action.color}-50 dark:bg-${action.color}-900/20 flex items-center justify-center text-${action.color}-600 dark:text-${action.color}-400 mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                        <action.icon size={24} />
+                      </div>
+                      <h4 className="font-bold text-lg text-slate-900 dark:text-white mb-1 group-hover:text-brand-600 transition-colors">{action.title}</h4>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{action.desc}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Admin Card if applicable */}
               {onNavigateToAdmin && (
-                <div className="mt-8 p-6 bg-slate-100 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div className="mt-8 p-6 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-inner">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                    <div className="p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm">
                       <ShieldCheck className="w-6 h-6 text-slate-700 dark:text-slate-300" />
                     </div>
                     <div>
@@ -610,7 +574,7 @@ const MainApp: React.FC<MainAppProps> = ({
                   </div>
                   <button 
                     onClick={onNavigateToAdmin}
-                    className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-medium hover:opacity-90 transition-all shadow-md hover:shadow-lg"
                   >
                     Aceder
                   </button>
@@ -620,7 +584,7 @@ const MainApp: React.FC<MainAppProps> = ({
           )}
 
           {activeTab === 'generate' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               <div className="space-y-6">
                 
                 {/* Header section with Assistant */}
@@ -631,14 +595,14 @@ const MainApp: React.FC<MainAppProps> = ({
 
                 {/* Limit Alert */}
                 {subscription.creditsUsed >= creditLimit && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex items-start gap-3">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl flex items-start gap-3 animate-pulse">
                         <Zap className="text-amber-500 flex-shrink-0" />
                         <div>
                             <h4 className="font-bold text-amber-800 dark:text-amber-400">{t.limitReachedTitle}</h4>
                             <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">{t.limitReachedDesc}</p>
                             <button 
                               onClick={() => setShowUpgradeModal(true)}
-                              className="mt-3 text-sm font-bold bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors"
+                              className="mt-3 text-sm font-bold bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
                             >
                                 {t.upgradeNow}
                             </button>
@@ -652,7 +616,7 @@ const MainApp: React.FC<MainAppProps> = ({
                   lang={lang} 
                 />
                 {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 p-4 rounded-lg text-sm border border-red-200 dark:border-red-900">
+                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 p-4 rounded-lg text-sm border border-red-200 dark:border-red-900 animate-slide-in-right">
                     {error}
                   </div>
                 )}
@@ -682,7 +646,7 @@ const MainApp: React.FC<MainAppProps> = ({
           )}
 
           {activeTab === 'analytics' && (
-            <div className="space-y-8 animate-fade-in">
+            <div className="space-y-8">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{t.dashboardTitle}</h2>
                 <p className="text-slate-500 dark:text-slate-400">{t.dashboardDesc}</p>
@@ -696,7 +660,7 @@ const MainApp: React.FC<MainAppProps> = ({
                 </h3>
                 <div className="space-y-4">
                   {history.map((review) => (
-                    <div key={review.id} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 transition-colors">
+                    <div key={review.id} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 transition-all hover:shadow-md">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-2 py-1 rounded">
@@ -730,7 +694,7 @@ const MainApp: React.FC<MainAppProps> = ({
                     </div>
                   ))}
                   {history.length === 0 && (
-                     <p className="text-slate-400 dark:text-slate-500 italic">{t.noHistory}</p>
+                     <p className="text-slate-400 dark:text-slate-500 italic text-center py-8">{t.noHistory}</p>
                   )}
                 </div>
               </div>
@@ -776,6 +740,7 @@ const MainApp: React.FC<MainAppProps> = ({
           {activeTab === 'pricing' && (
               <BillingPage theme={theme} />
           )}
+          </div>
 
         </main>
       </div>
@@ -783,10 +748,10 @@ const MainApp: React.FC<MainAppProps> = ({
       {/* Upgrade Modal */}
       {showUpgradeModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
-              <div className="bg-white dark:bg-slate-950 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative shadow-2xl border border-slate-200 dark:border-slate-800">
+              <div className="bg-white dark:bg-slate-950 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
                   <button 
                     onClick={() => setShowUpgradeModal(false)}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 p-2 z-10"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 p-2 z-10 transition-colors"
                   >
                       <X size={24} />
                   </button>
@@ -805,7 +770,7 @@ const MainApp: React.FC<MainAppProps> = ({
       {/* Changelog Modal */}
       {showChangelog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[80vh]">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[80vh] animate-scale-in">
             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-brand-100 dark:bg-brand-900/30 rounded-lg text-brand-600 dark:text-brand-400">
@@ -867,3 +832,4 @@ const MainApp: React.FC<MainAppProps> = ({
 }
 
 export default MainApp;
+    

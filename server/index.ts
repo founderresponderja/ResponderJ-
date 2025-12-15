@@ -1,3 +1,4 @@
+
 import express, { type Request, Response, NextFunction, type RequestHandler } from "express";
 import { createServer } from "http";
 import { registerRoutes, setupAuthRoutes } from "./routes";
@@ -13,6 +14,7 @@ import { GDPREnhancedCompliance } from "./middleware/gdpr-enhanced-compliance";
 import { domainManager } from "./config/domains";
 import { emailScheduler } from './services/email-scheduler';
 import { cronService } from "./services/cron-service";
+import { wsNotificationService } from "./services/websocket-notification-service";
 
 const app = express();
 
@@ -56,7 +58,7 @@ app.use(legalComplianceHeaders as RequestHandler);
 
 // Sistema Avançado de Detecção de Ameaças (Se disponível)
 if (AdvancedThreatDetector?.middleware) {
-  app.use(AdvancedThreatDetector.middleware as RequestHandler);
+  app.use(AdvancedThreatDetector.middleware as any);
 }
 
 // ==========================================
@@ -67,27 +69,28 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Middlewares de Privacidade (GDPR)
-app.use(secureCookieMiddleware as RequestHandler);
-app.use(gdprAuditLog as RequestHandler);
+app.use(secureCookieMiddleware as any);
+app.use(gdprAuditLog as any);
 
 if (GDPREnhancedCompliance?.complianceMiddleware) {
-  app.use(GDPREnhancedCompliance.complianceMiddleware as RequestHandler);
+  app.use(GDPREnhancedCompliance.complianceMiddleware as any);
 }
 
 // Proteção CSRF Global
-app.use(csrfProtection as RequestHandler);
+app.use(csrfProtection as any);
 
 // ==========================================
 // 3. LOGGING E MONITORIZAÇÃO
 // ==========================================
 
-app.use((req: any, res: any, next: any) => {
+app.use(((req: any, res: any, next: any) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson: any, ...args: any[]) {
+    // Cast res to any to avoid type checking issues with headersSent on some Response types
     if (!(res as any).headersSent) {
       capturedJsonResponse = bodyJson;
       return originalResJson.apply(res, [bodyJson, ...args]);
@@ -112,7 +115,7 @@ app.use((req: any, res: any, next: any) => {
   });
 
   next();
-});
+}) as any);
 
 // ==========================================
 // 4. SETUP DO SERVIDOR
@@ -120,6 +123,9 @@ app.use((req: any, res: any, next: any) => {
 
 (async () => {
   const server = createServer(app);
+
+  // Inicializar Serviço de WebSocket
+  wsNotificationService.initialize(server);
 
   try {
     console.log('🔧 A registar rotas de autenticação...');
@@ -137,7 +143,7 @@ app.use((req: any, res: any, next: any) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Erro Interno do Servidor";
 
-    if (!res.headersSent) {
+    if (!(res as any).headersSent) {
       (res as any).status(status).json({ message });
     }
     console.error('🚨 Erro na aplicação:', err);

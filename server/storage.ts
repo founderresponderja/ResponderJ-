@@ -2,16 +2,17 @@
 import { 
   users, leads, automationRules, responses, establishments, creditTransactions, 
   subscriptions, corporateSocialAccounts, corporatePosts, agencyMembers, 
-  agencyInvitations, agencyAdminDelegations, referrals, pageContents, 
+  agencyInvitations, agencyAdminDelegations, referrals, referralRewards, pageContents, 
   InsertUser, User, InsertLead, Lead, InsertAutomationRule, AutomationRule,
   InsertResponse, Response, InsertEstablishment, Establishment, 
   InsertCreditTransaction, CreditTransaction, InsertSubscription, Subscription,
-  InsertEmailSequence, EmailSequence, InsertInvoice, Invoice, InsertInvoiceItem, 
-  InsertInvoiceSettings, InvoiceSettings, InsertReferral, Referral,
-  creditPackages, InsertCreditPackage, CreditPackage
+  InsertEmailSequence, EmailSequence, InsertInvoice, Invoice, InsertInvoiceItem, InvoiceItem,
+  InsertInvoiceSettings, InvoiceSettings, InsertReferral, Referral, InsertReferralReward, ReferralReward,
+  creditPackages, InsertCreditPackage, CreditPackage,
+  invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, ilike, or, and, desc, sql } from "drizzle-orm";
+import { eq, ilike, or, and, desc, sql, gte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -29,6 +30,7 @@ export interface IStorage {
   updateUser(id: string | number, user: Partial<User>): Promise<User>;
   deleteUser(id: string | number): Promise<void>;
   getAllUsersForAdmin(): Promise<User[]>;
+  getAdminUsers(): Promise<User[]>;
   
   // Auth methods
   setPasswordResetToken(userId: number, token: string | null, expires: Date | null): Promise<void>;
@@ -67,6 +69,7 @@ export interface IStorage {
   createCreditTransaction(transaction: InsertCreditTransaction): Promise<CreditTransaction>;
   addCreditsToUser(userId: number | string, amount: number, description: string): Promise<void>;
   updateUserCredits(userId: number | string, credits: number): Promise<void>;
+  deductUserCreditsAtomic(userId: number | string, amount: number): Promise<boolean>;
   getUserCreditBalance(userId: number | string): Promise<number>;
   getUserSubscription(userId: number | string): Promise<Subscription | undefined>;
   updateUserStripeInfo(userId: number | string, info: { customerId?: string, subscriptionId?: string }): Promise<void>;
@@ -113,7 +116,13 @@ export interface IStorage {
   
   // Referral
   getReferralByCode(code: string): Promise<Referral | undefined>;
+  createReferral(referral: InsertReferral): Promise<Referral>;
   updateReferral(id: number, updates: Partial<Referral>): Promise<void>;
+  updateReferralStatus(id: number, status: string, newUserId?: string): Promise<void>;
+  createReferralReward(reward: InsertReferralReward): Promise<void>;
+  getReferralStats(userId: string | number): Promise<any>;
+  getReferralsByUser(userId: string | number): Promise<Referral[]>;
+  getReferralRewardsByUser(userId: string | number): Promise<ReferralReward[]>;
   
   // Stats
   getSystemStats(): Promise<any>;
@@ -122,6 +131,24 @@ export interface IStorage {
   // CSV Uploads
   createCsvUpload(data: any): Promise<any>;
   getCsvUpload(id: string): Promise<any>;
+
+  // Invoicing
+  getInvoiceSettings(userId: number | string): Promise<InvoiceSettings | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
+  updateInvoiceSequence(settingsId: number | string, sequence: number): Promise<void>;
+  createInvoiceAuditLog(log: any): Promise<void>;
+  getInvoice(id: number | string): Promise<Invoice | undefined>;
+  getInvoiceWithDetails(id: number | string): Promise<Invoice & { items: InvoiceItem[] } | undefined>;
+  updateInvoiceStatus(id: number | string, status: string): Promise<void>;
+  updateInvoiceATData(id: number | string, data: any): Promise<void>;
+  updateInvoiceATError(id: number | string, error: string): Promise<void>;
+  updateInvoicePdfPath(id: number | string, path: string): Promise<void>;
+  updateInvoiceEmailSent(id: number | string, sent: boolean, date: Date): Promise<void>;
+
+  // Quality Feedback
+  createQualityFeedback(feedback: InsertQualityFeedback): Promise<QualityFeedback>;
+  getQualityFeedback(userId?: number | string, since?: Date): Promise<QualityFeedback[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -170,6 +197,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsersForAdmin(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return await db.select().from(users).where(
+      or(
+        eq(users.isAdmin, true),
+        eq(users.isSuperAdmin, true)
+      )
+    );
   }
 
   // Auth
@@ -223,7 +259,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkLeadExists(email: string): Promise<boolean> {
-    const [lead] = await db.select().from(leads).where(eq(leads.email, email));
+    // Optimized check using simple select 1
+    const [lead] = await db.select({ id: leads.id }).from(leads).where(eq(leads.email, email)).limit(1);
     return !!lead;
   }
 
@@ -234,7 +271,7 @@ export class DatabaseStorage implements IStorage {
         ilike(leads.email, `%${query}%`),
         ilike(leads.contactName, `%${query}%`)
       )
-    );
+    ).limit(50); // Add limit to prevent massive results
   }
 
   async getLeadsByStatus(status: string): Promise<Lead[]> {
@@ -242,6 +279,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async importLeadsFromCSV(csvData: any[]): Promise<{ imported: number; skipped: number; errors: string[] }> {
+    // This method processes row by row for safety, but could be batch inserted for performance
     const rowPromises = csvData.map(async (row, index) => {
       try {
         if (!row.email || !row.companyName) return { status: 'error', error: `Linha ${index + 1}: falta email ou nome da empresa` };
@@ -359,10 +397,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addCreditsToUser(userId: number | string, amount: number, description: string): Promise<void> {
-    const user = await this.getUser(userId);
-    if (!user) return;
-    
-    await this.updateUserCredits(userId, (user.credits || 0) + amount);
+    // Use atomic update
+    await db.update(users)
+      .set({ credits: sql`${users.credits} + ${amount}` })
+      .where(eq(users.id, Number(userId)));
+      
     await this.createCreditTransaction({
       userId: Number(userId),
       type: 'bonus',
@@ -373,6 +412,20 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserCredits(userId: number | string, credits: number): Promise<void> {
     await db.update(users).set({ credits }).where(eq(users.id, Number(userId)));
+  }
+
+  async deductUserCreditsAtomic(userId: number | string, amount: number): Promise<boolean> {
+      try {
+          const result = await db.update(users)
+            .set({ credits: sql`${users.credits} - ${amount}` })
+            .where(and(eq(users.id, Number(userId)), gte(users.credits, amount)))
+            .returning({ id: users.id });
+            
+          return result.length > 0;
+      } catch (e) {
+          console.error("Atomic credit deduction failed", e);
+          return false;
+      }
   }
 
   async getUserCreditBalance(userId: number | string): Promise<number> {
@@ -590,8 +643,48 @@ export class DatabaseStorage implements IStorage {
     return referral;
   }
 
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const [newReferral] = await db.insert(referrals).values(referral).returning();
+    return newReferral;
+  }
+
   async updateReferral(id: number, updates: Partial<Referral>): Promise<void> {
     await db.update(referrals).set(updates).where(eq(referrals.id, id));
+  }
+
+  async updateReferralStatus(id: number, status: string, newUserId?: string): Promise<void> {
+    const updates: Partial<Referral> = { status };
+    if (newUserId) {
+        updates.referredUserId = Number(newUserId);
+    }
+    if (status === 'completed') {
+        updates.completedAt = new Date();
+    }
+    await db.update(referrals).set(updates).where(eq(referrals.id, id));
+  }
+
+  async createReferralReward(reward: InsertReferralReward): Promise<void> {
+    await db.insert(referralRewards).values(reward);
+  }
+
+  async getReferralStats(userId: string | number): Promise<any> {
+    const refs = await this.getReferralsByUser(userId);
+    const rewards = await this.getReferralRewardsByUser(userId);
+    
+    return {
+        totalInvites: refs.length,
+        pendingInvites: refs.filter(r => r.status === 'pending').length,
+        completedInvites: refs.filter(r => r.status === 'completed').length,
+        totalCreditsEarned: rewards.reduce((acc, r) => acc + r.credits, 0)
+    };
+  }
+
+  async getReferralsByUser(userId: string | number): Promise<Referral[]> {
+    return await db.select().from(referrals).where(eq(referrals.referrerId, Number(userId)));
+  }
+
+  async getReferralRewardsByUser(userId: string | number): Promise<ReferralReward[]> {
+    return await db.select().from(referralRewards).where(eq(referralRewards.userId, Number(userId)));
   }
 
   // Stats
@@ -625,6 +718,88 @@ export class DatabaseStorage implements IStorage {
 
   async getCsvUpload(id: string): Promise<any> {
     return this.csvUploads.get(id);
+  }
+
+  // Invoicing Implementation
+  async getInvoiceSettings(userId: number | string): Promise<InvoiceSettings | undefined> {
+    const [settings] = await db.select().from(invoiceSettings).where(eq(invoiceSettings.userId, Number(userId)));
+    return settings;
+  }
+
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
+    return newInvoice;
+  }
+
+  async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
+    const [newItem] = await db.insert(invoiceItems).values(item).returning();
+    return newItem;
+  }
+
+  async updateInvoiceSequence(settingsId: number | string, sequence: number): Promise<void> {
+    await db.update(invoiceSettings).set({ invoiceSequence: sequence }).where(eq(invoiceSettings.id, Number(settingsId)));
+  }
+
+  async createInvoiceAuditLog(log: any): Promise<void> {
+    await this.createAuditLog(log);
+  }
+
+  async getInvoice(id: number | string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, Number(id)));
+    return invoice;
+  }
+
+  async getInvoiceWithDetails(id: number | string): Promise<Invoice & { items: InvoiceItem[] } | undefined> {
+    const invoice = await this.getInvoice(id);
+    if (!invoice) return undefined;
+    
+    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id));
+    return { ...invoice, items };
+  }
+
+  async updateInvoiceStatus(id: number | string, status: string): Promise<void> {
+    await db.update(invoices).set({ status }).where(eq(invoices.id, Number(id)));
+  }
+
+  async updateInvoiceATData(id: number | string, data: any): Promise<void> {
+     await db.update(invoices).set({
+       atDocumentId: data.atReference,
+       atValidationCode: data.atValidationCode,
+       atQrCode: data.atQrCode,
+       atSubmittedAt: data.atSubmissionDate,
+     }).where(eq(invoices.id, Number(id)));
+  }
+
+  async updateInvoiceATError(id: number | string, error: string): Promise<void> {
+    await db.update(invoices).set({ atError: error }).where(eq(invoices.id, Number(id)));
+  }
+
+  async updateInvoicePdfPath(id: number | string, path: string): Promise<void> {
+    await db.update(invoices).set({ pdfPath: path }).where(eq(invoices.id, Number(id)));
+  }
+
+  async updateInvoiceEmailSent(id: number | string, sent: boolean, date: Date): Promise<void> {
+    await db.update(invoices).set({ 
+      emailSent: sent,
+      emailSentAt: date 
+    }).where(eq(invoices.id, Number(id)));
+  }
+
+  // Quality Feedback
+  async createQualityFeedback(feedback: InsertQualityFeedback): Promise<QualityFeedback> {
+    const [entry] = await db.insert(qualityFeedback).values(feedback).returning();
+    return entry;
+  }
+
+  async getQualityFeedback(userId?: number | string, since?: Date): Promise<QualityFeedback[]> {
+    const conditions = [];
+    if (userId) conditions.push(eq(qualityFeedback.userId, Number(userId)));
+    if (since) conditions.push(gte(qualityFeedback.createdAt, since));
+    
+    return await db.select()
+      .from(qualityFeedback)
+      .where(and(...conditions))
+      .orderBy(desc(qualityFeedback.createdAt));
   }
 }
 

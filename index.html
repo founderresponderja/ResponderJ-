@@ -4,7 +4,53 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Responder Já - Gestão de Reviews com IA</title>
+    
+    <!-- SEO Primary Tags -->
+    <title>Responder Já | Gestão de Reviews e Respostas com IA para PME</title>
+    <meta name="title" content="Responder Já | Gestão de Reviews e Respostas com IA para PME">
+    <meta name="description" content="Automatize respostas a reviews no Google, TripAdvisor e Facebook com Inteligência Artificial. Melhore o SEO local, a reputação online da sua empresa e poupe tempo. Teste grátis!">
+    <meta name="keywords" content="responder reviews ia, gestão de reputação online, resposta automática google, inteligência artificial para restaurantes, marketing digital pme, seo local, chatgpt para empresas, gestão de avaliações, responder já">
+    <meta name="author" content="Amplia Solutions">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Portuguese">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://responderja.pt/">
+    <meta property="og:title" content="Responder Já - A Sua Reputação Online em Piloto Automático">
+    <meta property="og:description" content="Aumente o seu ranking no Google e fidelize clientes respondendo a todas as críticas em segundos com a nossa IA avançada.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://responderja.pt/">
+    <meta property="twitter:title" content="Responder Já - IA para Gestão de Reviews">
+    <meta property="twitter:description" content="Nunca mais deixe um cliente sem resposta. Use IA para gerir a sua presença digital no Google, Booking e TheFork.">
+    <meta property="twitter:image" content="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
+
+    <!-- JSON-LD Schema Markup for Software Application -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Responder Já",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "description": "Teste gratuito de 7 dias"
+      },
+      "description": "Plataforma SaaS para automação de respostas a avaliações online usando Inteligência Artificial Generativa.",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "1250"
+      }
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -12,89 +58,136 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Max-Regular"', 'sans-serif'],
+              sans: ['"Inter"', 'system-ui', 'sans-serif'], 
             },
             colors: {
               brand: {
                 50: '#f0f9ff',
                 100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
                 500: '#0ea5e9',
                 600: '#0284c7',
                 700: '#0369a1',
+                800: '#075985',
                 900: '#0c4a6e',
+                950: '#082f49',
               },
-              border: "var(--border)",
-              input: "var(--input)",
-              ring: "var(--ring)",
-              background: "var(--background)",
-              foreground: "var(--foreground)",
-              destructive: {
-                DEFAULT: "var(--destructive)",
-                foreground: "var(--destructive-foreground)",
+              slate: {
+                850: '#151e2e',
+                950: '#020617',
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out forwards',
+              'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+              'slide-in-right': 'slideInRight 0.4s ease-out forwards',
+              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'float': 'float 6s ease-in-out infinite',
+              'scale-in': 'scaleIn 0.2s ease-out forwards',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               },
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              slideInRight: {
+                '0%': { transform: 'translateX(100%)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+              scaleIn: {
+                '0%': { transform: 'scale(0.95)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
+              }
             }
           }
         }
       }
     </script>
     <style>
-      /* 
-       * Configuração para a fonte Max-Regular.
-       * O browser irá procurar a fonte localmente.
-       */
-      @font-face {
-        font-family: 'Max-Regular';
-        src: local('Max-Regular'), local('Max Regular');
-        font-weight: 400;
-        font-style: normal;
-      }
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
       :root {
         --background: #ffffff;
         --foreground: #0f172a;
-        --border: #e2e8f0;
-        --input: #e2e8f0;
-        --ring: #0284c7;
-        --destructive: #ef4444;
-        --destructive-foreground: #ffffff;
       }
       
       .dark {
         --background: #020617;
         --foreground: #f8fafc;
-        --border: #1e293b;
-        --input: #1e293b;
-        --ring: #0ea5e9;
-        --destructive: #7f1d1d;
-        --destructive-foreground: #f8fafc;
       }
 
       body {
         background-color: var(--background);
         color: var(--foreground);
-        font-family: 'Max-Regular', sans-serif;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
       }
       
-      /* Custom scrollbar for cleaner look */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
-      }
-      .dark ::-webkit-scrollbar-track {
-        background: #1e293b; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
         background: #cbd5e1; 
         border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
       }
       .dark ::-webkit-scrollbar-thumb {
-        background: #475569; 
+        background: #334155; 
+        border: 2px solid transparent;
+        background-clip: content-box;
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8; 
+      }
+      
+      .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      
+      .dark .glass {
+        background: rgba(2, 6, 23, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      
+      .transition-all-300 {
+        transition-property: all;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 300ms;
+      }
+
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active{
+          -webkit-box-shadow: 0 0 0 30px white inset !important;
+          transition: background-color 5000s ease-in-out 0s;
+      }
+      .dark input:-webkit-autofill,
+      .dark input:-webkit-autofill:hover, 
+      .dark input:-webkit-autofill:focus, 
+      .dark input:-webkit-autofill:active{
+          -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+          -webkit-text-fill-color: white !important;
       }
     </style>
   <script type="importmap">
@@ -140,7 +233,8 @@
     "class-variance-authority": "https://esm.sh/class-variance-authority@^0.7.0",
     "archiver": "https://esm.sh/archiver@^7.0.1",
     "drizzle-zod": "https://esm.sh/drizzle-zod@^0.8.3",
-    "zlib": "https://esm.sh/zlib@^1.0.5"
+    "zlib": "https://esm.sh/zlib@^1.0.5",
+    "jspdf": "https://esm.sh/jspdf@^3.0.4"
   }
 }
 </script>

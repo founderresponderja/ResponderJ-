@@ -1,10 +1,163 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Initialize the Google GenAI client
 // The API key is obtained exclusively from the environment variable process.env.API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+export interface ReviewResponseRequest {
+  reviewText: string;
+  platform: string;
+  tone: string;
+  language: string;
+  establishmentContext?: {
+    name?: string;
+    type?: string;
+    responseGuidelines?: string;
+  };
+  dynamicFields?: {
+    customerName?: string;
+  };
+}
+
+export interface GeneratedResponse {
+  variationNumber: number;
+  responseText: string;
+  tone: string;
+  language: string;
+  responseType: string;
+}
+
+const PLATFORM_CONFIGS: Record<string, any> = {
+  google_maps: {
+    maxChars: 4096,
+    allowsEmojis: true,
+    guidelines: "Professional, SEO-friendly, inviting."
+  },
+  booking: {
+    maxChars: 2000,
+    allowsEmojis: false,
+    guidelines: "Strictly professional, service-oriented, no emojis."
+  },
+  tripadvisor: {
+    maxChars: 4000,
+    allowsEmojis: false,
+    guidelines: "Detailed, grateful, addresses specific points."
+  },
+  facebook: {
+    maxChars: 8000,
+    allowsEmojis: true,
+    guidelines: "Social, engaging, community-focused."
+  },
+  instagram: {
+    maxChars: 2200,
+    allowsEmojis: true,
+    guidelines: "Visual style text, short, many emojis allowed."
+  }
+};
+
 export const aiResponseService = {
+  
+  async detectSentiment(reviewText: string): Promise<"positive" | "negative" | "neutral"> {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Analyze the sentiment of this review. Return ONLY one word: "positive", "negative", or "neutral". Review: "${reviewText}"`,
+        config: {
+          temperature: 0.1,
+          maxOutputTokens: 10,
+        }
+      });
+
+      const text = response.text?.toLowerCase().trim();
+      if (text?.includes("positive")) return "positive";
+      if (text?.includes("negative")) return "negative";
+      return "neutral";
+    } catch (error) {
+      console.error("Sentiment detection error:", error);
+      return "neutral";
+    }
+  },
+
+  async generateReviewResponses(request: ReviewResponseRequest): Promise<GeneratedResponse[]> {
+    const { reviewText, platform, tone, language, establishmentContext, dynamicFields } = request;
+    
+    const sentiment = await this.detectSentiment(reviewText);
+    const platformKey = platform.toLowerCase().replace(/\s+/g, '_');
+    const config = PLATFORM_CONFIGS[platformKey] || PLATFORM_CONFIGS['google_maps'];
+
+    const systemInstruction = `
+      You are an expert customer service AI for ${config.name || platform}.
+      
+      Review Sentiment: ${sentiment.toUpperCase()}
+      Target Tone: ${tone}
+      Language: ${language}
+      
+      Platform Constraints:
+      - Max Characters: ${config.maxChars}
+      - Emojis Allowed: ${config.allowsEmojis}
+      - Style: ${config.guidelines}
+
+      Business Context:
+      ${establishmentContext?.name ? `Name: ${establishmentContext.name}` : ''}
+      ${establishmentContext?.responseGuidelines ? `Guidelines: ${establishmentContext.responseGuidelines}` : ''}
+
+      Customer Name: ${dynamicFields?.customerName || 'Customer'}
+
+      Task: Generate 3 DISTINCT variations of a response.
+      1. Concise
+      2. Balanced/Standard
+      3. Detailed/Personalized
+      
+      For negative reviews, be apologetic and solution-oriented.
+      For positive reviews, be grateful and inviting.
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Customer Review: "${reviewText}"`,
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.7,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              variations: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    text: { type: Type.STRING },
+                    type: { type: Type.STRING, enum: ["concise", "balanced", "detailed"] }
+                  },
+                  required: ["text", "type"]
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const json = JSON.parse(response.text || '{"variations": []}');
+      
+      return json.variations.map((v: any, index: number) => ({
+        variationNumber: index + 1,
+        responseText: v.text,
+        tone: tone,
+        language: language,
+        responseType: v.type,
+        characterCount: v.text.length
+      }));
+
+    } catch (error) {
+      console.error("Generation error:", error);
+      return [];
+    }
+  },
+
+  // Legacy support wrapper
   async generateResponse(params: {
     comment: string;
     platform: string;
@@ -13,207 +166,38 @@ export const aiResponseService = {
     businessContext?: any;
     responseType?: string;
   }) {
-    const { comment, platform, tone, extraInstructions, businessContext, responseType } = params;
-
-    // Construção do contexto de negócio para a Prompt
-    let businessContextStr = "";
-    if (businessContext) {
-        businessContextStr = `
-        CONTEXTO DO NEGÓCIO:
-        Nome: ${businessContext.businessName || "Empresa"}
-        Tipo: ${businessContext.businessType || "Serviços"}
-        Descrição: ${businessContext.description || ""}
-        Diretrizes da Marca: ${businessContext.responseGuidelines || ""}
-        `;
-    }
-
-    const systemInstruction = `Atua como um Gestor de Redes Sociais Sénior e Especialista em Customer Success para PMEs em Portugal ("Responder Já").
-    A tua missão é escrever respostas profissionais, humanas e que convertam avaliações em fidelização.
-
-    CONFIGURAÇÃO:
-    - Plataforma: ${platform}
-    - Tom de Voz Solicitado: ${tone}
-    - Objetivo: ${responseType || 'Responder ao cliente'}
-    ${businessContextStr}
-
-    REGRAS DE OURO:
-    1. **Idioma:** Deteta o idioma do comentário. Se for Português, responde SEMPRE em PORTUGUÊS DE PORTUGAL (PT-PT). Não uses gerúndios brasileiros (ex: "estamos fazendo" -> "estamos a fazer").
-    2. **Personalização:** Nunca comeces com "Caro cliente" se o nome estiver disponível. Sê específico sobre o que o cliente mencionou.
-    3. **Tom:** 
-       - Se "Profissional": Usa "Você" ou impessoal. Formal mas cordial.
-       - Se "Amigável": Podes usar "Tu" se o contexto permitir, emojis moderados, caloroso.
-       - Se "Negativo/Reclamação": Sê empático, pede desculpa, não assumas culpa legal, leva para offline (email/telefone).
-    4. **Brevidade:** Redes sociais exigem respostas diretas. Evita "palha".
-    5. **Chamada para Ação:** Convida sempre a voltar ou a contactar, mas sem ser agressivo.
-    6. **Autenticidade:** Evita linguagem robótica ou excessivamente corporativa.
-
-    ${extraInstructions ? `INSTRUÇÕES ESTRITAS DA REGRA DE AUTOMAÇÃO: ${extraInstructions}` : ''}
-    `;
-
-    const prompt = `Analisa este comentário e gera a melhor resposta possível: "${comment}"`;
-
-    const responseSchema: Schema = {
-      type: Type.OBJECT,
-      properties: {
-        response: { 
-          type: Type.STRING, 
-          description: "O texto da resposta gerada, pronto a publicar." 
-        },
-        sentiment: { 
-          type: Type.STRING, 
-          enum: ["Positive", "Neutral", "Negative"],
-          description: "Análise de sentimento do comentário original."
-        },
-        keywords: { 
-          type: Type.ARRAY, 
-          items: { type: Type.STRING },
-          description: "3-5 tópicos principais mencionados (ex: 'Atendimento', 'Comida')."
-        },
-        language: {
-          type: Type.STRING,
-          description: "Código do idioma detetado (pt, en, es, fr)."
-        }
-      },
-      required: ["response", "sentiment", "keywords", "language"]
-    };
-
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          systemInstruction,
-          temperature: 0.7, // Criativo mas controlado
-          responseMimeType: "application/json",
-          responseSchema: responseSchema
+      const variations = await this.generateReviewResponses({
+        reviewText: params.comment,
+        platform: params.platform,
+        tone: params.tone,
+        language: "pt", 
+        establishmentContext: {
+            name: params.businessContext?.businessName,
+            responseGuidelines: params.extraInstructions
         }
       });
 
-      const result = JSON.parse(response.text || "{}");
-      
-      return {
-        response: result.response || "Obrigado pelo seu contacto. Responderemos o mais breve possível.",
-        sentiment: result.sentiment || "Neutral",
-        keywords: result.keywords || [],
-        detectedLanguage: { language: result.language || "pt" },
-        tokensUsed: response.usageMetadata?.totalTokenCount || 0
-      };
+      const selected = variations[0]; // Default to first
 
-    } catch (error) {
-      console.error("AI Service Error:", error);
-      // Fallback gracioso
       return {
-        response: "Obrigado pelo seu feedback! A nossa equipa irá analisar o seu comentário.",
-        sentiment: "Neutral",
-        keywords: [],
-        detectedLanguage: { language: "pt" },
-        tokensUsed: 0
+          response: selected ? selected.responseText : "Erro ao gerar resposta.",
+          sentiment: await this.detectSentiment(params.comment),
+          keywords: [],
+          detectedLanguage: { language: "pt" },
+          tokensUsed: 0 // Mocked for legacy interface
       };
-    }
   },
 
   async analyzeSentiment(text: string) {
-    const prompt = `Analisa o sentimento do seguinte texto (foca-te na intenção do cliente): "${text}". Retorna JSON.`;
-    
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              sentimentScore: { type: Type.NUMBER, description: "Score de -1 (muito negativo) a 1 (muito positivo)" },
-              sentimentLabel: { type: Type.STRING, enum: ["positive", "neutral", "negative"] },
-              emotions: {
-                type: Type.OBJECT,
-                properties: {
-                  joy: { type: Type.NUMBER },
-                  anger: { type: Type.NUMBER },
-                  sadness: { type: Type.NUMBER },
-                  surprise: { type: Type.NUMBER },
-                  trust: { type: Type.NUMBER }
-                }
-              }
-            },
-            required: ["sentimentScore", "sentimentLabel", "emotions"]
-          }
-        }
-      });
-
-      return JSON.parse(response.text || "{}");
-    } catch (error) {
-      console.error("AI Sentiment Error:", error);
+      const sentiment = await this.detectSentiment(text);
       return {
-        sentimentScore: 0,
-        sentimentLabel: "neutral",
-        emotions: {}
+          sentimentScore: sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0,
+          sentimentLabel: sentiment,
+          emotions: {}
       };
-    }
   },
-
-  // Alias method for compatibility
-  async detectSentiment(text: string) {
-    const result = await this.analyzeSentiment(text);
-    return result.sentimentLabel || "neutral";
-  },
-
-  // Method to generate multiple response variations (Para a UI de escolha)
-  async generateReviewResponses(params: {
-    reviewText: string;
-    platform: string;
-    tone: string;
-    language: string;
-    establishmentContext?: any;
-    dynamicFields?: any;
-  }) {
-    const { reviewText, platform, tone, language, establishmentContext } = params;
-    
-    // Forçar PT-PT se a língua for português
-    const languageInstruction = language.toLowerCase().includes('pt') || language.toLowerCase().includes('portugues') 
-        ? "Português de Portugal (PT-PT)" 
-        : language;
-    
-    let prompt = `Tu és o "Responder Já". Escreve 3 variações distintas de resposta profissional para esta review no ${platform}.
-    Review Original: "${reviewText}"
-    Tom Desejado: ${tone}
-    Idioma de Saída: ${languageInstruction}
-    
-    Contexto do Estabelecimento: ${JSON.stringify(establishmentContext || {})}
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            variationNumber: { type: Type.INTEGER },
-                            responseText: { type: Type.STRING },
-                            tone: { type: Type.STRING },
-                            language: { type: Type.STRING },
-                            responseType: { type: Type.STRING, enum: ["agradecimento", "desculpa", "esclarecimento", "convite", "venda"] }
-                        }
-                    }
-                }
-            }
-        });
-        
-        return JSON.parse(response.text || "[]");
-    } catch (e) {
-        console.error("Error generating multiple responses:", e);
-        return [];
-    }
-  },
-
+  
   calculateCreditCost(tokens: number, platform: string) {
-    // 1 crédito por resposta simples
     return 1; 
   }
 };

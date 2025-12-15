@@ -18,8 +18,8 @@ const ErrorReportSchema = z.object({
   url: z.string(),
   userAgent: z.string(),
   environment: z.string(),
-  context: z.record(z.any()).optional(),
-  metadata: z.record(z.any()).optional()
+  context: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional()
 });
 
 // Schema para análise de performance

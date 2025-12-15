@@ -15,7 +15,7 @@ if (!process.env.DATABASE_URL) {
 
 // Configuração da base de dados
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle({ client: pool, schema });
+const db = drizzle(pool, { schema });
 
 async function seedSubscriptionPlans() {
   try {
@@ -180,12 +180,12 @@ async function seedSubscriptionPlans() {
   } catch (error) {
     console.error('❌ Erro ao criar planos:', error);
   } finally {
-    await pool.end();
+    await (pool as any).end();
   }
 }
 
 // Executar o script se for chamado diretamente
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === `file://${(process as any).argv[1]}`) {
   seedSubscriptionPlans();
 }
 

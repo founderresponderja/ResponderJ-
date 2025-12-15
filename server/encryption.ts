@@ -1,3 +1,4 @@
+
 import { createCipheriv, createDecipheriv, randomBytes, scrypt, pbkdf2 } from 'crypto';
 import { promisify } from 'util';
 import { Buffer } from 'buffer';
@@ -258,4 +259,21 @@ export function decrypt(data: string): Promise<string> {
 export function isEncrypted(data: string): boolean {
   if (!data || typeof data !== 'string') return false;
   return data.startsWith('v2:') || data.startsWith('v1:');
+}
+
+/**
+ * Obtém informações sobre o método de encriptação usado.
+ */
+export function getEncryptionInfo(encryptedData: string): { version: string; algorithm: string; secure: boolean } {
+  if (!encryptedData || typeof encryptedData !== 'string') {
+    return { version: 'none', algorithm: 'none', secure: false };
+  }
+  
+  if (encryptedData.startsWith('v2:')) {
+    return { version: 'v2', algorithm: 'aes-256-gcm', secure: true };
+  } else if (encryptedData.startsWith('v1:')) {
+    return { version: 'v1', algorithm: 'aes-256-cbc', secure: false };
+  }
+  
+  return { version: 'unknown', algorithm: 'unknown', secure: false };
 }

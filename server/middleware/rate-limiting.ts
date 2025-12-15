@@ -129,24 +129,24 @@ export const smartRateLimit = (req: any, res: any, next: any) => {
   
   // Rate limits específicos por tipo de rota
   if (path.includes('/auth') || path.includes('/login') || path.includes('/register')) {
-    return authRateLimit(req, res, next);
+    return (authRateLimit as any)(req, res, next);
   }
   
   if (path.includes('/admin')) {
-    return adminRateLimit(req, res, next);
+    return (adminRateLimit as any)(req, res, next);
   }
   
   if (path.includes('/contact') || path.includes('/suggestions')) {
-    return contactRateLimit(req, res, next);
+    return (contactRateLimit as any)(req, res, next);
   }
   
   if (path.includes('/upload') || path.includes('/files')) {
-    return uploadRateLimit(req, res, next);
+    return (uploadRateLimit as any)(req, res, next);
   }
   
   // Rate limit geral para outras APIs
   if (path.startsWith('/api/')) {
-    return apiRateLimit(req, res, next);
+    return (apiRateLimit as any)(req, res, next);
   }
   
   // Sem rate limit para recursos estáticos

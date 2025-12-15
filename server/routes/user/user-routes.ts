@@ -2,6 +2,7 @@
 import type { Express } from "express";
 import { storage } from "../../storage";
 import { requireAuth } from "../../auth";
+import { SecurityLogService } from "../../services/security-log-service";
 
 /**
  * Configuração de rotas relacionadas com utilizadores
@@ -109,6 +110,75 @@ export function setupUserRoutes(app: any): void {
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // [NOVO] Exportação de Dados GDPR (Art. 20.º - Portabilidade)
+  app.get('/api/user/export-data', requireAuth, async (req: any, res: any) => {
+    try {
+        const userId = req.user.id;
+        console.log(`📦 Iniciando exportação de dados GDPR para user ${userId}`);
+
+        // 1. Dados Pessoais e Conta
+        const user = await storage.getUser(userId);
+        
+        // 2. Histórico de Atividade (Logs)
+        // Nota: Em produção, buscaríamos da tabela de logs filtrado por userId
+        const logs = [{ type: 'login', date: user?.lastLoginAt }]; 
+
+        // 3. Dados Gerados (Respostas IA)
+        const responses = await storage.getUserAiResponses(userId, 1000); // Limite alto para exportação
+
+        // 4. Transações e Faturação
+        const transactions = await storage.getUserCreditTransactions(userId);
+        const billingInfo = await storage.getUserSubscription(userId);
+
+        // 5. Preferências de Privacidade
+        // Simulação - buscaríamos do cookie consent log ou tabela
+        const privacyPreferences = {
+            marketingConsent: false,
+            analyticsConsent: false,
+            lastUpdated: new Date().toISOString()
+        };
+
+        const exportData = {
+            personalData: {
+                ...user,
+                password: "[REDACTED_FOR_SECURITY]"
+            },
+            activityLog: logs,
+            generatedContent: responses,
+            financialData: {
+                transactions,
+                subscription: billingInfo
+            },
+            privacySettings: privacyPreferences,
+            exportMetadata: {
+                exportDate: new Date().toISOString(),
+                requestIp: req.ip,
+                legalBasis: "GDPR Art. 20 (Data Portability)"
+            }
+        };
+
+        // Log da ação de exportação (Segurança)
+        SecurityLogService.addLog({
+            level: 'info',
+            type: 'audit',
+            ip: req.ip,
+            userAgent: req.get('User-Agent'),
+            endpoint: '/api/user/export-data',
+            userId: userId,
+            details: 'Utilizador solicitou portabilidade de dados (GDPR Art. 20)',
+            statusCode: 200
+        });
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="dados-pessoais-${userId}-${Date.now()}.json"`);
+        res.json(exportData);
+
+    } catch (error) {
+        console.error("Error exporting user data:", error);
+        res.status(500).json({ message: "Erro ao exportar dados pessoais" });
     }
   });
 

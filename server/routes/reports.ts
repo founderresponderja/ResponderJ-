@@ -5,7 +5,7 @@ import { requireAuth } from "../auth";
 const router = Router();
 
 // Get available report types
-router.get("/", requireAuth, (req, res) => {
+router.get("/", requireAuth, (req: any, res: any) => {
   res.json({ 
     availableReports: [
       { id: "security", name: "Security Audit" },
@@ -16,7 +16,7 @@ router.get("/", requireAuth, (req, res) => {
 });
 
 // Generate a specific report
-router.get("/generate/:type", requireAuth, (req, res) => {
+router.get("/generate/:type", requireAuth, (req: any, res: any) => {
     const { type } = req.params;
     
     // In a real implementation, this would generate PDF/CSV
@@ -32,7 +32,7 @@ router.get("/generate/:type", requireAuth, (req, res) => {
 });
 
 // Get report history
-router.get("/history", requireAuth, (req, res) => {
+router.get("/history", requireAuth, (req: any, res: any) => {
     res.json({
         history: [
             { id: "1", type: "security", date: new Date().toISOString(), status: "completed" },

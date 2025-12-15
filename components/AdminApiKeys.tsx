@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Key, 
@@ -175,7 +176,7 @@ const AdminApiKeys: React.FC = () => {
                   {item.isConfigured ? (
                     <div className="flex items-center gap-2">
                       <span className="flex items-center gap-1 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium">
-                        <CircleCheckBig className="w-4 h-4" /> Configurda
+                        <CircleCheckBig className="w-4 h-4" /> Configurada
                       </span>
                       <button 
                         onClick={() => handleTestKey(item.key)}

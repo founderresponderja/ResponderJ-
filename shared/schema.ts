@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, decimal, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, decimal, date, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -44,6 +44,11 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    emailIdx: uniqueIndex("email_idx").on(table.email),
+    stripeCustomerIdx: index("stripe_customer_idx").on(table.stripeCustomerId),
+  };
 });
 
 // --- Agencies ---
@@ -67,6 +72,10 @@ export const agencyMembers = pgTable("agency_members", {
   joinedAt: timestamp("joined_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    agencyUserIdx: index("agency_user_idx").on(table.agencyId, table.userId),
+  };
 });
 
 export const agencyInvitations = pgTable("agency_invitations", {
@@ -83,6 +92,11 @@ export const agencyInvitations = pgTable("agency_invitations", {
   acceptedAt: timestamp("accepted_at"),
   acceptedBy: integer("accepted_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    tokenIdx: index("token_idx").on(table.token),
+    emailAgencyIdx: index("email_agency_idx").on(table.email, table.agencyId),
+  };
 });
 
 export const agencyAdminDelegations = pgTable("agency_admin_delegations", {
@@ -110,6 +124,10 @@ export const establishments = pgTable("establishments", {
   platformIds: jsonb("platform_ids"), 
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userIdIdx: index("establishment_user_id_idx").on(table.userId),
+  };
 });
 
 export const reviews = pgTable("reviews", {
@@ -124,6 +142,10 @@ export const reviews = pgTable("reviews", {
   sentiment: text("sentiment"),
   reviewDate: timestamp("review_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    estIdIdx: index("review_establishment_id_idx").on(table.establishmentId),
+  };
 });
 
 export const responses = pgTable("responses", {
@@ -150,6 +172,11 @@ export const responses = pgTable("responses", {
   publishedAt: timestamp("published_at"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userResponsesIdx: index("user_responses_idx").on(table.userId),
+    reviewResponseIdx: index("review_response_idx").on(table.reviewId),
+  };
 });
 
 export const responseTemplates = pgTable("response_templates", {
@@ -173,6 +200,10 @@ export const automationRules = pgTable("automation_rules", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastTriggered: timestamp("last_triggered"),
   triggerCount: integer("trigger_count").default(0),
+}, (table) => {
+  return {
+    userRulesIdx: index("user_automation_rules_idx").on(table.userId),
+  };
 });
 
 // --- Credits & Billing ---
@@ -187,6 +218,11 @@ export const creditTransactions = pgTable("credit_transactions", {
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   packageId: text("package_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userTxIdx: index("user_credit_tx_idx").on(table.userId),
+    createdAtIdx: index("credit_tx_created_at_idx").on(table.createdAt),
+  };
 });
 
 export const creditPackages = pgTable("credit_packages", {
@@ -234,6 +270,10 @@ export const subscriptions = pgTable("subscriptions", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userSubIdx: index("user_subscription_idx").on(table.userId),
+  };
 });
 
 // --- Leads & CRM ---
@@ -262,6 +302,12 @@ export const leads = pgTable("leads", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    leadEmailIdx: index("lead_email_idx").on(table.email),
+    leadStatusIdx: index("lead_status_idx").on(table.status),
+    emailStatusIdx: index("email_status_idx").on(table.emailStatus),
+  };
 });
 
 export const emailSequences = pgTable("email_sequences", {
@@ -274,43 +320,83 @@ export const emailSequences = pgTable("email_sequences", {
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userSeqIdx: index("user_email_sequence_idx").on(table.userId),
+    scheduledAtIdx: index("email_sequence_scheduled_idx").on(table.scheduledAt),
+  };
 });
 
 // --- Invoicing ---
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  number: text("number").notNull(),
+  settingsId: integer("settings_id"),
+  invoiceNumber: text("invoice_number").notNull(),
+  invoiceSeries: text("invoice_series"),
+  invoiceSequenceNumber: integer("invoice_sequence_number"),
+  
   customerName: text("customer_name").notNull(),
-  customerNif: text("customer_nif"),
+  customerVatNumber: text("customer_vat_number"),
   customerAddress: text("customer_address"),
+  customerPostalCode: text("customer_postal_code"),
+  customerCity: text("customer_city"),
+  customerCountry: text("customer_country"),
   customerEmail: text("customer_email"),
-  date: date("date").notNull(),
-  dueDate: date("due_date").notNull(),
+  
+  issueDate: timestamp("issue_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  tax: decimal("tax", { precision: 10, scale: 2 }).notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  vatAmount: decimal("vat_amount", { precision: 10, scale: 2 }).notNull(),
+  withholdingAmount: decimal("withholding_amount", { precision: 10, scale: 2 }).default("0.00"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("EUR"),
+  
+  paymentMethod: text("payment_method"),
+  paymentReference: text("payment_reference"),
+  paymentDate: timestamp("payment_date"),
+  
   status: text("status").default("draft"),
+  notes: text("notes"),
+  metadata: jsonb("metadata"),
+  
   atDocumentId: text("at_document_id"),
+  atValidationCode: text("at_validation_code"),
   atQrCode: text("at_qr_code"),
   atSubmittedAt: timestamp("at_submitted_at"),
   atError: text("at_error"),
+  
   pdfPath: text("pdf_path"),
   emailSent: boolean("email_sent").default(false),
   emailSentAt: timestamp("email_sent_at"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userInvoiceIdx: index("user_invoice_idx").on(table.userId),
+    invoiceNumberIdx: uniqueIndex("invoice_number_idx").on(table.invoiceNumber),
+  };
 });
 
 export const invoiceItems = pgTable("invoice_items", {
   id: serial("id").primaryKey(),
   invoiceId: integer("invoice_id").notNull(),
   description: text("description").notNull(),
-  quantity: integer("quantity").notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
-  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  vatRate: decimal("vat_rate", { precision: 5, scale: 2 }).notNull(),
+  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
+  vatAmount: decimal("vat_amount", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  productCode: text("product_code"),
+  productCategory: text("product_category"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    invoiceItemsIdx: index("invoice_items_idx").on(table.invoiceId),
+  };
 });
 
 export const invoiceSettings = pgTable("invoice_settings", {
@@ -322,7 +408,13 @@ export const invoiceSettings = pgTable("invoice_settings", {
   invoicePrefix: text("invoice_prefix").default("FAT"),
   nextNumber: integer("next_number").default(1),
   vatRate: decimal("vat_rate", { precision: 5, scale: 2 }).default("23.00"),
+  withholdingTaxRate: decimal("withholding_tax_rate", { precision: 5, scale: 2 }).default("0.00"),
   invoiceSequence: integer("invoice_sequence").default(1),
+  atUsername: text("at_username"),
+  atPassword: text("at_password"),
+  atTestMode: boolean("at_test_mode").default(true),
+  invoiceEmailEnabled: boolean("invoice_email_enabled").default(true),
+  defaultVatRate: decimal("default_vat_rate", { precision: 5, scale: 2 }).default("23.00"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -333,10 +425,27 @@ export const referrals = pgTable("referrals", {
   referrerId: integer("referrer_id").notNull(),
   referredUserId: integer("referred_user_id"),
   referralCode: text("referral_code").notNull().unique(),
+  email: text("email"),
   status: text("status").default("pending"),
   rewardAmount: integer("reward_amount").default(0),
+  creditsEarned: integer("credits_earned").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
+}, (table) => {
+  return {
+    referrerIdx: index("referrer_idx").on(table.referrerId),
+    referralCodeIdx: uniqueIndex("referral_code_idx").on(table.referralCode),
+  };
+});
+
+export const referralRewards = pgTable("referral_rewards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  referralId: integer("referral_id").notNull(),
+  type: text("type").notNull(), // 'signup_bonus', 'referrer_bonus'
+  credits: integer("credits").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // --- Content & Social ---
@@ -379,6 +488,22 @@ export const corporatePosts = pgTable("corporate_posts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// --- Quality Feedback ---
+export const qualityFeedback = pgTable("quality_feedback", {
+  id: serial("id").primaryKey(),
+  responseId: integer("response_id"), // Linked to responses
+  userId: integer("user_id").notNull(),
+  rating: integer("rating").notNull(),
+  sentiment: text("sentiment").notNull(),
+  categories: text("categories"), // JSON string
+  improvements: text("improvements"), // JSON string
+  comment: text("comment"),
+  isUseful: boolean("is_useful"),
+  platform: text("platform"),
+  responseTime: integer("response_time"), // milliseconds
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- Sessions ---
 export const sessions = pgTable("session", {
   sid: text("sid").primaryKey(),
@@ -398,6 +523,7 @@ export const insertResponseSchema = createInsertSchema(responses);
 export const insertCreditTransactionSchema = createInsertSchema(creditTransactions);
 export const insertCreditPackageSchema = createInsertSchema(creditPackages);
 export const insertReferralSchema = createInsertSchema(referrals);
+export const insertReferralRewardSchema = createInsertSchema(referralRewards);
 export const insertLeadSchema = createInsertSchema(leads);
 export const insertInvoiceSchema = createInsertSchema(invoices);
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems);
@@ -405,6 +531,7 @@ export const insertInvoiceSettingsSchema = createInsertSchema(invoiceSettings);
 export const insertSubscriptionSchema = createInsertSchema(subscriptions);
 export const insertEmailSequenceSchema = createInsertSchema(emailSequences);
 export const insertAutomationRuleSchema = createInsertSchema(automationRules);
+export const insertQualityFeedbackSchema = createInsertSchema(qualityFeedback);
 
 // Auth Specific Schemas
 export const registerUserSchema = insertUserSchema.pick({
@@ -464,6 +591,9 @@ export type InsertCreditPackage = typeof creditPackages.$inferInsert;
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
 
+export type ReferralReward = typeof referralRewards.$inferSelect;
+export type InsertReferralReward = typeof referralRewards.$inferInsert;
+
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = typeof leads.$inferInsert;
 
@@ -484,3 +614,6 @@ export type InsertEmailSequence = typeof emailSequences.$inferInsert;
 
 export type AutomationRule = typeof automationRules.$inferSelect;
 export type InsertAutomationRule = typeof automationRules.$inferInsert;
+
+export type QualityFeedback = typeof qualityFeedback.$inferSelect;
+export type InsertQualityFeedback = typeof qualityFeedback.$inferInsert;
