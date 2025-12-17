@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
-import { ReviewData, Platform, Tone } from '../types';
+import { ReviewData } from '../types';
 import { 
   Activity, 
   Clock, 
@@ -153,7 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
         </div>
       </div>
 
-      {/* Cards de Métricas (Estilo Glassmorphism do ficheiro original) */}
+      {/* Cards de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Responses */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
@@ -232,7 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
         </div>
       </div>
 
-      {/* Row 2: Sentiment and Keywords (New) */}
+      {/* Row 2: Sentiment and Keywords */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Sentiment Analysis */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
@@ -388,7 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
         </div>
       </div>
 
-      {/* Ratings Chart (Mantido do original mas estilizado) */}
+      {/* Ratings Chart */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">

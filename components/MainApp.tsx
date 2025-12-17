@@ -30,7 +30,7 @@ import {
   Shield,
   Share2,
   UserCog,
-  Compass // Added compass icon
+  Compass
 } from 'lucide-react';
 import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
@@ -46,7 +46,7 @@ import SocialMediaCalendar from './SocialMediaCalendar';
 import SocialMediaManager from './SocialMediaManager';
 import CRMPage from './CRMPage';
 import AgencyTeamManagement from './AgencyTeamManagement';
-import BusinessDiscoveryPage from './BusinessDiscoveryPage'; // Added import
+import BusinessDiscoveryPage from './BusinessDiscoveryPage';
 import { Logo } from './Logo';
 import { generateResponse } from '../services/geminiService';
 import { processReplitPayment } from '../services/paymentService';
@@ -73,31 +73,6 @@ const PLAN_LIMITS: Record<PlanId, number> = {
     agency: 500
 };
 
-// Mock data for App Updates
-const APP_UPDATES = [
-  {
-    version: "2.7.0",
-    date: "01 Fev 2025",
-    title: "Descoberta de Negócios IA",
-    description: "Nova ferramenta para encontrar leads qualificados na sua região usando Inteligência Artificial.",
-    tags: ["IA", "Novo Módulo"]
-  },
-  {
-    version: "2.6.0",
-    date: "25 Jan 2025",
-    title: "Análise de Sentimento",
-    description: "A IA agora identifica automaticamente o sentimento (Positivo, Neutro, Negativo) e palavras-chave das reviews.",
-    tags: ["IA", "Novo"]
-  },
-  {
-    version: "2.5.0",
-    date: "20 Jan 2025",
-    title: "IA Mais Inteligente & Contabilidade",
-    description: "Atualizámos o nosso modelo de IA para o Gemini 2.5 para respostas mais naturais e empáticas. Lançámos também o novo módulo de Contabilidade para ENI e Unipessoais.",
-    tags: ["IA", "Novo Módulo"]
-  }
-];
-
 const MainApp: React.FC<MainAppProps> = ({ 
   onLogout, 
   onNavigateToAdmin, 
@@ -115,7 +90,6 @@ const MainApp: React.FC<MainAppProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Subscription State
   const [subscription, setSubscription] = useState<UserSubscription>({
       planId: 'trial',
       creditsUsed: 0,
@@ -169,7 +143,6 @@ const MainApp: React.FC<MainAppProps> = ({
   const usagePercentage = Math.min((subscription.creditsUsed / creditLimit) * 100, 100);
 
   const handleGenerate = async (data: Omit<ReviewData, 'id' | 'createdAt'>) => {
-    // Check Limits
     if (subscription.creditsUsed >= creditLimit) {
         setShowUpgradeModal(true);
         return;
@@ -177,9 +150,7 @@ const MainApp: React.FC<MainAppProps> = ({
 
     setIsLoading(true);
     setError(null);
-    // Don't clear currentReview immediately to avoid flicker
 
-    // Create temp review object
     const tempReview: ReviewData = {
       ...data,
       id: Date.now().toString(),
@@ -188,7 +159,6 @@ const MainApp: React.FC<MainAppProps> = ({
     };
 
     try {
-      // Attempt to get business context from localStorage (set in BusinessProfilePage)
       let businessContext = undefined;
       const savedProfile = localStorage.getItem('demo_business_profile');
       if (savedProfile) {
@@ -217,7 +187,6 @@ const MainApp: React.FC<MainAppProps> = ({
       setCurrentReview(finishedReview);
       setHistory(prev => [finishedReview, ...prev]);
       
-      // Deduct credit
       setSubscription(prev => ({
           ...prev,
           creditsUsed: prev.creditsUsed + 1
@@ -241,7 +210,6 @@ const MainApp: React.FC<MainAppProps> = ({
 
   const handleRegenerate = () => {
     if (currentReview) {
-       // Remove internal fields to treat as new request
        const { id, createdAt, generatedResponse, isFavorite, sentiment, keywords, ...rest } = currentReview;
        handleGenerate(rest);
     }
@@ -257,7 +225,7 @@ const MainApp: React.FC<MainAppProps> = ({
                   planId: planId,
               }));
               setShowUpgradeModal(false);
-              setActiveTab('generate'); // Go back to work
+              setActiveTab('generate');
           }
       } catch (e) {
           alert("Erro no pagamento.");
@@ -276,7 +244,6 @@ const MainApp: React.FC<MainAppProps> = ({
     }
   };
 
-  // Determine assistant status
   let assistantStatus: 'idle' | 'loading' | 'success' | 'error' = 'idle';
   if (isLoading) assistantStatus = 'loading';
   else if (error) assistantStatus = 'error';
@@ -322,22 +289,22 @@ const MainApp: React.FC<MainAppProps> = ({
         </div>
 
         <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto scrollbar-hide">
-          <NavButton tab="overview" icon={LayoutDashboard} label="Visão Geral" />
+          <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
           <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
-          <NavButton tab="social-manager" icon={Share2} label="Gestão de Redes" />
-          <NavButton tab="discovery" icon={Compass} label="Descoberta (IA)" />
+          <NavButton tab="social-manager" icon={Share2} label={nav.menu.social} />
+          <NavButton tab="discovery" icon={Compass} label={nav.menu.discovery} />
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} />
           <NavButton tab="crm" icon={Users} label={nav.menu.crm} />
           <NavButton tab="team" icon={UserCog} label={nav.menu.team} />
           <NavButton tab="calendar" icon={CalendarIcon} label={nav.menu.calendar} />
           <NavButton tab="business-profile" icon={Store} label={nav.menu.profile} />
           <NavButton tab="platforms" icon={List} label={nav.menu.platforms} />
-          <NavButton tab="invoicing" icon={FileText} label="Faturação" />
+          <NavButton tab="invoicing" icon={FileText} label={nav.menu.invoicing} />
           <NavButton tab="accounting" icon={Calculator} label={nav.menu.accounting} />
           <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />
           
           <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
-            <NavButton icon={GitBranch} label="Novidades" onClick={() => setShowChangelog(true)} />
+            <NavButton icon={GitBranch} label={nav.menu.news} onClick={() => setShowChangelog(true)} />
           </div>
 
           {onNavigateToAdmin && (
@@ -442,19 +409,19 @@ const MainApp: React.FC<MainAppProps> = ({
         <header className="hidden md:flex bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 py-4 px-8 justify-between items-center sticky top-0 z-30 transition-all duration-300">
            <div className="animate-fade-in">
               <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-                {activeTab === 'overview' && 'Visão Geral'}
-                {activeTab === 'generate' && 'Gerar Resposta'}
-                {activeTab === 'social-manager' && 'Gestão de Redes Sociais'}
-                {activeTab === 'discovery' && 'Descoberta de Negócios (IA)'}
-                {activeTab === 'analytics' && 'Estatísticas'}
-                {activeTab === 'crm' && 'Gestão de Clientes'}
-                {activeTab === 'team' && 'Gestão de Equipas'}
-                {activeTab === 'calendar' && 'Calendário Social'}
-                {activeTab === 'business-profile' && 'Perfil de Negócio'}
-                {activeTab === 'platforms' && 'Aplicações Conectadas'}
-                {activeTab === 'invoicing' && 'Faturação'}
-                {activeTab === 'accounting' && 'Contabilidade'}
-                {activeTab === 'pricing' && 'Planos e Faturação'}
+                {activeTab === 'overview' && nav.menu.overview}
+                {activeTab === 'generate' && nav.menu.generate}
+                {activeTab === 'social-manager' && nav.menu.social}
+                {activeTab === 'discovery' && nav.menu.discovery}
+                {activeTab === 'analytics' && nav.menu.dashboard}
+                {activeTab === 'crm' && nav.menu.crm}
+                {activeTab === 'team' && nav.menu.team}
+                {activeTab === 'calendar' && nav.menu.calendar}
+                {activeTab === 'business-profile' && nav.menu.profile}
+                {activeTab === 'platforms' && nav.menu.platforms}
+                {activeTab === 'invoicing' && nav.menu.invoicing}
+                {activeTab === 'accounting' && nav.menu.accounting}
+                {activeTab === 'pricing' && nav.menu.plans}
               </h2>
            </div>
            <div className="flex items-center gap-6">
@@ -478,7 +445,6 @@ const MainApp: React.FC<MainAppProps> = ({
 
         <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
           
-          {/* Use key to trigger animation on tab change */}
           <div key={activeTab} className="animate-fade-in-up">
           {activeTab === 'overview' && (
             <div className="space-y-8">
@@ -486,23 +452,23 @@ const MainApp: React.FC<MainAppProps> = ({
               <div className="bg-gradient-to-r from-brand-600 to-indigo-600 rounded-2xl p-8 text-white shadow-xl shadow-brand-500/10 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2 group-hover:scale-110 transition-transform duration-700"></div>
                 <div className="relative z-10">
-                  <h2 className="text-3xl font-bold mb-2 tracking-tight">Bem-vindo ao Responder Já</h2>
+                  <h2 className="text-3xl font-bold mb-2 tracking-tight">{t.welcome}</h2>
                   <p className="text-brand-100 max-w-xl text-lg mb-8">
-                    A sua central de inteligência artificial para gestão de reputação. 
-                    Tem <span className="font-bold text-white border-b border-white/30">{creditsLeft} créditos</span> disponíveis.
+                    {t.welcomeSubtitle}
+                    Tem <span className="font-bold text-white border-b border-white/30">{creditsLeft}</span> disponíveis.
                   </p>
                   <div className="flex flex-wrap gap-4">
                     <button 
                         onClick={() => setActiveTab('generate')}
                         className="bg-white text-brand-600 px-6 py-3 rounded-xl font-bold hover:bg-brand-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 inline-flex items-center gap-2"
                     >
-                        Começar a Gerar <ArrowRight size={18} />
+                        {nav.menu.generate} <ArrowRight size={18} />
                     </button>
                     <button 
                         onClick={() => setActiveTab('discovery')}
                         className="bg-brand-700/50 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-700 transition-all border border-brand-500 inline-flex items-center gap-2 hover:border-white/50"
                     >
-                        Encontrar Leads <Compass size={18} />
+                        {nav.menu.discovery} <Compass size={18} />
                     </button>
                   </div>
                 </div>
@@ -538,12 +504,12 @@ const MainApp: React.FC<MainAppProps> = ({
 
               {/* Quick Actions */}
               <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Ações Rápidas</h3>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">{t.quickActions}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
-                    { title: "Gerar Resposta", desc: "Crie respostas inteligentes em segundos.", icon: MessageSquareText, color: "purple", action: () => setActiveTab('generate') },
-                    { title: "Descoberta (Novo)", desc: "Encontre novos clientes potenciais com IA.", icon: Compass, color: "indigo", action: () => setActiveTab('discovery') },
-                    { title: "Perfil de Negócio", desc: "Configure a voz da sua empresa.", icon: Store, color: "green", action: () => setActiveTab('business-profile') }
+                    { title: nav.menu.generate, desc: "Crie respostas inteligentes em segundos.", icon: MessageSquareText, color: "purple", action: () => setActiveTab('generate') },
+                    { title: nav.menu.discovery, desc: "Encontre novos clientes potenciais com IA.", icon: Compass, color: "indigo", action: () => setActiveTab('discovery') },
+                    { title: nav.menu.profile, desc: "Configure a voz da sua empresa.", icon: Store, color: "green", action: () => setActiveTab('business-profile') }
                   ].map((action, i) => (
                     <button 
                       key={i}
@@ -702,7 +668,7 @@ const MainApp: React.FC<MainAppProps> = ({
           )}
 
           {activeTab === 'crm' && (
-            <CRMPage />
+            <CRMPage lang={lang} />
           )}
 
           {activeTab === 'team' && (
@@ -714,7 +680,7 @@ const MainApp: React.FC<MainAppProps> = ({
           )}
 
           {activeTab === 'discovery' && (
-            <BusinessDiscoveryPage />
+            <BusinessDiscoveryPage lang={lang} />
           )}
 
           {activeTab === 'calendar' && (
@@ -738,7 +704,7 @@ const MainApp: React.FC<MainAppProps> = ({
           )}
 
           {activeTab === 'pricing' && (
-              <BillingPage theme={theme} />
+              <BillingPage theme={theme} lang={lang} />
           )}
           </div>
 
@@ -787,32 +753,28 @@ const MainApp: React.FC<MainAppProps> = ({
             </div>
             
             <div className="p-6 overflow-y-auto space-y-6">
-              {APP_UPDATES.map((update, index) => (
-                <div key={index} className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 last:pb-0">
+                <div className="relative pl-6 border-l-2 border-slate-200 dark:border-slate-800 last:pb-0">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-4 border-white dark:border-slate-900 bg-brand-500"></div>
                   
                   <div className="mb-2">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold text-brand-600 dark:text-brand-400">v{update.version}</span>
-                      <span className="text-xs text-slate-400 dark:text-slate-500">• {update.date}</span>
+                      <span className="text-sm font-bold text-brand-600 dark:text-brand-400">v2.7.0</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">• 01 Fev 2025</span>
                     </div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white">{update.title}</h4>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white">Descoberta de Negócios IA</h4>
                   </div>
                   
                   <p className="text-sm text-slate-600 dark:text-slate-300 mb-3 leading-relaxed">
-                    {update.description}
+                    Nova ferramenta para encontrar leads qualificados na sua região usando Inteligência Artificial.
                   </p>
                   
                   <div className="flex flex-wrap gap-2">
-                    {update.tags.map((tag, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs rounded-md font-medium flex items-center gap-1">
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs rounded-md font-medium flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-brand-500" />
-                        {tag}
+                        IA
                       </span>
-                    ))}
                   </div>
                 </div>
-              ))}
             </div>
             
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end">
@@ -832,4 +794,3 @@ const MainApp: React.FC<MainAppProps> = ({
 }
 
 export default MainApp;
-    

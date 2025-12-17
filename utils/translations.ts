@@ -1,8 +1,31 @@
 
+
 export type Language = 'pt' | 'en' | 'es';
 
 export const translations = {
   pt: {
+    common: {
+      save: "Guardar",
+      cancel: "Cancelar",
+      edit: "Editar",
+      delete: "Eliminar",
+      view: "Ver",
+      create: "Criar",
+      search: "Pesquisar",
+      filter: "Filtrar",
+      export: "Exportar",
+      import: "Importar",
+      actions: "Ações",
+      status: "Estado",
+      date: "Data",
+      loading: "A carregar...",
+      success: "Sucesso",
+      error: "Erro",
+      back: "Voltar",
+      next: "Seguinte",
+      copy: "Copiar",
+      regenerate: "Regenerar"
+    },
     nav: {
       login: "Entrar na Conta",
       startFree: "Testar Grátis",
@@ -14,15 +37,20 @@ export const translations = {
       upgrade: "Fazer Upgrade",
       creditsLeft: "respostas restantes",
       menu: {
+        overview: "Visão Geral",
         generate: "Gerar Resposta IA",
+        social: "Gestão de Redes",
+        discovery: "Descoberta (IA)",
         dashboard: "Estatísticas & SEO",
-        platforms: "Plataformas Conectadas",
-        plans: "Planos & Faturação",
-        accounting: "Contabilidade",
-        profile: "Perfil de Negócio",
-        calendar: "Calendário Social",
         crm: "Gestão de Clientes",
-        team: "Equipa"
+        team: "Equipa",
+        calendar: "Calendário Social",
+        profile: "Perfil de Negócio",
+        platforms: "Plataformas",
+        invoicing: "Faturação",
+        accounting: "Contabilidade",
+        plans: "Planos & Faturação",
+        news: "Novidades"
       }
     },
     landing: {
@@ -76,6 +104,9 @@ export const translations = {
       security: "Segurança de nível bancário com encriptação AES-256."
     },
     app: {
+      welcome: "Bem-vindo ao Responder Já",
+      welcomeSubtitle: "A sua central de inteligência artificial para gestão de reputação.",
+      quickActions: "Ações Rápidas",
       generatorTitle: "Gerador de Respostas IA",
       waitingInput: "A aguardar análise",
       waitingDesc: "Cole a review do cliente à esquerda. A nossa IA analisará o sentimento e gerará a resposta ideal.",
@@ -134,10 +165,137 @@ export const translations = {
         postStatus: "Estado",
         save: "Agendar",
         cancel: "Voltar"
+      },
+      crm: {
+        title: "CRM",
+        subtitle: "Gerir relacionamentos e oportunidades de venda.",
+        totalContacts: "Total Contactos",
+        pipelineValue: "Pipeline Valor",
+        conversionRate: "Taxa Conversão",
+        newContact: "Novo Contacto",
+        searchPlaceholder: "Pesquisar contactos...",
+        table: {
+          name: "Nome",
+          company: "Empresa",
+          status: "Estado",
+          stage: "Fase",
+          value: "Valor",
+          actions: "Ações"
+        },
+        stages: {
+          new: "Novo",
+          contacted: "Contactado",
+          proposal: "Proposta",
+          won: "Ganho"
+        },
+        status: {
+          lead: "Lead",
+          prospect: "Prospect",
+          customer: "Cliente"
+        }
+      },
+      social: {
+        title: "Gestão de Redes Sociais",
+        subtitle: "Gerencie todas as suas contas e interações num só lugar.",
+        connectAccount: "Conectar Conta",
+        tabs: {
+          accounts: "Contas",
+          comments: "Comentários",
+          automation: "Automação",
+          analytics: "Analytics",
+          settings: "Configurações"
+        },
+        noAccounts: "Nenhuma conta conectada",
+        noAccountsDesc: "Conecte as suas redes sociais para começar.",
+        connectNow: "Conectar agora",
+        pending: "Pendentes",
+        highPriority: "Alta Prioridade",
+        replied24h: "Respondidos (24h)",
+        allUpToDate: "Tudo em dia!",
+        noPending: "Não existem comentários pendentes para responder.",
+        generateReply: "Gerar Resposta",
+        originalComment: "Comentário Original",
+        responseTone: "Tom da Resposta",
+        extraInstructions: "Instruções Extra",
+        publishResponse: "Publicar Resposta"
+      },
+      discovery: {
+        title: "Descoberta de Negócios IA",
+        subtitle: "Encontre novos negócios na sua região usando Inteligência Artificial.",
+        filters: "Critérios de Pesquisa",
+        businessType: "Tipo de Negócio",
+        region: "Região",
+        timeFrame: "Prazo de Criação",
+        findBusinesses: "Encontrar Negócios",
+        searching: "A Pesquisar...",
+        resultsFound: "Negócios Encontrados",
+        exportCsv: "Exportar CSV",
+        startSearch: "Comece a sua pesquisa",
+        startSearchDesc: "Defina os critérios à esquerda para encontrar novos negócios e oportunidades na sua área.",
+        analyzing: "A analisar o mercado com IA...",
+        noResults: "Nenhum negócio encontrado",
+        potential: "Potencial",
+        rating: "Avaliação",
+        viewDetails: "Ver Detalhes",
+        types: {
+          restaurant: "Restauração",
+          accommodation: "Alojamento",
+          retail: "Retalho",
+          service: "Serviços"
+        },
+        frames: {
+          month: "Último Mês",
+          threeMonths: "Últimos 3 Meses",
+          sixMonths: "Últimos 6 Meses",
+          year: "Último Ano"
+        }
+      },
+      billing: {
+        title: "Faturação e Subscrição",
+        subtitle: "Gerir o seu plano, métodos de pagamento e faturas.",
+        tabs: {
+          overview: "Visão Geral",
+          subscription: "Subscrição",
+          invoices: "Faturas",
+          usage: "Utilização"
+        },
+        plan: "Plano",
+        monthlyValue: "Valor Mensal",
+        creditsStatus: "Estado Créditos",
+        paidInvoices: "Faturas Pagas",
+        availableCredits: "Créditos Disponíveis",
+        monthlyLimit: "Limite Mensal",
+        users: "Utilizadores",
+        managePlan: "Gerir Plano",
+        upgrade: "Fazer Upgrade",
+        current: "Atual",
+        select: "Selecionar"
       }
     }
   },
   en: {
+    common: {
+      save: "Save",
+      cancel: "Cancel",
+      edit: "Edit",
+      delete: "Delete",
+      view: "View",
+      create: "Create",
+      search: "Search",
+      filter: "Filter",
+      export: "Export",
+      import: "Import",
+      actions: "Actions",
+      status: "Status",
+      date: "Date",
+      loading: "Loading...",
+      success: "Success",
+      error: "Error",
+      back: "Back",
+      next: "Next",
+      copy: "Copy",
+      regenerate: "Regenerate"
+    },
     nav: {
       login: "Login",
       startFree: "Start Free Trial",
@@ -149,15 +307,20 @@ export const translations = {
       upgrade: "Upgrade Plan",
       creditsLeft: "replies left",
       menu: {
+        overview: "Overview",
         generate: "AI Response Generator",
+        social: "Social Media",
+        discovery: "Discovery (AI)",
         dashboard: "Stats & SEO",
-        platforms: "Connected Apps",
-        plans: "Plans & Billing",
-        accounting: "Accounting",
-        profile: "Business Profile",
-        calendar: "Social Calendar",
         crm: "CRM & Customers",
-        team: "Team Management"
+        team: "Team Management",
+        calendar: "Social Calendar",
+        profile: "Business Profile",
+        platforms: "Connected Apps",
+        invoicing: "Invoicing",
+        accounting: "Accounting",
+        plans: "Plans & Billing",
+        news: "What's New"
       }
     },
     landing: {
@@ -211,6 +374,9 @@ export const translations = {
       security: "Enterprise-grade security with AES-256 encryption."
     },
     app: {
+      welcome: "Welcome to Responder Já",
+      welcomeSubtitle: "Your AI command center for reputation management.",
+      quickActions: "Quick Actions",
       generatorTitle: "AI Response Generator",
       waitingInput: "Awaiting Input",
       waitingDesc: "Paste the customer review on the left. Our AI will analyze sentiment and craft the perfect reply.",
@@ -269,10 +435,137 @@ export const translations = {
         postStatus: "Status",
         save: "Save",
         cancel: "Cancel"
+      },
+      crm: {
+        title: "CRM",
+        subtitle: "Manage relationships and sales opportunities.",
+        totalContacts: "Total Contacts",
+        pipelineValue: "Pipeline Value",
+        conversionRate: "Conversion Rate",
+        newContact: "New Contact",
+        searchPlaceholder: "Search contacts...",
+        table: {
+          name: "Name",
+          company: "Company",
+          status: "Status",
+          stage: "Stage",
+          value: "Value",
+          actions: "Actions"
+        },
+        stages: {
+          new: "New",
+          contacted: "Contacted",
+          proposal: "Proposal",
+          won: "Won"
+        },
+        status: {
+          lead: "Lead",
+          prospect: "Prospect",
+          customer: "Customer"
+        }
+      },
+      social: {
+        title: "Social Media Management",
+        subtitle: "Manage all your accounts and interactions in one place.",
+        connectAccount: "Connect Account",
+        tabs: {
+          accounts: "Accounts",
+          comments: "Comments",
+          automation: "Automation",
+          analytics: "Analytics",
+          settings: "Settings"
+        },
+        noAccounts: "No accounts connected",
+        noAccountsDesc: "Connect your social networks to get started.",
+        connectNow: "Connect now",
+        pending: "Pending",
+        highPriority: "High Priority",
+        replied24h: "Replied (24h)",
+        allUpToDate: "All caught up!",
+        noPending: "There are no pending comments to reply to.",
+        generateReply: "Generate Reply",
+        originalComment: "Original Comment",
+        responseTone: "Response Tone",
+        extraInstructions: "Extra Instructions",
+        publishResponse: "Publish Response"
+      },
+      discovery: {
+        title: "AI Business Discovery",
+        subtitle: "Find new businesses in your region using Artificial Intelligence.",
+        filters: "Search Criteria",
+        businessType: "Business Type",
+        region: "Region",
+        timeFrame: "Creation Timeframe",
+        findBusinesses: "Find Businesses",
+        searching: "Searching...",
+        resultsFound: "Businesses Found",
+        exportCsv: "Export CSV",
+        startSearch: "Start your search",
+        startSearchDesc: "Define the criteria on the left to find new businesses and opportunities in your area.",
+        analyzing: "Analyzing market with AI...",
+        noResults: "No businesses found",
+        potential: "Potential",
+        rating: "Rating",
+        viewDetails: "View Details",
+        types: {
+          restaurant: "Restaurant",
+          accommodation: "Accommodation",
+          retail: "Retail",
+          service: "Services"
+        },
+        frames: {
+          month: "Last Month",
+          threeMonths: "Last 3 Months",
+          sixMonths: "Last 6 Months",
+          year: "Last Year"
+        }
+      },
+      billing: {
+        title: "Billing & Subscription",
+        subtitle: "Manage your plan, payment methods, and invoices.",
+        tabs: {
+          overview: "Overview",
+          subscription: "Subscription",
+          invoices: "Invoices",
+          usage: "Usage"
+        },
+        plan: "Plan",
+        monthlyValue: "Monthly Value",
+        creditsStatus: "Credits Status",
+        paidInvoices: "Paid Invoices",
+        availableCredits: "Available Credits",
+        monthlyLimit: "Monthly Limit",
+        users: "Users",
+        managePlan: "Manage Plan",
+        upgrade: "Upgrade",
+        current: "Current",
+        select: "Select"
       }
     }
   },
   es: {
+    common: {
+      save: "Guardar",
+      cancel: "Cancelar",
+      edit: "Editar",
+      delete: "Eliminar",
+      view: "Ver",
+      create: "Crear",
+      search: "Buscar",
+      filter: "Filtrar",
+      export: "Exportar",
+      import: "Importar",
+      actions: "Acciones",
+      status: "Estado",
+      date: "Fecha",
+      loading: "Cargando...",
+      success: "Éxito",
+      error: "Error",
+      back: "Volver",
+      next: "Siguiente",
+      copy: "Copiar",
+      regenerate: "Regenerar"
+    },
     nav: {
       login: "Entrar",
       startFree: "Prueba Gratis",
@@ -284,19 +577,24 @@ export const translations = {
       upgrade: "Mejorar Plan",
       creditsLeft: "respuestas restantes",
       menu: {
+        overview: "Visión General",
         generate: "Generador IA",
-        dashboard: "Estadísticas",
-        platforms: "Apps Conectadas",
-        plans: "Planes y Facturación",
-        accounting: "Contabilidad",
-        profile: "Perfil de Negocio",
-        calendar: "Calendario Social",
+        social: "Gestión Redes",
+        discovery: "Descubrimiento (IA)",
+        dashboard: "Estadísticas & SEO",
         crm: "CRM y Clientes",
-        team: "Equipo"
+        team: "Equipo",
+        calendar: "Calendario Social",
+        profile: "Perfil de Negocio",
+        platforms: "Plataformas",
+        invoicing: "Facturación",
+        accounting: "Contabilidad",
+        plans: "Planes y Facturación",
+        news: "Novedades"
       }
     },
     landing: {
-      heroTitle: "Domina tu Reputación Online y",
+      heroTitle: "Domina tu Reputação Online y",
       heroHighlight: "Gana Clientes Leales",
       heroDesc: "Responde automáticamente reseñas en Google, Booking y TripAdvisor con IA. Mejora tu SEO Local, ahorra tiempo y haz crecer tu negocio.",
       ctaPrimary: "Probar Gratis Ahora",
@@ -346,9 +644,12 @@ export const translations = {
       security: "Protegido por encriptación SSL empresarial."
     },
     app: {
+      welcome: "Bienvenido a Responder Já",
+      welcomeSubtitle: "Tu centro de comando de IA para la gestión de reputación.",
+      quickActions: "Acciones Rápidas",
       generatorTitle: "Generador de Respuestas IA",
       waitingInput: "Esperando entrada",
-      waitingDesc: "Pega la reseña a la izquierda. Nuestra IA analizará el sentimiento y creará la mejor respuesta.",
+      waitingDesc: "Pega la reseña a la izquierda. Nuestra IA analizará el sentimiento e creará la mejor respuesta.",
       dashboardTitle: "Panel de Control",
       dashboardDesc: "Análisis de reseñas, seguimiento de sentimiento y métricas de crecimiento.",
       recentHistory: "Historial Reciente",
@@ -404,6 +705,111 @@ export const translations = {
         postStatus: "Estado",
         save: "Guardar",
         cancel: "Cancelar"
+      },
+      crm: {
+        title: "CRM",
+        subtitle: "Gestionar relaciones y oportunidades de venta.",
+        totalContacts: "Total Contactos",
+        pipelineValue: "Valor Pipeline",
+        conversionRate: "Tasa Conversión",
+        newContact: "Nuevo Contacto",
+        searchPlaceholder: "Buscar contactos...",
+        table: {
+          name: "Nombre",
+          company: "Empresa",
+          status: "Estado",
+          stage: "Fase",
+          value: "Valor",
+          actions: "Acciones"
+        },
+        stages: {
+          new: "Nuevo",
+          contacted: "Contactado",
+          proposal: "Propuesta",
+          won: "Ganado"
+        },
+        status: {
+          lead: "Lead",
+          prospect: "Prospecto",
+          customer: "Cliente"
+        }
+      },
+      social: {
+        title: "Gestión de Redes Sociales",
+        subtitle: "Gestiona todas tus cuentas e interacciones en un solo lugar.",
+        connectAccount: "Conectar Cuenta",
+        tabs: {
+          accounts: "Cuentas",
+          comments: "Comentarios",
+          automation: "Automatización",
+          analytics: "Analítica",
+          settings: "Configuración"
+        },
+        noAccounts: "No hay cuentas conectadas",
+        noAccountsDesc: "Conecta tus redes sociales para empezar.",
+        connectNow: "Conectar ahora",
+        pending: "Pendientes",
+        highPriority: "Alta Prioridad",
+        replied24h: "Respondidos (24h)",
+        allUpToDate: "¡Todo al día!",
+        noPending: "No hay comentarios pendientes para responder.",
+        generateReply: "Generar Respuesta",
+        originalComment: "Comentario Original",
+        responseTone: "Tono de Respuesta",
+        extraInstructions: "Instrucciones Extra",
+        publishResponse: "Publicar Respuesta"
+      },
+      discovery: {
+        title: "Descubrimiento de Negocios IA",
+        subtitle: "Encuentra nuevos negocios en tu región usando Inteligencia Artificial.",
+        filters: "Criterios de Búsqueda",
+        businessType: "Tipo de Negocio",
+        region: "Región",
+        timeFrame: "Plazo de Creación",
+        findBusinesses: "Encontrar Negocios",
+        searching: "Buscando...",
+        resultsFound: "Negocios Encontrados",
+        exportCsv: "Exportar CSV",
+        startSearch: "Empieza tu búsqueda",
+        startSearchDesc: "Define los criterios a la izquierda para encontrar nuevas oportunidades en tu zona.",
+        analyzing: "Analizando el mercado con IA...",
+        noResults: "Ningún negocio encontrado",
+        potential: "Potencial",
+        rating: "Valoración",
+        viewDetails: "Ver Detalles",
+        types: {
+          restaurant: "Restauración",
+          accommodation: "Alojamiento",
+          retail: "Comercio",
+          service: "Servicios"
+        },
+        frames: {
+          month: "Último Mes",
+          threeMonths: "Últimos 3 Meses",
+          sixMonths: "Últimos 6 Meses",
+          year: "Último Año"
+        }
+      },
+      billing: {
+        title: "Facturación y Suscripción",
+        subtitle: "Gestionar tu plan, métodos de pago y facturas.",
+        tabs: {
+          overview: "Visión General",
+          subscription: "Suscripción",
+          invoices: "Facturas",
+          usage: "Uso"
+        },
+        plan: "Plan",
+        monthlyValue: "Valor Mensual",
+        creditsStatus: "Estado Créditos",
+        paidInvoices: "Facturas Pagadas",
+        availableCredits: "Créditos Disponibles",
+        monthlyLimit: "Límite Mensual",
+        users: "Usuarios",
+        managePlan: "Gestionar Plan",
+        upgrade: "Mejorar",
+        current: "Actual",
+        select: "Seleccionar"
       }
     }
   }

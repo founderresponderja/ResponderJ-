@@ -19,16 +19,20 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Theme } from '../App';
+import { translations, Language } from '../utils/translations';
 
 interface BillingPageProps {
   theme?: Theme;
+  lang: Language;
 }
 
-const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
+const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [billingInfo, setBillingInfo] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const t = translations[lang].app.billing;
 
   useEffect(() => {
     fetchBillingInfo();
@@ -80,6 +84,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
   };
 
   const getStatusLabel = (status: string) => {
+    // Basic mapping, could be expanded for more complex statuses or use translation if needed
     switch(status) {
       case "paid": return "Pago";
       case "active": return "Ativo";
@@ -118,8 +123,8 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
     <div className="animate-fade-in space-y-6">
         <div className="flex justify-between items-start">
             <div>
-                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Faturação e Subscrição</h2>
-                <p className="text-slate-500 dark:text-slate-400">Gerir o seu plano, métodos de pagamento e faturas.</p>
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{t.title}</h2>
+                <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
             </div>
             {error && (
                 <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm border border-red-100 flex items-center gap-2">
@@ -130,10 +135,10 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                <TabsTrigger value="overview" className="rounded-lg">Visão Geral</TabsTrigger>
-                <TabsTrigger value="subscription" className="rounded-lg">Subscrição</TabsTrigger>
-                <TabsTrigger value="invoices" className="rounded-lg">Faturas</TabsTrigger>
-                <TabsTrigger value="usage" className="rounded-lg">Utilização</TabsTrigger>
+                <TabsTrigger value="overview" className="rounded-lg">{t.tabs.overview}</TabsTrigger>
+                <TabsTrigger value="subscription" className="rounded-lg">{t.tabs.subscription}</TabsTrigger>
+                <TabsTrigger value="invoices" className="rounded-lg">{t.tabs.invoices}</TabsTrigger>
+                <TabsTrigger value="usage" className="rounded-lg">{t.tabs.usage}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
@@ -145,9 +150,9 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                                     {getPlanIcon(currentPlanName)}
                                 </div>
                                 <div>
-                                    <CardTitle className="text-lg">Plano {currentPlanName}</CardTitle>
+                                    <CardTitle className="text-lg">{t.plan} {currentPlanName}</CardTitle>
                                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                                        {subscription ? `${subscription.plan.price}€/mês` : 'Sem custos'} 
+                                        {subscription ? `${subscription.plan.price}€${translations[lang].pricing.month}` : 'Sem custos'} 
                                         {subscription && ` • Renovação: ${new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-PT")}`}
                                     </p>
                                 </div>
@@ -161,19 +166,19 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
                             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">{credits}</p>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Créditos Disponíveis</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">{t.availableCredits}</p>
                             </div>
                             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                     {subscription?.plan?.monthlyResponses || 10}
                                 </p>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Limite Mensal</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">{t.monthlyLimit}</p>
                             </div>
                             <div className="text-center p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50">
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
                                     {subscription?.plan?.maxUsers > 0 ? subscription?.plan?.maxUsers : '∞'}
                                 </p>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Utilizadores</p>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">{t.users}</p>
                             </div>
                         </div>
                         <div className="flex gap-3 mt-6">
@@ -181,7 +186,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                                 onClick={() => setActiveTab('subscription')}
                                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                             >
-                                {subscription ? 'Gerir Plano' : 'Fazer Upgrade'}
+                                {subscription ? t.managePlan : t.upgrade}
                             </button>
                         </div>
                     </CardContent>
@@ -192,7 +197,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Valor Mensal</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t.monthlyValue}</p>
                                     <p className="text-3xl font-bold text-slate-900 dark:text-white">{subscription?.plan?.price || 0}€</p>
                                 </div>
                                 <Euro className="w-8 h-8 text-green-600" />
@@ -203,7 +208,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Estado Créditos</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t.creditsStatus}</p>
                                     <p className="text-3xl font-bold text-slate-900 dark:text-white">{credits > 10 ? 'OK' : 'Baixo'}</p>
                                 </div>
                                 <Activity className={`w-8 h-8 ${credits > 10 ? 'text-blue-600' : 'text-amber-500'}`} />
@@ -214,7 +219,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Faturas Pagas</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t.paidInvoices}</p>
                                     <p className="text-3xl font-bold text-slate-900 dark:text-white">{invoices.length}</p>
                                 </div>
                                 <FileText className="w-8 h-8 text-purple-600" />
@@ -235,12 +240,12 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                             <div className="flex justify-between items-start mb-4">
                                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">{plan.name}</h3>
                                 {currentPlanName === plan.name && (
-                                    <span className="bg-brand-600 text-white text-xs px-2 py-1 rounded-full">Atual</span>
+                                    <span className="bg-brand-600 text-white text-xs px-2 py-1 rounded-full">{t.current}</span>
                                 )}
                             </div>
                             <div className="mb-6">
                                 <span className="text-3xl font-bold text-slate-900 dark:text-white">{plan.price}€</span>
-                                <span className="text-slate-500">/mês</span>
+                                <span className="text-slate-500">{translations[lang].pricing.month}</span>
                             </div>
                             <ul className="space-y-3 mb-6">
                                 {plan.features.slice(0, 4).map((feature: string, i: number) => (
@@ -259,7 +264,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme }) => {
                                         : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90'
                                 }`}
                             >
-                                {currentPlanName === plan.name ? 'Plano Atual' : 'Selecionar'}
+                                {currentPlanName === plan.name ? t.current : t.select}
                             </button>
                         </div>
                     ))}

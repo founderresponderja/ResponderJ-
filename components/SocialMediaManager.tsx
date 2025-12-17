@@ -1,20 +1,16 @@
+
 import React, { useState } from 'react';
 import { 
-  LayoutDashboard, 
   MessageSquare, 
   BarChart2, 
-  Settings, 
   Plus, 
   RefreshCw, 
   ExternalLink,
-  Search,
-  Filter, 
   CheckCircle2, 
   AlertTriangle,
   Clock,
   ThumbsUp,
   ThumbsDown,
-  MoreVertical,
   Share2,
   Facebook,
   Instagram,
@@ -38,7 +34,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { Switch } from './ui/Switch';
-import { Language } from '../utils/translations';
+import { translations, Language } from '../utils/translations';
 import { generateResponse } from '../services/geminiService';
 import { Language as AppLanguage } from '../types';
 import AutomationRules from './AutomationRules';
@@ -201,6 +197,9 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
   const [customInstructions, setCustomInstructions] = useState("");
   const [isEditingResponse, setIsEditingResponse] = useState(false);
 
+  const t = translations[lang].app.social;
+  const common = translations[lang].common;
+
   // Actions
   const handleConnect = (platform: string) => {
     setIsLoading(true);
@@ -262,7 +261,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             customerName: comment.author,
             reviewText: comment.content,
             tone: toneLabel,
-            language: AppLanguage.PT // Default to PT or use props.lang if mapped
+            language: AppLanguage.PT 
         }, businessContext);
 
         setGeneratedResponse(result.response);
@@ -286,31 +285,30 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
 
   const handleCopyResponse = () => {
     navigator.clipboard.writeText(generatedResponse);
-    // Could add toast here
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Gestão de Redes Sociais</h2>
-          <p className="text-slate-500 dark:text-slate-400">Gerencie todas as suas contas e interações num só lugar.</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{t.title}</h2>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
         <button 
           onClick={() => setIsConnectModalOpen(true)}
           className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
         >
-          <Plus size={18} /> Conectar Conta
+          <Plus size={18} /> {t.connectAccount}
         </button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto overflow-x-auto flex-nowrap justify-start">
-          <TabsTrigger value="accounts" className="flex-1 md:flex-none">Contas</TabsTrigger>
-          <TabsTrigger value="comments" className="flex-1 md:flex-none">Comentários</TabsTrigger>
-          <TabsTrigger value="automation" className="flex-1 md:flex-none flex items-center gap-2"><Zap className="w-3 h-3" /> Automação</TabsTrigger>
-          <TabsTrigger value="analytics" className="flex-1 md:flex-none">Analytics</TabsTrigger>
-          <TabsTrigger value="settings" className="flex-1 md:flex-none">Configurações</TabsTrigger>
+          <TabsTrigger value="accounts" className="flex-1 md:flex-none">{t.tabs.accounts}</TabsTrigger>
+          <TabsTrigger value="comments" className="flex-1 md:flex-none">{t.tabs.comments}</TabsTrigger>
+          <TabsTrigger value="automation" className="flex-1 md:flex-none flex items-center gap-2"><Zap className="w-3 h-3" /> {t.tabs.automation}</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1 md:flex-none">{t.tabs.analytics}</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-1 md:flex-none">{t.tabs.settings}</TabsTrigger>
         </TabsList>
 
         {/* ACCOUNTS TAB */}
@@ -319,10 +317,10 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             <Card className="border-dashed border-2 bg-slate-50 dark:bg-slate-900/50">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Share2 className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white">Nenhuma conta conectada</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Conecte as suas redes sociais para começar.</p>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white">{t.noAccounts}</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">{t.noAccountsDesc}</p>
                 <button onClick={() => setIsConnectModalOpen(true)} className="text-brand-600 font-medium hover:underline">
-                  Conectar agora
+                  {t.connectNow}
                 </button>
               </CardContent>
             </Card>
@@ -391,7 +389,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             <Card className="bg-orange-50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-orange-800 dark:text-orange-300">Pendentes</p>
+                  <p className="text-sm font-medium text-orange-800 dark:text-orange-300">{t.pending}</p>
                   <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">{comments.filter(c => c.status === 'pending').length}</p>
                 </div>
                 <Clock className="w-8 h-8 text-orange-400 dark:text-orange-500/50" />
@@ -400,7 +398,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             <Card className="bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-300">Alta Prioridade</p>
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">{t.highPriority}</p>
                   <p className="text-2xl font-bold text-red-900 dark:text-red-100">{comments.filter(c => c.priority === 'high' && c.status === 'pending').length}</p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-400 dark:text-red-500/50" />
@@ -409,7 +407,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Respondidos (24h)</p>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">{t.replied24h}</p>
                   <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">12</p>
                 </div>
                 <CheckCircle2 className="w-8 h-8 text-blue-400 dark:text-blue-500/50" />
@@ -421,8 +419,8 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             {comments.filter(c => c.status === 'pending').length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
                 <CheckCircle2 className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 dark:text-white">Tudo em dia!</h3>
-                <p className="text-slate-500 dark:text-slate-400">Não existem comentários pendentes para responder.</p>
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white">{t.allUpToDate}</h3>
+                <p className="text-slate-500 dark:text-slate-400">{t.noPending}</p>
               </div>
             ) : (
               comments.filter(c => c.status === 'pending').map(comment => (
@@ -444,7 +442,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
                           <div className="flex items-center gap-2 mb-2">
                             <SentimentBadge sentiment={comment.sentiment} />
                             {comment.priority === 'high' && (
-                              <span className="text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900">Alta Prioridade</span>
+                              <span className="text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900">{t.highPriority}</span>
                             )}
                             {comment.tags?.map(tag => (
                               <span key={tag} className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full">
@@ -476,7 +474,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
                         onClick={() => handleGenerateResponse(comment)}
                         className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
                       >
-                        <Bot size={16} /> Gerar Resposta
+                        <Bot size={16} /> {t.generateReply}
                       </button>
                     </div>
                   </CardContent>
@@ -582,7 +580,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden max-h-[80vh] flex flex-col">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Conectar Nova Conta</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t.connectAccount}</h3>
               <button onClick={() => setIsConnectModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                 <X className="w-5 h-5" />
               </button>
@@ -627,7 +625,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Bot className="w-5 h-5 text-brand-600" />
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Gerar Resposta Inteligente</h3>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t.generateReply}</h3>
               </div>
               <button onClick={() => setIsGenerateModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                 <X className="w-5 h-5" />
@@ -638,7 +636,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
               {/* Original Comment */}
               <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Comentário Original</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.originalComment}</span>
                   <PlatformIcon platform={selectedComment.platform} className="w-3 h-3" />
                 </div>
                 <div className="flex items-center gap-2 mb-2">
@@ -651,7 +649,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
               {/* Controls */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tom da Resposta</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.responseTone}</label>
                   <select 
                     value={responseTone}
                     onChange={(e) => {
@@ -667,7 +665,7 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Instruções Extra</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.extraInstructions}</label>
                   <input 
                     type="text" 
                     value={customInstructions}
@@ -687,13 +685,13 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
                         onClick={handleCopyResponse}
                         className="text-xs text-slate-500 hover:text-brand-600 flex items-center gap-1 font-medium"
                     >
-                        <Copy size={12} /> Copiar
+                        <Copy size={12} /> {common.copy || 'Copiar'}
                     </button>
                     <button 
                         onClick={() => generateAIResponse(selectedComment, responseTone)}
                         className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1"
                     >
-                        <RefreshCw size={12} /> Regenerar
+                        <RefreshCw size={12} /> {common.regenerate || 'Regenerar'}
                     </button>
                   </div>
                 </div>
@@ -732,14 +730,14 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
                 onClick={() => setIsGenerateModalOpen(false)}
                 className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-white dark:hover:bg-slate-800 transition-colors"
               >
-                Cancelar
+                {common.cancel}
               </button>
               <button 
                 onClick={handlePublishResponse}
                 disabled={isGenerating || !generatedResponse}
                 className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send size={16} /> Publicar Resposta
+                <Send size={16} /> {t.publishResponse}
               </button>
             </div>
           </div>

@@ -69,8 +69,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Middlewares de Privacidade (GDPR)
-app.use(secureCookieMiddleware);
-app.use(gdprAuditLog);
+app.use(secureCookieMiddleware as any);
+app.use(gdprAuditLog as any);
 
 if (GDPREnhancedCompliance?.complianceMiddleware) {
   app.use(GDPREnhancedCompliance.complianceMiddleware as any);

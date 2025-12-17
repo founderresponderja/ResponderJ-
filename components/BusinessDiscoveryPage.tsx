@@ -17,6 +17,11 @@ import {
   Compass
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { translations, Language } from '../utils/translations';
+
+interface BusinessDiscoveryPageProps {
+  lang: Language;
+}
 
 interface BusinessLead {
   id: string;
@@ -42,7 +47,7 @@ interface BusinessLead {
   lastUpdated: string;
 }
 
-const BusinessDiscoveryPage: React.FC = () => {
+const BusinessDiscoveryPage: React.FC<BusinessDiscoveryPageProps> = ({ lang }) => {
   const [criteria, setCriteria] = useState({
     businessType: "restaurant",
     region: "Lisboa",
@@ -54,6 +59,7 @@ const BusinessDiscoveryPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [leads, setLeads] = useState<BusinessLead[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const t = translations[lang].app.discovery;
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,10 +125,10 @@ const BusinessDiscoveryPage: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Compass className="w-6 h-6 text-brand-600 dark:text-brand-400" />
-            Descoberta de Negócios IA
+            {t.title}
           </h2>
           <p className="text-slate-500 dark:text-slate-400">
-            Encontre novos negócios na sua região usando Inteligência Artificial.
+            {t.subtitle}
           </p>
         </div>
       </div>
@@ -132,13 +138,13 @@ const BusinessDiscoveryPage: React.FC = () => {
         <Card className="lg:col-span-1 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 h-fit">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="w-5 h-5" /> Critérios de Pesquisa
+              <Filter className="w-5 h-5" /> {t.filters}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSearch} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Tipo de Negócio</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.businessType}</label>
                 <div className="relative">
                   <Briefcase className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                   <select 
@@ -146,16 +152,16 @@ const BusinessDiscoveryPage: React.FC = () => {
                     onChange={(e) => setCriteria({...criteria, businessType: e.target.value})}
                     className="w-full pl-9 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                   >
-                    <option value="restaurant">Restauração</option>
-                    <option value="accommodation">Alojamento</option>
-                    <option value="retail">Retalho</option>
-                    <option value="service">Serviços</option>
+                    <option value="restaurant">{t.types.restaurant}</option>
+                    <option value="accommodation">{t.types.accommodation}</option>
+                    <option value="retail">{t.types.retail}</option>
+                    <option value="service">{t.types.service}</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Região</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.region}</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                   <input 
@@ -169,7 +175,7 @@ const BusinessDiscoveryPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Prazo de Criação</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.timeFrame}</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                   <select 
@@ -177,10 +183,10 @@ const BusinessDiscoveryPage: React.FC = () => {
                     onChange={(e) => setCriteria({...criteria, timeFrame: e.target.value})}
                     className="w-full pl-9 p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                   >
-                    <option value="1month">Último Mês</option>
-                    <option value="3months">Últimos 3 Meses</option>
-                    <option value="6months">Últimos 6 Meses</option>
-                    <option value="1year">Último Ano</option>
+                    <option value="1month">{t.frames.month}</option>
+                    <option value="3months">{t.frames.threeMonths}</option>
+                    <option value="6months">{t.frames.sixMonths}</option>
+                    <option value="1year">{t.frames.year}</option>
                   </select>
                 </div>
               </div>
@@ -191,7 +197,7 @@ const BusinessDiscoveryPage: React.FC = () => {
                 className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-70"
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                {isLoading ? 'A Pesquisar...' : 'Encontrar Negócios'}
+                {isLoading ? t.searching : t.findBusinesses}
               </button>
             </form>
           </CardContent>
@@ -203,13 +209,13 @@ const BusinessDiscoveryPage: React.FC = () => {
             <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-500" />
-                <span className="font-medium text-slate-700 dark:text-slate-200">{leads.length} Negócios Encontrados</span>
+                <span className="font-medium text-slate-700 dark:text-slate-200">{leads.length} {t.resultsFound}</span>
               </div>
               <button 
                 onClick={handleExport}
                 className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors"
               >
-                <Download className="w-4 h-4" /> Exportar CSV
+                <Download className="w-4 h-4" /> {t.exportCsv}
               </button>
             </div>
           )}
@@ -219,21 +225,21 @@ const BusinessDiscoveryPage: React.FC = () => {
               <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-full mb-4">
                 <Search className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">Comece a sua pesquisa</h3>
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">{t.startSearch}</h3>
               <p className="text-slate-500 dark:text-slate-400 max-w-md text-center mt-2">
-                Defina os critérios à esquerda para encontrar novos negócios e oportunidades na sua área.
+                {t.startSearchDesc}
               </p>
             </div>
           ) : isLoading ? (
             <div className="flex flex-col items-center justify-center h-96 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
               <Loader2 className="w-10 h-10 text-brand-600 animate-spin mb-4" />
-              <p className="text-slate-600 dark:text-slate-300 font-medium">A analisar o mercado com IA...</p>
+              <p className="text-slate-600 dark:text-slate-300 font-medium">{t.analyzing}</p>
               <p className="text-slate-400 text-sm mt-2">Isto pode demorar alguns segundos.</p>
             </div>
           ) : leads.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-96 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
               <AlertCircle className="w-10 h-10 text-slate-400 mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">Nenhum negócio encontrado</h3>
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">{t.noResults}</h3>
               <p className="text-slate-500 dark:text-slate-400 mt-2">Tente alargar os critérios de pesquisa.</p>
             </div>
           ) : (
@@ -281,15 +287,15 @@ const BusinessDiscoveryPage: React.FC = () => {
                       <div className="md:border-l md:border-slate-100 md:dark:border-slate-800 md:pl-6 flex flex-col justify-center min-w-[200px]">
                         <div className="space-y-3">
                            <div className="flex justify-between text-sm">
-                             <span className="text-slate-500">Potencial:</span>
+                             <span className="text-slate-500">{t.potential}:</span>
                              <span className="font-medium capitalize">{lead.potentialValue}</span>
                            </div>
                            <div className="flex justify-between text-sm">
-                             <span className="text-slate-500">Avaliação:</span>
+                             <span className="text-slate-500">{t.rating}:</span>
                              <span className="font-medium">{lead.rating ? `${lead.rating} ★ (${lead.reviewCount})` : 'N/A'}</span>
                            </div>
                            <button className="w-full mt-2 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-                             Ver Detalhes
+                             {t.viewDetails}
                            </button>
                         </div>
                       </div>

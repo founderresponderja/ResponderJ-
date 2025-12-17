@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Users, 
@@ -18,6 +19,11 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { translations, Language } from '../utils/translations';
+
+interface CRMPageProps {
+  lang: Language;
+}
 
 interface Contact {
   id: string;
@@ -39,7 +45,7 @@ const MOCK_CONTACTS: Contact[] = [
   { id: '5', name: 'Sofia Martins', company: 'Loja Bio', email: 'sofia@bio.pt', phone: '+351 922 333 444', status: 'prospect', stage: 'Proposta', lastContact: '2024-01-19', value: 800 },
 ];
 
-const CRMPage: React.FC = () => {
+const CRMPage: React.FC<CRMPageProps> = ({ lang }) => {
   const [contacts, setContacts] = useState<Contact[]>(MOCK_CONTACTS);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,6 +64,9 @@ const CRMPage: React.FC = () => {
     status: 'lead',
     stage: 'Novo'
   });
+
+  const t = translations[lang].app.crm;
+  const common = translations[lang].common;
 
   const filteredContacts = contacts.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -111,14 +120,14 @@ const CRMPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">CRM</h2>
-          <p className="text-slate-500 dark:text-slate-400">Gerir relacionamentos e oportunidades de venda.</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h2>
+          <p className="text-slate-500 dark:text-slate-400">{t.subtitle}</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
         >
-          <Plus size={18} /> Novo Contacto
+          <Plus size={18} /> {t.newContact}
         </button>
       </div>
 
@@ -126,7 +135,7 @@ const CRMPage: React.FC = () => {
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Contactos</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.totalContacts}</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalLeads}</p>
             </div>
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400">
@@ -137,7 +146,7 @@ const CRMPage: React.FC = () => {
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Pipeline Valor</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.pipelineValue}</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">€{pipelineValue.toLocaleString()}</p>
             </div>
             <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-full text-emerald-600 dark:text-emerald-400">
@@ -148,7 +157,7 @@ const CRMPage: React.FC = () => {
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Taxa Conversão</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t.conversionRate}</p>
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{conversionRate}%</p>
             </div>
             <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
@@ -172,7 +181,7 @@ const CRMPage: React.FC = () => {
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <input
-                    placeholder="Pesquisar contactos..."
+                    placeholder={t.searchPlaceholder}
                     className="pl-9 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-transparent py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -200,30 +209,30 @@ const CRMPage: React.FC = () => {
               {showFilters && (
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Status</label>
+                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.table.status}</label>
                     <select 
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
                       className="w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm p-2 outline-none focus:ring-2 focus:ring-brand-500"
                     >
                       <option value="all">Todos</option>
-                      <option value="lead">Lead</option>
-                      <option value="prospect">Prospect</option>
-                      <option value="customer">Cliente</option>
+                      <option value="lead">{t.status.lead}</option>
+                      <option value="prospect">{t.status.prospect}</option>
+                      <option value="customer">{t.status.customer}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Fase Pipeline</label>
+                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.table.stage}</label>
                     <select 
                       value={stageFilter}
                       onChange={(e) => setStageFilter(e.target.value)}
                       className="w-full rounded-md border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm p-2 outline-none focus:ring-2 focus:ring-brand-500"
                     >
                       <option value="all">Todas</option>
-                      <option value="Novo">Novo</option>
-                      <option value="Contactado">Contactado</option>
-                      <option value="Proposta">Proposta</option>
-                      <option value="Ganho">Ganho</option>
+                      <option value="Novo">{t.stages.new}</option>
+                      <option value="Contactado">{t.stages.contacted}</option>
+                      <option value="Proposta">{t.stages.proposal}</option>
+                      <option value="Ganho">{t.stages.won}</option>
                     </select>
                   </div>
                   <div className="flex items-end">
@@ -242,12 +251,12 @@ const CRMPage: React.FC = () => {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                     <tr>
-                      <th className="px-4 py-3 font-medium rounded-l-lg">Nome</th>
-                      <th className="px-4 py-3 font-medium">Empresa</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Fase</th>
-                      <th className="px-4 py-3 font-medium">Valor</th>
-                      <th className="px-4 py-3 font-medium rounded-r-lg text-right">Ações</th>
+                      <th className="px-4 py-3 font-medium rounded-l-lg">{t.table.name}</th>
+                      <th className="px-4 py-3 font-medium">{t.table.company}</th>
+                      <th className="px-4 py-3 font-medium">{t.table.status}</th>
+                      <th className="px-4 py-3 font-medium">{t.table.stage}</th>
+                      <th className="px-4 py-3 font-medium">{t.table.value}</th>
+                      <th className="px-4 py-3 font-medium rounded-r-lg text-right">{t.table.actions}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -266,7 +275,7 @@ const CRMPage: React.FC = () => {
                               ${contact.status === 'customer' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
                                 contact.status === 'prospect' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 
                                 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'}`}>
-                              {contact.status}
+                              {contact.status === 'lead' ? t.status.lead : contact.status === 'prospect' ? t.status.prospect : t.status.customer}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
@@ -328,7 +337,7 @@ const CRMPage: React.FC = () => {
                       <div key={contact.id} className="bg-white dark:bg-slate-900 p-3 rounded border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md cursor-pointer transition-all">
                         <div className="flex justify-between items-start mb-2">
                           <span className="text-xs font-medium text-brand-600 bg-brand-50 dark:bg-brand-900/20 px-1.5 py-0.5 rounded">
-                            {contact.status}
+                            {contact.status === 'lead' ? t.status.lead : contact.status === 'prospect' ? t.status.prospect : t.status.customer}
                           </span>
                           <MoreVertical size={14} className="text-slate-400" />
                         </div>
@@ -388,14 +397,14 @@ const CRMPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Novo Contacto</h3>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t.newContact}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                 <X size={20} />
               </button>
             </div>
             <form onSubmit={handleAddContact} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.table.name} *</label>
                 <input 
                   type="text" 
                   required
@@ -406,7 +415,7 @@ const CRMPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Empresa *</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.table.company} *</label>
                 <input 
                   type="text" 
                   required
@@ -440,7 +449,7 @@ const CRMPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Valor (€)</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.table.value} (€)</label>
                   <input 
                     type="number" 
                     value={newContact.value}
@@ -450,29 +459,29 @@ const CRMPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.table.status}</label>
                   <select 
                     value={newContact.status}
                     onChange={(e) => setNewContact({...newContact, status: e.target.value as any})}
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                   >
-                    <option value="lead">Lead</option>
-                    <option value="prospect">Prospect</option>
-                    <option value="customer">Cliente</option>
+                    <option value="lead">{t.status.lead}</option>
+                    <option value="prospect">{t.status.prospect}</option>
+                    <option value="customer">{t.status.customer}</option>
                   </select>
                 </div>
               </div>
               <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fase do Pipeline</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.table.stage}</label>
                   <select 
                     value={newContact.stage}
                     onChange={(e) => setNewContact({...newContact, stage: e.target.value as any})}
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                   >
-                    <option value="Novo">Novo</option>
-                    <option value="Contactado">Contactado</option>
-                    <option value="Proposta">Proposta</option>
-                    <option value="Ganho">Ganho</option>
+                    <option value="Novo">{t.stages.new}</option>
+                    <option value="Contactado">{t.stages.contacted}</option>
+                    <option value="Proposta">{t.stages.proposal}</option>
+                    <option value="Ganho">{t.stages.won}</option>
                   </select>
               </div>
               <div className="flex gap-3 pt-2">
@@ -481,13 +490,13 @@ const CRMPage: React.FC = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
                 >
-                  Cancelar
+                  {common.cancel}
                 </button>
                 <button 
                   type="submit"
                   className="flex-1 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  <Save size={16} /> Guardar
+                  <Save size={16} /> {common.save}
                 </button>
               </div>
             </form>
