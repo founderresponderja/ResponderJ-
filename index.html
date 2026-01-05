@@ -5,52 +5,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Performance Optimization: Preconnect to Font Services -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
     <!-- SEO Primary Tags -->
     <title>Responder Já | Gestão de Reviews e Respostas com IA para PME</title>
     <meta name="title" content="Responder Já | Gestão de Reviews e Respostas com IA para PME">
-    <meta name="description" content="Automatize respostas a reviews no Google, TripAdvisor e Facebook com Inteligência Artificial. Melhore o SEO local, a reputação online da sua empresa e poupe tempo. Teste grátis!">
-    <meta name="keywords" content="responder reviews ia, gestão de reputação online, resposta automática google, inteligência artificial para restaurantes, marketing digital pme, seo local, chatgpt para empresas, gestão de avaliações, responder já">
-    <meta name="author" content="Amplia Solutions">
-    <meta name="robots" content="index, follow">
-    <meta name="language" content="Portuguese">
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://responderja.pt/">
-    <meta property="og:title" content="Responder Já - A Sua Reputação Online em Piloto Automático">
-    <meta property="og:description" content="Aumente o seu ranking no Google e fidelize clientes respondendo a todas as críticas em segundos com a nossa IA avançada.">
-    <meta property="og:image" content="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://responderja.pt/">
-    <meta property="twitter:title" content="Responder Já - IA para Gestão de Reviews">
-    <meta property="twitter:description" content="Nunca mais deixe um cliente sem resposta. Use IA para gerir a sua presença digital no Google, Booking e TheFork.">
-    <meta property="twitter:image" content="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
-
-    <!-- JSON-LD Schema Markup for Software Application -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Responder Já",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web, Android, iOS",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "EUR",
-        "description": "Teste gratuito de 7 dias"
-      },
-      "description": "Plataforma SaaS para automação de respostas a avaliações online usando Inteligência Artificial Generativa.",
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "ratingCount": "1250"
-      }
-    }
-    </script>
-
+    <meta name="description" content="Automatize respostas a reviews no Google, TripAdvisor e Booking com Inteligência Artificial. Melhore o SEO local, a reputação online da sua empresa e poupe tempo. Teste grátis!">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -58,7 +21,7 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['max-regular'], 
+              sans: ['"Outfit"', 'max-regular', 'system-ui', 'sans-serif'], 
             },
             colors: {
               brand: {
@@ -73,41 +36,11 @@
                 800: '#075985',
                 900: '#0c4a6e',
                 950: '#082f49',
-              },
-              slate: {
-                850: '#151e2e',
-                950: '#020617',
               }
             },
             animation: {
-              'fade-in': 'fadeIn 0.5s ease-out forwards',
-              'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
-              'slide-in-right': 'slideInRight 0.4s ease-out forwards',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'float': 'float 6s ease-in-out infinite',
-              'scale-in': 'scaleIn 0.2s ease-out forwards',
-            },
-            keyframes: {
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              fadeInUp: {
-                '0%': { opacity: '0', transform: 'translateY(20px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
-              },
-              slideInRight: {
-                '0%': { transform: 'translateX(100%)', opacity: '0' },
-                '100%': { transform: 'translateX(0)', opacity: '1' },
-              },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              },
-              scaleIn: {
-                '0%': { transform: 'scale(0.95)', opacity: '0' },
-                '100%': { transform: 'scale(1)', opacity: '1' },
-              }
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             }
           }
         }
@@ -116,125 +49,80 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-      :root {
-        --background: #ffffff;
-        --foreground: #0f172a;
-      }
-      
-      .dark {
-        --background: #020617;
-        --foreground: #f8fafc;
-      }
-
       body {
-        background-color: var(--background);
-        color: var(--foreground);
+        background-color: #ffffff;
+        color: #0f172a;
         font-family: 'Outfit', sans-serif;
         -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        overflow-x: hidden;
+        text-rendering: optimizeLegibility;
       }
       
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
-        border-radius: 4px;
-        border: 2px solid transparent;
-        background-clip: content-box;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border: 2px solid transparent;
-        background-clip: content-box;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
-      }
-      
-      .glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-      }
-      
-      .dark .glass {
-        background: rgba(2, 6, 23, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-      
-      .transition-all-300 {
-        transition-property: all;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 300ms;
+      .dark body {
+        background-color: #020617;
+        color: #f8fafc;
       }
 
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover, 
-      input:-webkit-autofill:focus, 
-      input:-webkit-autofill:active{
-          -webkit-box-shadow: 0 0 0 30px white inset !important;
-          transition: background-color 5000s ease-in-out 0s;
+      /* Skeleton Loading Animation */
+      .skeleton {
+        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
       }
-      .dark input:-webkit-autofill,
-      .dark input:-webkit-autofill:hover, 
-      .dark input:-webkit-autofill:focus, 
-      .dark input:-webkit-autofill:active{
-          -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
-          -webkit-text-fill-color: white !important;
+      .dark .skeleton {
+        background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+        background-size: 200% 100%;
+      }
+      @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
     </style>
   <script type="importmap">
 {
   "imports": {
     "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "react/": "https://esm.sh/react@^19.2.1/",
     "react": "https://esm.sh/react@^19.2.1",
+    "react-dom": "https://esm.sh/react-dom@^19.2.1",
     "lucide-react": "https://esm.sh/lucide-react@^0.560.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.1/",
     "recharts": "https://esm.sh/recharts@^3.5.1",
-    "express": "https://esm.sh/express@^5.2.1",
-    "crypto": "https://esm.sh/crypto@^1.0.1",
-    "util": "https://esm.sh/util@^0.12.5",
-    "bcrypt": "https://esm.sh/bcrypt@^6.0.0",
-    "passport": "https://esm.sh/passport@^0.7.0",
-    "passport-local": "https://esm.sh/passport-local@^1.0.0",
-    "express-session": "https://esm.sh/express-session@^1.18.2",
-    "@sendgrid/mail": "https://esm.sh/@sendgrid/mail@^8.1.6",
-    "ws": "https://esm.sh/ws@^8.18.3",
-    "@neondatabase/serverless": "https://esm.sh/@neondatabase/serverless@^1.0.2",
-    "drizzle-orm/": "https://esm.sh/drizzle-orm@^0.45.1/",
-    "buffer": "https://esm.sh/buffer@^6.0.3",
-    "google-auth-library": "https://esm.sh/google-auth-library@^10.5.0",
-    "http": "https://esm.sh/http@^0.0.1-security",
-    "process": "https://esm.sh/process@^0.11.10",
-    "lru-cache": "https://esm.sh/lru-cache@^10.2.0",
-    "perf_hooks": "https://esm.sh/perf_hooks@^0.0.1",
-    "drizzle-orm": "https://esm.sh/drizzle-orm@^0.45.1",
-    "stripe": "https://esm.sh/stripe@^20.0.0",
-    "openai": "https://esm.sh/openai@^6.10.0",
-    "sitemap": "https://esm.sh/sitemap@^8.0.0",
-    "path": "https://esm.sh/path@^0.12.7",
-    "fs": "https://esm.sh/fs@^0.0.1-security",
-    "connect-pg-simple": "https://esm.sh/connect-pg-simple@^10.0.0",
-    "nanoid": "https://esm.sh/nanoid@^5.1.6",
-    "vite": "https://esm.sh/vite@^7.2.7",
-    "url": "https://esm.sh/url@^0.11.4",
-    "zod": "https://esm.sh/zod@^4.1.13",
-    "express-rate-limit": "https://esm.sh/express-rate-limit@^8.2.1",
     "clsx": "https://esm.sh/clsx@^2.1.1",
     "tailwind-merge": "https://esm.sh/tailwind-merge@^2.3.0",
-    "class-variance-authority": "https://esm.sh/class-variance-authority@^0.7.0",
+    "jspdf": "https://esm.sh/jspdf@^4.0.0",
+    "path": "https://esm.sh/path@^0.12.7",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "url": "https://esm.sh/url@^0.11.4",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "express": "https://esm.sh/express@^5.2.1",
+    "drizzle-orm/": "https://esm.sh/drizzle-orm@^0.45.1/",
+    "drizzle-orm": "https://esm.sh/drizzle-orm@^0.45.1",
+    "crypto": "https://esm.sh/crypto@^1.0.1",
+    "class-variance-authority": "https://esm.sh/class-variance-authority@^0.7.1",
+    "zod": "https://esm.sh/zod@^4.3.5",
+    "fs": "https://esm.sh/fs@^0.0.1-security",
+    "bcrypt": "https://esm.sh/bcrypt@^6.0.0",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "util": "https://esm.sh/util@^0.12.5",
+    "compression": "https://esm.sh/compression@^1.8.1",
+    "express-rate-limit": "https://esm.sh/express-rate-limit@^8.2.1",
+    "nanoid": "https://esm.sh/nanoid@^5.1.6",
+    "process": "https://esm.sh/process@^0.11.10",
+    "http": "https://esm.sh/http@^0.0.1-security",
+    "google-auth-library": "https://esm.sh/google-auth-library@^10.5.0",
+    "lru-cache": "https://esm.sh/lru-cache@^11.2.4",
+    "@sendgrid/mail": "https://esm.sh/@sendgrid/mail@^8.1.6",
+    "passport-local": "https://esm.sh/passport-local@^1.0.0",
+    "sitemap": "https://esm.sh/sitemap@^9.0.0",
+    "stripe": "https://esm.sh/stripe@^20.1.0",
+    "passport": "https://esm.sh/passport@^0.7.0",
+    "connect-pg-simple": "https://esm.sh/connect-pg-simple@^10.0.0",
     "archiver": "https://esm.sh/archiver@^7.0.1",
     "drizzle-zod": "https://esm.sh/drizzle-zod@^0.8.3",
-    "zlib": "https://esm.sh/zlib@^1.0.5",
-    "jspdf": "https://esm.sh/jspdf@^3.0.4"
+    "ws": "https://esm.sh/ws@^8.18.3",
+    "@neondatabase/serverless": "https://esm.sh/@neondatabase/serverless@^1.0.2",
+    "express-session": "https://esm.sh/express-session@^1.18.2",
+    "perf_hooks": "https://esm.sh/perf_hooks@^0.0.1",
+    "zlib": "https://esm.sh/zlib@^1.0.5"
   }
 }
 </script>
