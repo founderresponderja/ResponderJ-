@@ -58,7 +58,8 @@ app.use(legalComplianceHeaders);
 
 // Sistema Avançado de Detecção de Ameaças (Se disponível)
 if (AdvancedThreatDetector?.middleware) {
-  app.use(AdvancedThreatDetector.middleware as any);
+  // Fix: Cast middleware to RequestHandler to satisfy Express app.use overload and avoid type mismatch
+  app.use(AdvancedThreatDetector.middleware as RequestHandler);
 }
 
 // ==========================================
@@ -69,20 +70,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Middlewares de Privacidade (GDPR)
-app.use(secureCookieMiddleware as any);
-app.use(gdprAuditLog as any);
+// Fix: Cast middleware to RequestHandler to satisfy Express app.use overload and avoid NextHandleFunction vs PathParams mismatch (Error in file server/index.ts on line 68)
+app.use(secureCookieMiddleware as RequestHandler);
+// Fix: Cast middleware to RequestHandler to satisfy Express app.use overload and avoid NextHandleFunction vs PathParams mismatch (Error in file server/index.ts on line 69)
+app.use(gdprAuditLog as RequestHandler);
 
 if (GDPREnhancedCompliance?.complianceMiddleware) {
-  app.use(GDPREnhancedCompliance.complianceMiddleware as any);
+  // Fix: Cast middleware to RequestHandler to satisfy Express app.use overload
+  app.use(GDPREnhancedCompliance.complianceMiddleware as RequestHandler);
 }
 
 // Proteção CSRF Global
-app.use(csrfProtection as any);
+// Fix: Cast middleware to RequestHandler to satisfy Express app.use overload
+app.use(csrfProtection as RequestHandler);
 
 // ==========================================
 // 3. LOGGING E MONITORIZAÇÃO
 // ==========================================
 
+// Fix: Cast middleware to RequestHandler to satisfy Express app.use overload
 app.use(((req: any, res: any, next: any) => {
   const start = Date.now();
   const path = req.path;
@@ -115,7 +121,7 @@ app.use(((req: any, res: any, next: any) => {
   });
 
   next();
-}) as any);
+}) as RequestHandler);
 
 // ==========================================
 // 4. SETUP DO SERVIDOR
