@@ -8,6 +8,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';
+import type { Language } from '../utils/translations';
 
 interface Message {
   id: string;
@@ -16,14 +17,54 @@ interface Message {
   timestamp: Date;
 }
 
-const SofiaChat: React.FC = () => {
+interface SofiaChatProps {
+  lang?: Language;
+}
+
+const SofiaChat: React.FC<SofiaChatProps> = ({ lang = 'pt' }) => {
+  const i18n = {
+    pt: {
+      welcome: 'Olá! Sou a Sofia, a sua assistente do Responder Já. 🤖\n\nComo posso ajudar a melhorar a sua reputação online hoje?',
+      connectionError: 'Desculpe, estou com dificuldades de conexão. Tente novamente mais tarde. 🔌',
+      fallback: 'Não consegui processar o pedido.',
+      askPlaceholder: 'Pergunte algo...',
+      assistant: 'Assistente IA',
+      aiHelp: 'Ajuda IA',
+      caution: 'A Sofia pode cometer erros. Verifique informações importantes.',
+      ariaOpen: 'Abrir Chat de Suporte',
+      title: 'Sofia - Responder Já',
+    },
+    en: {
+      welcome: 'Hi! I am Sofia, your Responder Já assistant. 🤖\n\nHow can I help improve your online reputation today?',
+      connectionError: 'Sorry, I am having connection issues right now. Please try again shortly. 🔌',
+      fallback: 'I could not process your request.',
+      askPlaceholder: 'Ask me something...',
+      assistant: 'AI Assistant',
+      aiHelp: 'AI Help',
+      caution: 'Sofia can make mistakes. Verify important information.',
+      ariaOpen: 'Open Support Chat',
+      title: 'Sofia - Responder Já',
+    },
+    es: {
+      welcome: '¡Hola! Soy Sofia, tu asistente de Responder Já. 🤖\n\n¿Cómo puedo ayudarte a mejorar tu reputación online hoy?',
+      connectionError: 'Lo siento, tengo problemas de conexión ahora mismo. Inténtalo de nuevo en breve. 🔌',
+      fallback: 'No pude procesar tu solicitud.',
+      askPlaceholder: 'Pregúntame algo...',
+      assistant: 'Asistente IA',
+      aiHelp: 'Ayuda IA',
+      caution: 'Sofia puede cometer errores. Verifica la información importante.',
+      ariaOpen: 'Abrir Chat de Soporte',
+      title: 'Sofia - Responder Já',
+    },
+  }[lang];
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Olá! Sou a Sofia, a sua assistente do Responder Já. 🤖\n\nComo posso ajudar a melhorar a sua reputação online hoje?',
+      content: i18n.welcome,
       timestamp: new Date()
     }
   ]);
@@ -38,12 +79,30 @@ const SofiaChat: React.FC = () => {
   };
 
   useEffect(() => {
+    setMessages([{
+      id: 'welcome',
+      role: 'assistant',
+      content: i18n.welcome,
+      timestamp: new Date(),
+    }]);
+  }, [i18n.welcome]);
+
+  useEffect(() => {
     if (isOpen && !isMinimized) {
       scrollToBottom();
       // Focus input when opening
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [messages, isOpen, isMinimized]);
+
+  useEffect(() => {
+    const openFromDashboard = () => {
+      setIsOpen(true);
+      setIsMinimized(false);
+    };
+    window.addEventListener('sofia:open', openFromDashboard);
+    return () => window.removeEventListener('sofia:open', openFromDashboard);
+  }, []);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -67,18 +126,22 @@ const SofiaChat: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userMsg,
-          history: messages.map(m => ({ role: m.role, content: m.content }))
+          history: messages.map(m => ({ role: m.role, content: m.content })),
+          language: lang,
         })
       });
 
-      if (!response.ok) throw new Error('Network error');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Network error');
+      }
 
       const data = await response.json();
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response || "Não consegui processar o pedido.",
+        content: data.response || i18n.fallback,
         timestamp: new Date()
       };
 
@@ -89,7 +152,7 @@ const SofiaChat: React.FC = () => {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'Desculpe, estou com dificuldades de conexão. Tente novamente mais tarde. 🔌',
+        content: i18n.connectionError,
         timestamp: new Date()
       }]);
     } finally {
@@ -104,7 +167,7 @@ const SofiaChat: React.FC = () => {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-brand-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group animate-fade-in"
-        aria-label="Abrir Chat de Suporte"
+        aria-label={i18n.ariaOpen}
       >
         <div className="relative">
           <Avatar className="w-8 h-8 border-2 border-white/20">
@@ -113,7 +176,7 @@ const SofiaChat: React.FC = () => {
           </Avatar>
           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-brand-600 rounded-full"></span>
         </div>
-        <span className="font-medium pr-1 hidden sm:inline">Ajuda IA</span>
+        <span className="font-medium pr-1 hidden sm:inline">{i18n.aiHelp}</span>
       </button>
     );
   }
@@ -130,7 +193,7 @@ const SofiaChat: React.FC = () => {
               <AvatarImage src={avatarUrl} />
               <AvatarFallback>S</AvatarFallback>
             </Avatar>
-            <span className="font-medium text-sm">Sofia - Responder Já</span>
+            <span className="font-medium text-sm">{i18n.title}</span>
           </div>
           <div className="flex gap-2 text-white/80">
             <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="hover:text-white">
@@ -157,7 +220,7 @@ const SofiaChat: React.FC = () => {
           <div>
             <h3 className="font-bold text-base leading-tight">Sofia</h3>
             <p className="text-xs text-white/80 flex items-center gap-1">
-              <Sparkles size={10} /> Assistente IA
+              <Sparkles size={10} /> {i18n.assistant}
             </p>
           </div>
         </div>
@@ -228,7 +291,7 @@ const SofiaChat: React.FC = () => {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Pergunte algo..."
+            placeholder={i18n.askPlaceholder}
             className="flex-1 bg-transparent border-none outline-none text-sm px-3 py-2 text-slate-800 dark:text-white placeholder:text-slate-400"
             disabled={isLoading}
           />
@@ -246,7 +309,7 @@ const SofiaChat: React.FC = () => {
         </form>
         <div className="text-center mt-2">
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                A Sofia pode cometer erros. Verifique informações importantes.
+                {i18n.caution}
             </p>
         </div>
       </div>
