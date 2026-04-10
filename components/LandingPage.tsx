@@ -134,57 +134,156 @@ const LandingPage: React.FC<LandingPageProps> = ({
     "#SocialMediaManager", "#FeedbackClientes", "#SoftwareSaaS"
   ];
 
-  const features = [
-    {
-      icon: Bot,
-      title: "Inteligência Artificial Avançada",
-      description: "Sistema baseado no Google Gemini 2.5 para gerar respostas profissionais, empáticas e contextuais que o Google adora.",
-      details: ["Análise de sentimento em tempo real", "Detecção automática de idioma", "Otimização para SEO Local", "Aprendizagem contínua"],
-      badge: "IA Gemini 2.5"
-    },
-    {
-      icon: Share2,
-      title: "Integração Multi-Plataforma",
-      description: "Conecte-se automaticamente com todas as principais redes sociais e plataformas de avaliação num único dashboard.",
-      details: ["Google My Business e Maps", "Facebook e Instagram", "TripAdvisor e Booking.com", "TheFork e Zomato"],
-      badge: "15+ Plataformas"
-    },
-    {
-      icon: BarChart3,
-      title: "Analytics e Relatórios SEO",
-      description: "Dashboard completo com métricas detalhadas e insights de performance para melhorar o seu ranking.",
-      details: ["Métricas de engajamento", "Relatórios automáticos por email", "Tracking de Palavras-chave", "ROI de Reputação"],
-      badge: "Tempo Real"
-    },
-    {
-      icon: Calendar,
-      title: "Calendário de Conteúdo",
-      description: "Planeie e organize o seu conteúdo com ferramentas visuais intuitivas para consistência máxima.",
-      details: ["Vista mensal e semanal", "Agendamento de posts", "Gestão centralizada", "Histórico de publicações"],
-      badge: "Produtividade"
-    },
-    {
-      icon: Users,
-      title: "Gestão de Leads & CRM",
-      description: "Transforme reviews em oportunidades de negócio. Capture, organize e converta leads automaticamente.",
-      details: ["CRM integrado", "Detecção de oportunidades", "Histórico de interações", "Funil de vendas"],
-      badge: "CRM Integrado"
-    },
-    {
-      icon: ShieldCheck,
-      title: "Segurança Empresarial",
-      description: "Certificação de segurança com compliance total GDPR e legislação portuguesa.",
-      details: ["Encriptação AES-256", "Compliance GDPR/RGPD", "Backups automáticos", "Auditoria de segurança"],
-      badge: "Certificado"
-    }
-  ];
+  const featuresByLang = {
+    pt: [
+      {
+        title: "Inteligência Artificial Avançada",
+        description: "Sistema baseado no Google Gemini 2.5 para gerar respostas profissionais, empáticas e contextuais que o Google adora.",
+        details: ["Análise de sentimento em tempo real", "Detecção automática de idioma", "Otimização para SEO Local", "Aprendizagem contínua"],
+        badge: "IA Gemini 2.5",
+      },
+      {
+        title: "Integração Multi-Plataforma",
+        description: "Conecte-se automaticamente com todas as principais redes sociais e plataformas de avaliação num único dashboard.",
+        details: ["Google My Business e Maps", "Facebook e Instagram", "TripAdvisor e Booking.com", "TheFork e Zomato"],
+        badge: "15+ Plataformas",
+      },
+      {
+        title: "Analytics e Relatórios SEO",
+        description: "Dashboard completo com métricas detalhadas e insights de performance para melhorar o seu ranking.",
+        details: ["Métricas de engajamento", "Relatórios automáticos por email", "Tracking de Palavras-chave", "ROI de Reputação"],
+        badge: "Tempo Real",
+      },
+      {
+        title: "Calendário de Conteúdo",
+        description: "Planeie e organize o seu conteúdo com ferramentas visuais intuitivas para consistência máxima.",
+        details: ["Vista mensal e semanal", "Agendamento de posts", "Gestão centralizada", "Histórico de publicações"],
+        badge: "Produtividade",
+      },
+      {
+        title: "Gestão de Leads & CRM",
+        description: "Transforme reviews em oportunidades de negócio. Capture, organize e converta leads automaticamente.",
+        details: ["CRM integrado", "Detecção de oportunidades", "Histórico de interações", "Funil de vendas"],
+        badge: "CRM Integrado",
+      },
+      {
+        title: "Segurança Empresarial",
+        description: "Certificação de segurança com compliance total GDPR e legislação portuguesa.",
+        details: ["Encriptação AES-256", "Compliance GDPR/RGPD", "Backups automáticos", "Auditoria de segurança"],
+        badge: "Certificado",
+      },
+    ],
+    en: [
+      {
+        title: "Advanced Artificial Intelligence",
+        description: "System powered by Google Gemini 2.5 to generate professional, empathetic and contextual replies.",
+        details: ["Real-time sentiment analysis", "Automatic language detection", "Local SEO optimization", "Continuous learning"],
+        badge: "Gemini 2.5 AI",
+      },
+      {
+        title: "Multi-Platform Integration",
+        description: "Connect all major social networks and review platforms in a single dashboard.",
+        details: ["Google My Business & Maps", "Facebook & Instagram", "TripAdvisor & Booking.com", "TheFork & Zomato"],
+        badge: "15+ Platforms",
+      },
+      {
+        title: "SEO Analytics & Reports",
+        description: "Complete dashboard with detailed metrics and performance insights.",
+        details: ["Engagement metrics", "Automatic email reports", "Keyword tracking", "Reputation ROI"],
+        badge: "Real Time",
+      },
+      {
+        title: "Content Calendar",
+        description: "Plan and organize your content with intuitive visual tools.",
+        details: ["Monthly and weekly view", "Post scheduling", "Centralized management", "Publication history"],
+        badge: "Productivity",
+      },
+      {
+        title: "Lead Management & CRM",
+        description: "Turn reviews into opportunities. Capture, organize and convert leads automatically.",
+        details: ["Integrated CRM", "Opportunity detection", "Interaction history", "Sales funnel"],
+        badge: "Integrated CRM",
+      },
+      {
+        title: "Enterprise Security",
+        description: "Security-focused platform with GDPR compliance.",
+        details: ["AES-256 encryption", "GDPR compliance", "Automatic backups", "Security auditing"],
+        badge: "Certified",
+      },
+    ],
+    es: [
+      {
+        title: "Inteligencia Artificial Avanzada",
+        description: "Sistema basado en Google Gemini 2.5 para generar respuestas profesionales y contextuales.",
+        details: ["Análisis de sentimiento en tiempo real", "Detección automática de idioma", "Optimización SEO Local", "Aprendizaje continuo"],
+        badge: "IA Gemini 2.5",
+      },
+      {
+        title: "Integración Multi-Plataforma",
+        description: "Conecta las principales redes sociales y plataformas de reseñas en un solo panel.",
+        details: ["Google My Business y Maps", "Facebook e Instagram", "TripAdvisor y Booking.com", "TheFork y Zomato"],
+        badge: "15+ Plataformas",
+      },
+      {
+        title: "Analítica e Informes SEO",
+        description: "Panel completo con métricas detalladas e insights de rendimiento.",
+        details: ["Métricas de engagement", "Informes automáticos por email", "Seguimiento de palabras clave", "ROI de reputación"],
+        badge: "Tiempo Real",
+      },
+      {
+        title: "Calendario de Contenido",
+        description: "Planifica y organiza tu contenido con herramientas visuales intuitivas.",
+        details: ["Vista mensual y semanal", "Programación de publicaciones", "Gestión centralizada", "Historial de publicaciones"],
+        badge: "Productividad",
+      },
+      {
+        title: "Gestión de Leads y CRM",
+        description: "Convierte reseñas en oportunidades de negocio automáticamente.",
+        details: ["CRM integrado", "Detección de oportunidades", "Historial de interacciones", "Embudo de ventas"],
+        badge: "CRM Integrado",
+      },
+      {
+        title: "Seguridad Empresarial",
+        description: "Plataforma segura con cumplimiento GDPR.",
+        details: ["Encriptación AES-256", "Cumplimiento GDPR", "Copias de seguridad automáticas", "Auditoría de seguridad"],
+        badge: "Certificado",
+      },
+    ],
+  };
 
-  const steps = [
-    { step: "1", title: "Conectar Plataformas", desc: "Sincronize Google, Facebook e TripAdvisor em segundos.", icon: Share2 },
-    { step: "2", title: "Configurar Tom da Marca", desc: "Defina a personalidade da sua IA para respostas autênticas.", icon: SettingsIcon },
-    { step: "3", title: "Ativar Automação", desc: "A IA deteta reviews e sugere as melhores respostas instantaneamente.", icon: Zap },
-    { step: "4", title: "Dominar o Ranking", desc: "Veja a sua reputação e SEO local subirem no dashboard.", icon: TrendingUp }
-  ];
+  const stepsByLang = {
+    pt: [
+      { step: "1", title: "Conectar Plataformas", desc: "Sincronize Google, Facebook e TripAdvisor em segundos." },
+      { step: "2", title: "Configurar Tom da Marca", desc: "Defina a personalidade da sua IA para respostas autênticas." },
+      { step: "3", title: "Ativar Automação", desc: "A IA deteta reviews e sugere as melhores respostas instantaneamente." },
+      { step: "4", title: "Dominar o Ranking", desc: "Veja a sua reputação e SEO local subirem no dashboard." },
+    ],
+    en: [
+      { step: "1", title: "Connect Platforms", desc: "Sync Google, Facebook and TripAdvisor in seconds." },
+      { step: "2", title: "Set Your Brand Tone", desc: "Define your AI personality for authentic replies." },
+      { step: "3", title: "Enable Automation", desc: "AI detects reviews and suggests the best responses instantly." },
+      { step: "4", title: "Dominate Rankings", desc: "Track your reputation and local SEO growth on the dashboard." },
+    ],
+    es: [
+      { step: "1", title: "Conectar Plataformas", desc: "Sincroniza Google, Facebook y TripAdvisor en segundos." },
+      { step: "2", title: "Configurar Tono de Marca", desc: "Define la personalidad de tu IA para respuestas auténticas." },
+      { step: "3", title: "Activar Automatización", desc: "La IA detecta reseñas y sugiere mejores respuestas al instante." },
+      { step: "4", title: "Dominar el Ranking", desc: "Sigue tu reputación y SEO local en el panel." },
+    ],
+  };
+
+  const featureIcons = [Bot, Share2, BarChart3, Calendar, Users, ShieldCheck];
+  const stepIcons = [Share2, SettingsIcon, Zap, TrendingUp];
+
+  const features = featuresByLang[lang].map((feature, index) => ({
+    ...feature,
+    icon: featureIcons[index],
+  }));
+
+  const steps = stepsByLang[lang].map((item, index) => ({
+    ...item,
+    icon: stepIcons[index],
+  }));
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 font-sans text-slate-900 dark:text-white transition-colors duration-300 overflow-x-hidden animate-fade-in">
