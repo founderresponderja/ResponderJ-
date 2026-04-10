@@ -52,6 +52,77 @@ const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const t = translations[lang].landing;
   const tn = translations[lang].nav;
+  const copy = {
+    pt: {
+      badgePrefix: "Novo:",
+      badgeText: "Algoritmo SEO Local 2026 Ativo",
+      learnMore: "Saber Mais",
+      stats: ["Poupadas / semana", "Resposta Automática", "Plataformas Integradas", "Rating Médio Clientes"],
+      howTitle: "Automação Inteligente",
+      howDesc: "4 passos simples para automatizar a sua comunicação digital e dominar o SEO local.",
+      featuresTitle: "Tudo o que precisa para crescer",
+      featuresDesc: "Uma suite completa de ferramentas para gerir a sua reputação online e subir nos motores de busca.",
+      benefitsTitle: "Benefícios Reais de SEO",
+      benefitsDesc: "Resultados comprovados pelos nossos clientes",
+      ctaTitle: "Pronto para revolucionar a sua comunicação?",
+      ctaDesc: "Junte-se a centenas de empresas que já transformaram a sua presença digital com o Responder Já.",
+      ctaPrimary: "Começar Teste Gratuito",
+      ctaSecondary: "Ver Planos e Preços",
+      freeTrial: "7 dias grátis",
+      noCard: "Sem cartão de crédito",
+      support: "Suporte 24/7",
+      aboutUs: "Sobre Nós",
+      privacy: "Privacidade",
+      terms: "Termos",
+      cookies: "Cookies",
+    },
+    en: {
+      badgePrefix: "New:",
+      badgeText: "Local SEO Algorithm 2026 Active",
+      learnMore: "Learn More",
+      stats: ["Saved / week", "Automated Response", "Integrated Platforms", "Average Client Rating"],
+      howTitle: "Smart Automation",
+      howDesc: "4 simple steps to automate your digital communication and dominate local SEO.",
+      featuresTitle: "Everything you need to grow",
+      featuresDesc: "A complete suite to manage your online reputation and rank higher in search engines.",
+      benefitsTitle: "Real SEO Benefits",
+      benefitsDesc: "Proven results from our customers",
+      ctaTitle: "Ready to transform your communication?",
+      ctaDesc: "Join hundreds of companies already improving their digital presence with Responder Já.",
+      ctaPrimary: "Start Free Trial",
+      ctaSecondary: "View Plans & Pricing",
+      freeTrial: "7 days free",
+      noCard: "No credit card",
+      support: "24/7 support",
+      aboutUs: "About Us",
+      privacy: "Privacy",
+      terms: "Terms",
+      cookies: "Cookies",
+    },
+    es: {
+      badgePrefix: "Nuevo:",
+      badgeText: "Algoritmo SEO Local 2026 Activo",
+      learnMore: "Saber Más",
+      stats: ["Ahorradas / semana", "Respuesta Automática", "Plataformas Integradas", "Rating Medio Clientes"],
+      howTitle: "Automatización Inteligente",
+      howDesc: "4 pasos simples para automatizar tu comunicación digital y dominar el SEO local.",
+      featuresTitle: "Todo lo que necesitas para crecer",
+      featuresDesc: "Una suite completa para gestionar tu reputación online y subir en buscadores.",
+      benefitsTitle: "Beneficios Reales de SEO",
+      benefitsDesc: "Resultados comprobados por nuestros clientes",
+      ctaTitle: "¿Listo para revolucionar tu comunicación?",
+      ctaDesc: "Únete a cientos de empresas que ya transformaron su presencia digital con Responder Já.",
+      ctaPrimary: "Empezar Prueba Gratis",
+      ctaSecondary: "Ver Planes y Precios",
+      freeTrial: "7 días gratis",
+      noCard: "Sin tarjeta de crédito",
+      support: "Soporte 24/7",
+      aboutUs: "Sobre Nosotros",
+      privacy: "Privacidad",
+      terms: "Términos",
+      cookies: "Cookies",
+    },
+  }[lang];
 
   // SEO Keywords / Hashtags for the "Tag Cloud" section
   const seoTags = [
@@ -172,7 +243,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
         <div className="max-w-5xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm font-medium mb-8 animate-fade-in-up hover:border-brand-300 transition-colors shadow-sm">
             <Sparkles size={14} className="text-brand-500" />
-            <span className="bg-gradient-to-r from-brand-600 to-purple-600 bg-clip-text text-transparent font-bold">Novo:</span> Algoritmo SEO Local 2025 Ativo
+            <span className="bg-gradient-to-r from-brand-600 to-purple-600 bg-clip-text text-transparent font-bold">{copy.badgePrefix}</span> {copy.badgeText}
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 dark:text-white mb-8 leading-tight animate-fade-in-up" style={{animationDelay: '0.1s'}}>
@@ -197,16 +268,16 @@ const LandingPage: React.FC<LandingPageProps> = ({
               className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 px-8 py-4 rounded-xl font-bold text-lg transition-all hover:-translate-y-1 active:translate-y-0 shadow-sm"
             >
               <Info size={20} />
-              Saber Mais
+              {copy.learnMore}
             </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-800 pt-12 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
             {[
-                { val: "15h+", label: "Poupadas / semana" },
-                { val: "24/7", label: "Resposta Automática" },
-                { val: "15+", label: "Plataformas Integradas" },
-                { val: "4.9/5", label: "Rating Médio Clientes" },
+                { val: "15h+", label: copy.stats[0] },
+                { val: "24/7", label: copy.stats[1] },
+                { val: "15+", label: copy.stats[2] },
+                { val: "4.9/5", label: copy.stats[3] },
             ].map((stat, i) => (
                 <div key={i} className="text-center group cursor-default">
                     <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-brand-600 transition-colors">{stat.val}</p>
@@ -221,9 +292,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section className="py-24 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Automação Inteligente</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">{copy.howTitle}</h2>
             <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
-              4 passos simples para automatizar a sua comunicação digital e dominar o SEO local.
+              {copy.howDesc}
             </p>
           </div>
 
@@ -256,9 +327,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400 text-sm font-medium mb-4">
               <Zap size={14} /> Funcionalidades de SEO
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">Tudo o que precisa para crescer</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">{copy.featuresTitle}</h2>
             <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
-              Uma suite completa de ferramentas para gerir a sua reputação online e subir nos motores de busca.
+              {copy.featuresDesc}
             </p>
           </div>
 
@@ -300,8 +371,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section className="py-24 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">Benefícios Reais de SEO</h2>
-            <p className="text-lg text-slate-500 dark:text-slate-400">Resultados comprovados pelos nossos clientes</p>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">{copy.benefitsTitle}</h2>
+            <p className="text-lg text-slate-500 dark:text-slate-400">{copy.benefitsDesc}</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -368,9 +439,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
       <section className="py-24 bg-gradient-to-br from-brand-900 via-brand-800 to-purple-900 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 animate-pulse-slow"></div>
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">Pronto para revolucionar a sua comunicação?</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">{copy.ctaTitle}</h2>
           <p className="text-xl text-brand-100 mb-10 max-w-2xl mx-auto">
-            Junte-se a centenas de empresas que já transformaram a sua presença digital com o Responder Já.
+            {copy.ctaDesc}
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <button 
@@ -378,25 +449,25 @@ const LandingPage: React.FC<LandingPageProps> = ({
               className="bg-white text-brand-900 hover:bg-brand-50 px-8 py-4 rounded-xl text-lg font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
             >
               <Zap size={20} />
-              Começar Teste Gratuito
+              {copy.ctaPrimary}
             </button>
             <button 
               onClick={onNavigateToAbout}
               className="bg-brand-800/50 backdrop-blur-sm border border-brand-700 text-white hover:bg-brand-800 px-8 py-4 rounded-xl text-lg font-bold transition-all hover:-translate-y-1"
             >
-              Ver Planos e Preços
+              {copy.ctaSecondary}
             </button>
           </div>
           
           <div className="mt-12 flex items-center justify-center gap-8 text-brand-200 text-sm">
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} /> 7 dias grátis
+              <CheckCircle2 size={16} /> {copy.freeTrial}
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} /> Sem cartão de crédito
+              <CheckCircle2 size={16} /> {copy.noCard}
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} /> Suporte 24/7
+              <CheckCircle2 size={16} /> {copy.support}
             </div>
           </div>
         </div>
@@ -413,28 +484,31 @@ const LandingPage: React.FC<LandingPageProps> = ({
             © {new Date().getFullYear()} Amplia Solutions. Todos os direitos reservados.
           </div>
           <div className="flex gap-6 text-sm">
+             <a href="/blog" className="hover:text-white transition-colors">
+               Blog
+             </a>
              {onNavigateToAbout && (
                 <button onClick={onNavigateToAbout} className="hover:text-white transition-colors">
-                    Sobre Nós
+                    {copy.aboutUs}
                 </button>
              )}
              {onNavigateToPrivacy ? (
                <button onClick={onNavigateToPrivacy} className="hover:text-white transition-colors">
-                 Privacidade
+                 {copy.privacy}
                </button>
              ) : (
-               <button className="hover:text-white transition-colors">Privacidade</button>
+               <button className="hover:text-white transition-colors">{copy.privacy}</button>
              )}
              {onNavigateToTerms ? (
                <button onClick={onNavigateToTerms} className="hover:text-white transition-colors">
-                 Termos
+                 {copy.terms}
                </button>
              ) : (
-               <button className="hover:text-white transition-colors">Termos</button>
+               <button className="hover:text-white transition-colors">{copy.terms}</button>
              )}
              {onNavigateToCookies && (
                <button onClick={onNavigateToCookies} className="hover:text-white transition-colors">
-                 Cookies
+                 {copy.cookies}
                </button>
              )}
           </div>
