@@ -7,6 +7,7 @@ import { responseLearningPatterns } from "@shared/schema";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_FALLBACK_MODEL = "gemini-1.5-flash";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
 const geminiClient = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
@@ -123,36 +124,47 @@ export const aiResponseService = {
     const userMessages = messages.filter((m) => m.role === "user").map((m) => m.content).join("\n\n");
     const prompt = `${systemMessage}\n\n${userMessages}`.trim();
 
-    const response = await geminiClient.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-      config: asJson
-        ? {
-            temperature,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                variations: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      text: { type: Type.STRING },
-                      type: { type: Type.STRING, enum: ["concise", "balanced", "detailed"] },
-                    },
-                    required: ["text", "type"],
+    const config = asJson
+      ? {
+          temperature,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              variations: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    text: { type: Type.STRING },
+                    type: { type: Type.STRING, enum: ["concise", "balanced", "detailed"] },
                   },
+                  required: ["text", "type"],
                 },
               },
             },
-          }
-        : {
-            temperature,
           },
-    });
+        }
+      : {
+          temperature,
+        };
 
-    return { text: response.text || "" };
+    try {
+      const response = await geminiClient.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt,
+        config,
+      });
+      return { text: response.text || "" };
+    } catch (error: any) {
+      console.warn(`Gemini primary model failed (${GEMINI_MODEL}), trying fallback (${GEMINI_FALLBACK_MODEL})`, error);
+      const fallback = await geminiClient.models.generateContent({
+        model: GEMINI_FALLBACK_MODEL,
+        contents: prompt,
+        config,
+      });
+      return { text: fallback.text || "" };
+    }
   },
 
   async generateWithFallback(

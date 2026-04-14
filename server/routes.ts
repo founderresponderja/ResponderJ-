@@ -821,6 +821,14 @@ export async function registerRoutes(app: any): Promise<void> {
     try {
       const userId = req.user?.id;
       const { platform, originalMessage, tone, businessProfileId, responseType, extraInstructions } = req.body;
+      const effectiveGeminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      console.log("[generate-response] request", {
+        userId,
+        platform,
+        keyExists: !!process.env.GEMINI_API_KEY,
+        hasFallbackApiKey: !!process.env.API_KEY,
+        geminiModel: effectiveGeminiModel,
+      });
 
       const user = await storage.getUser(userId);
       if (!user || user.credits < 1) {
@@ -843,6 +851,11 @@ export async function registerRoutes(app: any): Promise<void> {
         extraInstructions,
         businessContext,
         responseType: responseType || "resposta"
+      });
+      console.log("[generate-response] aiResult received", {
+        hasResponse: !!aiResult?.response,
+        sentiment: aiResult?.sentiment,
+        tokensUsed: aiResult?.tokensUsed,
       });
 
       const creditCost = aiResponseService.calculateCreditCost(aiResult.tokensUsed, platform);
@@ -881,9 +894,22 @@ export async function registerRoutes(app: any): Promise<void> {
       });
 
       res.json({ ...savedResponse, tokensUsed: aiResult.tokensUsed });
-    } catch (error) {
-      console.error("Erro na geração:", error);
-      res.status(500).json({ message: "Falha na geração da resposta" });
+    } catch (error: any) {
+      console.error("Erro na geração:", {
+        message: error?.message,
+        stack: error?.stack,
+        raw: error,
+      });
+      res.status(500).json({
+        message: "Falha na geração da resposta",
+        error: error?.message || "unknown_error",
+        stack: process.env.NODE_ENV !== "production" ? error?.stack : undefined,
+        debug: {
+          keyExists: !!process.env.GEMINI_API_KEY,
+          hasFallbackApiKey: !!process.env.API_KEY,
+          geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        },
+      });
     }
   });
 

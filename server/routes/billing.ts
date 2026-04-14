@@ -2,6 +2,7 @@
 import type { Express } from "express";
 import { BillingService } from "../services/billing-service";
 import { requireAuth } from "../auth";
+import { storage } from "../storage";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
@@ -194,8 +195,14 @@ export function registerBillingRoutes(app: any) {
     try {
       const clerkUserId = req.query?.clerkUserId as string | undefined;
       const email = req.query?.email as string | undefined;
+      console.log("[billing/subscription-status] start", {
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+        hasEmail: !!email,
+        hasClerkUserId: !!clerkUserId,
+      });
       if (!email && !clerkUserId) {
-        return res.json({ active: false });
+        return res.json({ active: false, status: "trial", planId: "trial" });
       }
 
       const customers = email
@@ -209,7 +216,17 @@ export function registerBillingRoutes(app: any) {
       });
 
       if (!candidateCustomer) {
-        return res.json({ active: false });
+        const dbUser = email ? await storage.getUserByEmail(email) : undefined;
+        if (!dbUser) {
+          return res.json({ active: false, status: "trial", planId: "trial" });
+        }
+        const userPlan = dbUser.subscriptionPlan || dbUser.selectedPlan || "trial";
+        return res.json({
+          active: userPlan !== "trial" && userPlan !== "free",
+          status: userPlan === "free" ? "trial" : userPlan,
+          planId: userPlan,
+          source: "database_fallback",
+        });
       }
 
       const subscriptions = await stripe.subscriptions.list({
@@ -220,7 +237,7 @@ export function registerBillingRoutes(app: any) {
 
       const activeSub = subscriptions.data.find((sub) => sub.status === "active" || sub.status === "trialing");
       if (!activeSub) {
-        return res.json({ active: false });
+        return res.json({ active: false, status: "trial", planId: "trial" });
       }
 
       res.json({
@@ -229,8 +246,26 @@ export function registerBillingRoutes(app: any) {
         subscriptionId: activeSub.id,
       });
     } catch (error: any) {
-      console.error("Erro ao validar subscricao:", error);
-      res.status(500).json({ active: false, error: error.message });
+      console.error("Erro ao validar subscricao:", {
+        message: error?.message,
+        stack: error?.stack,
+        type: error?.type,
+        raw: error,
+      });
+      try {
+        const email = req.query?.email as string | undefined;
+        const dbUser = email ? await storage.getUserByEmail(email) : undefined;
+        const planId = dbUser?.subscriptionPlan || dbUser?.selectedPlan || "trial";
+        return res.json({
+          active: planId !== "trial" && planId !== "free",
+          status: planId === "free" ? "trial" : planId,
+          planId,
+          source: "error_fallback",
+          error: error?.message || "subscription_status_failed",
+        });
+      } catch {
+        return res.json({ active: false, status: "trial", planId: "trial", source: "safe_fallback" });
+      }
     }
   });
 }
