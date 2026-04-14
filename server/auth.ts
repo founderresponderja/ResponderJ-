@@ -176,6 +176,9 @@ export function setupAuth(app: any) {
       const hashedPassword = await hashPassword(data.password);
       const user = await storage.createUser({
         ...data,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
         password: hashedPassword,
         nif: data.nif || "",
       });
@@ -187,7 +190,7 @@ export function setupAuth(app: any) {
         if (err) return (next as any)(err);
 
         // Disparar sequência de emails (Async)
-        emailSequenceService.createSequenceForUser(user.id).catch(err => {
+        emailSequenceService.createSequenceForUser(String(user.id)).catch(err => {
             console.error('❌ Falha na sequência de email:', err);
         });
 

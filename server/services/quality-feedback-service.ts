@@ -201,7 +201,7 @@ export class QualityFeedbackService {
       
       // Notificar cada admin
       for (const admin of admins) {
-        await wsNotificationService.sendToClient(admin.id, {
+        await wsNotificationService.sendToClient(String(admin.id), {
           type: 'alert',
           title: 'Resposta de Baixa Qualidade',
           message: `Resposta recebeu rating ${feedback.rating}/5 na plataforma ${feedback.platform}`,

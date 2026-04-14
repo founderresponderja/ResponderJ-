@@ -856,7 +856,7 @@ export async function registerRoutes(app: any): Promise<void> {
         businessProfileId,
         platform,
         originalMessage,
-        generatedResponse: aiResult.response,
+        responseText: aiResult.response,
         sentiment: aiResult.sentiment,
         keywords: aiResult.keywords,
         tone: tone || "profissional",

@@ -69,13 +69,13 @@ router.get("/", requireAuth, async (req: any, res) => {
 router.patch("/:id", requireAuth, async (req: any, res) => {
   try {
     const { id } = req.params;
-    const { generatedResponse, isFavorite, status } = req.body;
+    const { responseText, isFavorite, status } = req.body;
     
     // Se o status for "published" e tivermos o ID da review original, tentar publicar
     // Logica futura: Se id for um ID externo do Google, chamar GoogleReviewsService.replyToReview
     
     const updated = await storage.updateAiResponse(id, {
-      generatedResponse,
+      responseText,
       isFavorite,
       // @ts-ignore
       isPublished: status === 'published'
