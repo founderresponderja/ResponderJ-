@@ -5,7 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage.js";
-import { User, registerUserSchema, loginUserSchema } from "@shared/schema";
+import { User, registerUserSchema, loginUserSchema } from "../shared/schema.js";
 import bcrypt from "bcrypt";
 import { emailSequenceService } from './services/email-sequence-service.js';
 import { urlBuilder } from "./utils.js";

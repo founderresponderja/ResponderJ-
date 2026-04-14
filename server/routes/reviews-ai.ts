@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "../db.js";
-import { reviews, responses, establishments, users } from "@shared/schema";
+import { reviews, responses, establishments, users } from "../../shared/schema.js";
 import { requireAuth } from "../auth.js";
 import { aiResponseService } from "../services/ai-response-service.js";
 import { storage } from "../storage.js";

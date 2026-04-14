@@ -1,6 +1,6 @@
 
 import { storage } from '../storage.js';
-import type { InsertCreditPackage } from '@shared/schema';
+import type { InsertCreditPackage } from '../../shared/schema.js';
 
 export class CreditUpsellService {
   

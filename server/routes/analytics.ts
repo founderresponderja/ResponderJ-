@@ -4,7 +4,7 @@ import { requireAuth } from "../auth.js";
 import { storage } from "../storage.js";
 import { db } from "../db.js";
 import { desc, eq, inArray } from "drizzle-orm";
-import { responses, reviews } from "@shared/schema";
+import { responses, reviews } from "../../shared/schema.js";
 
 export function registerAnalyticsRoutes(app: any) {
   const resolveUserId = (req: any) => {

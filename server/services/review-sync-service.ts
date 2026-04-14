@@ -1,5 +1,5 @@
 import { db } from "../db.js";
-import { reviews, socialPlatformConnections } from "@shared/schema";
+import { reviews, socialPlatformConnections } from "../../shared/schema.js";
 import { and, eq } from "drizzle-orm";
 import { GoogleReviewsService } from "./google-reviews-service.js";
 

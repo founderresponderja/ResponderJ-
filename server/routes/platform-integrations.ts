@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "../db.js";
-import { socialPlatformConnections } from "@shared/schema";
+import { socialPlatformConnections } from "../../shared/schema.js";
 import { encryptSensitiveData } from "../encryption.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
 

@@ -56,7 +56,7 @@ import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
 import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 
 import { db } from "./db.js";
-import { users, establishments, reviews, responses, socialPlatformConnections } from "@shared/schema";
+import { users, establishments, reviews, responses, socialPlatformConnections } from "../shared/schema.js";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 
 import Stripe from "stripe";

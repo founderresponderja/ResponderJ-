@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { db } from "../db.js";
 import { and, desc, eq } from "drizzle-orm";
-import { responseLearningPatterns } from "@shared/schema";
+import { responseLearningPatterns } from "../../shared/schema.js";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";

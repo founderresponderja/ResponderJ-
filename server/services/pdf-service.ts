@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import jsPDF from 'jspdf';
-import type { Invoice, InvoiceSettings, InvoiceItem } from "@shared/schema";
+import type { Invoice, InvoiceSettings, InvoiceItem } from "../../shared/schema.js";
 import process from 'process';
 import { Buffer } from 'buffer';
 

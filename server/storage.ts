@@ -10,7 +10,7 @@ import {
   InsertInvoiceSettings, InvoiceSettings, InsertReferral, Referral, InsertReferralReward, ReferralReward,
   creditPackages, InsertCreditPackage, CreditPackage,
   invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { db, pool } from "./db.js";
 import { eq, ilike, or, and, desc, sql, gte } from "drizzle-orm";
 import session from "express-session";

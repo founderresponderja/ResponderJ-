@@ -9,7 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 import { encryptData, decryptData } from './enhanced-encryption.js';
 import { SecurityLogService } from '../services/security-log-service.js';
 import { db } from '../db.js';
-import { users } from '@shared/schema';
+import { users } from '../../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
 interface GDPRConsent {

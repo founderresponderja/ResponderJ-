@@ -1,7 +1,7 @@
 
 import { storage } from "../storage.js";
 import { nanoid } from "nanoid";
-import type { InsertReferral, InsertReferralReward, Referral } from "@shared/schema";
+import type { InsertReferral, InsertReferralReward, Referral } from "../../shared/schema.js";
 
 export class ReferralService {
   

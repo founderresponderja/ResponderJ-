@@ -1,7 +1,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { db } from "../db.js";
-import { socialPlatformConnections } from "@shared/schema";
+import { socialPlatformConnections } from "../../shared/schema.js";
 import { decryptSensitiveData } from "../encryption.js";
 
 // Serviço dedicado à gestão de reviews do Google Business Profile

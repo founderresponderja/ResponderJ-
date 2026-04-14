@@ -1,8 +1,8 @@
 
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import { subscriptionPlans, creditPackages } from '@shared/schema';
-import * as schema from '@shared/schema';
+import { subscriptionPlans, creditPackages } from '../../shared/schema.js';
+import * as schema from '../../shared/schema.js';
 import ws from "ws";
 import process from "process";
 

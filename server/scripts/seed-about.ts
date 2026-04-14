@@ -1,5 +1,5 @@
 import { db } from "../db.js";
-import { pageContents } from "@shared/schema";
+import { pageContents } from "../../shared/schema.js";
 
 const aboutContent = {
   pageKey: "about",

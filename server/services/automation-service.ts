@@ -1,5 +1,5 @@
 import { db } from "../db.js";
-import { reviews, responses, establishments, users } from "@shared/schema";
+import { reviews, responses, establishments, users } from "../../shared/schema.js";
 import { eq, isNull } from "drizzle-orm";
 import { storage } from "../storage.js";
 import { aiResponseService } from "./ai-response-service.js";

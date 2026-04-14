@@ -9,7 +9,7 @@ import type {
   InvoiceSettings, 
   InsertInvoice, 
   InsertInvoiceItem 
-} from "@shared/schema";
+} from "../../shared/schema.js";
 
 export interface CreateInvoiceRequest {
   customerId?: string;

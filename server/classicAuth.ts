@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { Express, Request, Response } from "express";
 import { storage } from "./storage.js";
-import { newLoginSchema, newRegisterSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
+import { newLoginSchema, newRegisterSchema, forgotPasswordSchema, resetPasswordSchema } from "../shared/schema.js";
 import { MailService } from '@sendgrid/mail';
 import { urlBuilder } from "./utils.js";
 
