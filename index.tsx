@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
+import './index.css';
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -15,7 +16,7 @@ const root = ReactDOM.createRoot(rootElement);
 if (!clerkPublishableKey) {
   root.render(
     <React.StrictMode>
-      <div style={{ padding: '24px', fontFamily: '"Max-Regular", system-ui, sans-serif' }}>
+      <div style={{ padding: '24px' }}>
         <h1>Configuração em falta</h1>
         <p>Define <code>VITE_CLERK_PUBLISHABLE_KEY</code> nas variáveis da Vercel para ativar autenticação.</p>
       </div>

@@ -1,0 +1,15 @@
+@font-face {
+  font-family: 'Max-Regular';
+  src: url('/fonts/Max-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+*, *::before, *::after {
+  font-family: 'Max-Regular', sans-serif !important;
+}
+
+html, body, #root {
+  font-family: 'Max-Regular', sans-serif !important;
+}
