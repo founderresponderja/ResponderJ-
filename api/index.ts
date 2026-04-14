@@ -2,10 +2,15 @@ import express from "express";
 import type { Request, Response } from "express";
 import { registerRoutes, setupAuthRoutes } from "../server/routes.js";
 import { GoogleGenAI } from "@google/genai";
+import { readdir, readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { pool } from "../server/db.js";
 
 const app = express();
 let initialized = false;
 let initializing: Promise<void> | null = null;
+let migrationsRun = false;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 type ChatLanguage = "pt" | "en" | "es";
@@ -46,6 +51,11 @@ async function initApp() {
   }
 
   initializing = (async () => {
+    if (!migrationsRun) {
+      await runStartupMigrations();
+      migrationsRun = true;
+    }
+
     // Stripe webhook must receive raw body for signature validation.
     app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
     app.use(express.json({ limit: "1mb" }));
@@ -57,6 +67,44 @@ async function initApp() {
   })();
 
   await initializing;
+}
+
+async function runStartupMigrations() {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const migrationsDir = resolve(currentDir, "../migrations");
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id SERIAL PRIMARY KEY,
+        filename TEXT NOT NULL UNIQUE,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const files = (await readdir(migrationsDir))
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+
+    for (const file of files) {
+      const alreadyApplied = await pool.query(
+        "SELECT 1 FROM schema_migrations WHERE filename = $1 LIMIT 1",
+        [file]
+      );
+      if (alreadyApplied.rowCount && alreadyApplied.rowCount > 0) {
+        continue;
+      }
+
+      const fullPath = resolve(migrationsDir, file);
+      const sql = await readFile(fullPath, "utf8");
+      await pool.query(sql);
+      await pool.query("INSERT INTO schema_migrations (filename) VALUES ($1)", [file]);
+      console.log(`[migrations] applied ${file}`);
+    }
+  } catch (error) {
+    console.error("[migrations] startup migration failed", error);
+    throw error;
+  }
 }
 
 export default async function handler(req: Request, res: Response) {

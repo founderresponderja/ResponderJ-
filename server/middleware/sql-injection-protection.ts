@@ -223,7 +223,8 @@ export const protectDatabaseQueries = (req: any, res: any, next: any) => {
     }
     
     // Verificar headers críticos (com verificação menos restritiva)
-    const criticalHeaders = ['authorization', 'cookie', 'x-forwarded-for'];
+    // Cookie header é excluído para evitar falsos positivos com tokens/JWT do Clerk e Stripe.
+    const criticalHeaders = ['authorization', 'x-forwarded-for'];
     for (const header of criticalHeaders) {
       const value = req.get(header);
       if (value && containsSQLInjection(value, true)) {
@@ -232,6 +233,23 @@ export const protectDatabaseQueries = (req: any, res: any, next: any) => {
           error: 'Headers suspeitos detectados',
           code: 'SQL_INJECTION_HEADER'
         });
+      }
+    }
+
+    // Whitelist explícita de cookies legítimos usados por Clerk/Stripe.
+    // Não bloqueia o request, mas deixa registado quando presentes para troubleshooting.
+    const allowedCookiePrefixes = ['__session', '__client_uat', '__stripe_mid', '__stripe_sid', 'clerk_active_context'];
+    const cookieHeader = req.get('cookie') || '';
+    if (cookieHeader) {
+      const cookieNames = cookieHeader
+        .split(';')
+        .map((entry: string) => entry.trim().split('=')[0] || '')
+        .filter(Boolean);
+      const hasWhitelistedAuthCookies = cookieNames.some((name: string) =>
+        allowedCookiePrefixes.some((prefix) => name.startsWith(prefix))
+      );
+      if (hasWhitelistedAuthCookies && process.env.NODE_ENV !== 'production') {
+        console.log(`🔐 SQL middleware cookie whitelist ativa para ${req.path}`);
       }
     }
     
