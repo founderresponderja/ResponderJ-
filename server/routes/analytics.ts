@@ -2,75 +2,99 @@
 import type { Express } from "express";
 import { requireAuth } from "../auth";
 import { storage } from "../storage";
+import { db } from "../db";
+import { desc, eq, inArray } from "drizzle-orm";
+import { responses, reviews } from "@shared/schema";
 
 export function registerAnalyticsRoutes(app: any) {
+  const resolveUserId = (req: any) => {
+    const raw = req.user?.id || req.user?.claims?.sub;
+    const userId = Number(raw);
+    return Number.isFinite(userId) ? userId : null;
+  };
+
   // Dashboard analytics
   app.get("/api/analytics/dashboard", requireAuth, async (req: any, res: any) => {
     try {
-      const userId = req.user?.id || req.user?.claims?.sub;
+      const userId = resolveUserId(req);
 
       if (!userId) {
         return res.status(401).json({ error: "Utilizador não autenticado" });
       }
+      const userResponses = await db.select().from(responses)
+        .where(eq(responses.userId, userId))
+        .orderBy(desc(responses.createdAt))
+        .limit(1000);
 
-      // Obter dados de análise para o dashboard
-      // Note: getResponsesByUser and getCreditTransactions might need implementation in storage.ts
-      // Assuming they exist or using placeholders. 
-      // If not, we should implement them or use mock data here if strict compliance with existing storage is needed.
-      // Given the instruction "Use existing files", and storage.ts has `getUserCreditTransactions` but not `getResponsesByUser` (it has `getUserAiResponses`).
-      // I will use available methods.
-      
-      const responses = await storage.getUserAiResponses(userId); 
-      const creditTransactions = await storage.getUserCreditTransactions(userId);
+      const reviewIds = Array.from(new Set(userResponses.map((r) => r.reviewId).filter(Boolean))) as number[];
+      const linkedReviews = reviewIds.length > 0
+        ? await db.select().from(reviews)
+            .where(inArray(reviews.id, reviewIds))
+        : [];
+      const reviewsMap = new Map(linkedReviews.map((r) => [r.id, r]));
 
-      // Calcular métricas
-      const totalResponses = responses.length;
-      const totalCreditsUsed = creditTransactions
-        .filter(tx => tx.type === 'usage')
-        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+      const totalResponses = userResponses.length;
+      const responded = userResponses.filter((r) => r.isPublished || r.isSelected).length;
+      const pending = Math.max(0, totalResponses - responded);
+      const responseRate = totalResponses > 0 ? (responded / totalResponses) * 100 : 0;
 
-      // Análise de sentimento (simulada ou real se disponível nos dados)
-      const responsesSentiment = {
-        positive: 72, // Mock data as real sentiment analysis might not be stored per response in a queryable way yet
-        neutral: 23,
-        negative: 5
-      };
+      const platformBreakdown: Record<string, number> = {};
+      const ratingByPlatform: Record<string, { sum: number; count: number }> = {};
+      for (const responseItem of userResponses) {
+        const review = responseItem.reviewId ? reviewsMap.get(responseItem.reviewId) : undefined;
+        const platform = String(review?.platform || "unknown");
+        platformBreakdown[platform] = (platformBreakdown[platform] || 0) + 1;
+        if (review?.rating) {
+          if (!ratingByPlatform[platform]) ratingByPlatform[platform] = { sum: 0, count: 0 };
+          ratingByPlatform[platform].sum += review.rating;
+          ratingByPlatform[platform].count += 1;
+        }
+      }
 
-      // Breakdown por plataforma (simulado)
-      const platformBreakdown = {
-        facebook: 45,
-        instagram: 32,
-        google: 18,
-        tiktok: 5
-      };
+      const averageRatingByPlatform = Object.fromEntries(
+        Object.entries(ratingByPlatform).map(([platform, data]) => [
+          platform,
+          data.count > 0 ? Number((data.sum / data.count).toFixed(2)) : 0,
+        ]),
+      );
 
-      // Actividade semanal (simulada)
-      const weeklyActivity = [
-        { day: "Seg", responses: 42 },
-        { day: "Ter", responses: 38 },
-        { day: "Qua", responses: 55 },
-        { day: "Qui", responses: 47 },
-        { day: "Sex", responses: 61 },
-        { day: "Sáb", responses: 28 },
-        { day: "Dom", responses: 19 }
-      ];
+      const now = Date.now();
+      const averageResponseTimeHours = userResponses
+        .map((responseItem) => {
+          const review = responseItem.reviewId ? reviewsMap.get(responseItem.reviewId) : undefined;
+          if (!review?.reviewDate) return null;
+          const publishedAt = responseItem.publishedAt || responseItem.createdAt;
+          if (!publishedAt) return null;
+          return Math.max(0, (+new Date(publishedAt) - +new Date(review.reviewDate)) / (1000 * 60 * 60));
+        })
+        .filter((v): v is number => v !== null);
 
-      // Eficiência de resposta
-      const responseEfficiency = {
-        averageTime: 1.3,
-        successRate: 94.2
-      };
+      const avgResponseTime = averageResponseTimeHours.length > 0
+        ? Number((averageResponseTimeHours.reduce((a, b) => a + b, 0) / averageResponseTimeHours.length).toFixed(2))
+        : 0;
 
-      const analytics = {
+      const weeklyActivity = Array.from({ length: 7 }).map((_, idx) => {
+        const date = new Date(now - (6 - idx) * 24 * 60 * 60 * 1000);
+        const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+        const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+        const dayCount = userResponses.filter((r) => {
+          if (!r.createdAt) return false;
+          const ts = +new Date(r.createdAt);
+          return ts >= dayStart && ts < dayEnd;
+        }).length;
+        return { day: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][(date.getDay() + 6) % 7], responses: dayCount };
+      });
+
+      res.json({
         totalResponses,
-        totalCreditsUsed,
-        responsesSentiment,
+        responded,
+        pending,
+        responseRate: Number(responseRate.toFixed(2)),
+        averageResponseTimeHours: avgResponseTime,
         platformBreakdown,
+        averageRatingByPlatform,
         weeklyActivity,
-        responseEfficiency
-      };
-
-      res.json(analytics);
+      });
     } catch (error: any) {
       console.error("Erro ao obter analytics:", error);
       res.status(500).json({ error: error.message });
@@ -80,34 +104,33 @@ export function registerAnalyticsRoutes(app: any) {
   // Análise detalhada de performance
   app.get("/api/analytics/performance", requireAuth, async (req: any, res: any) => {
     try {
-      const userId = req.user?.id || req.user?.claims?.sub;
+      const userId = resolveUserId(req);
 
       if (!userId) {
         return res.status(401).json({ error: "Utilizador não autenticado" });
       }
 
       // Obter dados de performance
-      const responses = await storage.getUserAiResponses(userId);
+      const userResponses = await storage.getUserAiResponses(userId);
       
       // Calcular métricas de performance
-      const totalResponses = responses.length;
-      // Mocking status as it might not be in the basic AI response schema
-      const successfulResponses = responses.length; 
-      const avgResponseTime = 1.5; // Mock
+      const totalResponses = userResponses.length;
+      const successfulResponses = userResponses.filter((responseItem) => responseItem.isPublished || responseItem.isSelected).length;
+      const avgResponseTime = 0;
 
       const performanceMetrics = {
         totalResponses,
         successRate: totalResponses > 0 ? (successfulResponses / totalResponses) * 100 : 0,
         averageResponseTime: avgResponseTime,
         responsesByPlatform: {
-          facebook: responses.filter(r => r.platform === 'facebook').length,
-          instagram: responses.filter(r => r.platform === 'instagram').length,
-          google: responses.filter(r => r.platform === 'google').length,
+          facebook: 0,
+          instagram: 0,
+          google: 0,
         },
         responsesByTone: {
-          professional: responses.filter(r => r.tone === 'professional').length,
-          friendly: responses.filter(r => r.tone === 'friendly').length,
-          casual: responses.filter(r => r.tone === 'casual').length,
+          professional: userResponses.filter((r) => r.tone === 'professional').length,
+          friendly: userResponses.filter((r) => r.tone === 'friendly').length,
+          casual: userResponses.filter((r) => r.tone === 'casual').length,
         }
       };
 

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
+import { useClerk } from '@clerk/clerk-react';
 import { 
   MessageSquareText, 
   LayoutDashboard, 
@@ -31,7 +32,8 @@ import {
   Share2,
   UserCog,
   Compass,
-  Loader2
+  Loader2,
+  Building2
 } from 'lucide-react';
 
 import ReviewForm from './ReviewForm';
@@ -55,6 +57,18 @@ const SocialMediaCalendar = lazy(() => import('./SocialMediaCalendar'));
 const SocialMediaManager = lazy(() => import('./SocialMediaManager'));
 const CRMPage = lazy(() => import('./CRMPage'));
 const BusinessDiscoveryPage = lazy(() => import('./BusinessDiscoveryPage'));
+const AgencyOverviewPage = lazy(() => import('./AgencyOverviewPage'));
+
+type AgencyClient = {
+  id: number;
+  name: string;
+  logoUrl?: string | null;
+  type?: string | null;
+  brandTone?: string | null;
+  responseGuidelines?: string | null;
+  platformIds?: string[] | null;
+  connectedPlatforms?: string[];
+};
 
 interface MainAppProps {
   onLogout: () => void;
@@ -65,10 +79,16 @@ interface MainAppProps {
   toggleTheme: () => void;
   onNavigateToPrivacy: () => void;
   onNavigateToTerms?: () => void;
+  isTrialActive?: boolean;
+  trialDaysRemaining?: number;
+  trialResponsesUsed?: number;
+  trialLimit?: number;
+  onTrialResponseUsed?: () => Promise<void> | void;
 }
 
 const PLAN_LIMITS: Record<PlanId, number> = {
     trial: 10,
+    starter: 50,
     regular: 50,
     pro: 150,
     agency: 500
@@ -93,11 +113,28 @@ const MainApp: React.FC<MainAppProps> = ({
   theme, 
   toggleTheme, 
   onNavigateToPrivacy,
-  onNavigateToTerms 
+  onNavigateToTerms,
+  isTrialActive = false,
+  trialDaysRemaining = 0,
+  trialResponsesUsed = 0,
+  trialLimit = 10,
+  onTrialResponseUsed
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'invoicing' | 'business-profile' | 'calendar' | 'crm' | 'social-manager' | 'team' | 'discovery'>('overview');
+  const { signOut } = useClerk();
+  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'invoicing' | 'business-profile' | 'calendar' | 'crm' | 'social-manager' | 'team' | 'discovery' | 'agency'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
+  const [agencyClients, setAgencyClients] = useState<AgencyClient[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [agencyOverview, setAgencyOverview] = useState<Array<{
+    clientId: number;
+    clientName: string;
+    logoUrl?: string | null;
+    pendingReviews: number;
+    averageRating: number;
+    responsesThisWeek: number;
+    connectedPlatforms: string[];
+  }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -117,7 +154,7 @@ const MainApp: React.FC<MainAppProps> = ({
 
   // Persistence hooks optimized
   useEffect(() => {
-    const savedHistory = localStorage.getItem('responderja_history');
+    const savedHistory = localStorage.getItem(`responderja_history_${selectedClientId ?? 'default'}`);
     if (savedHistory) {
       try {
         const hydrated = JSON.parse(savedHistory).map((item: any) => ({
@@ -125,12 +162,14 @@ const MainApp: React.FC<MainAppProps> = ({
         }));
         setHistory(hydrated);
       } catch (e) { console.error(e); }
+    } else {
+      setHistory([]);
     }
-  }, []);
+  }, [selectedClientId]);
 
   useEffect(() => {
-    localStorage.setItem('responderja_history', JSON.stringify(history));
-  }, [history]);
+    localStorage.setItem(`responderja_history_${selectedClientId ?? 'default'}`, JSON.stringify(history));
+  }, [history, selectedClientId]);
 
   useEffect(() => {
     localStorage.setItem('responderja_subscription', JSON.stringify(subscription));
@@ -138,10 +177,45 @@ const MainApp: React.FC<MainAppProps> = ({
 
   const t = translations[lang].app;
   const nav = translations[lang].nav;
+  const isAgencyPlan = subscription.planId === 'agency';
+
+  useEffect(() => {
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/agency') setActiveTab('agency');
+    if (path === '/calendar') setActiveTab('calendar');
+    if (path === '/leads') setActiveTab('crm');
+  }, []);
+
+  useEffect(() => {
+    const loadAgencyData = async () => {
+      if (!isAgencyPlan) return;
+      try {
+        const [clientsRes, overviewRes] = await Promise.all([
+          fetch('/api/agency/clients'),
+          fetch('/api/agency/overview'),
+        ]);
+        if (clientsRes.ok) {
+          const clients = await clientsRes.json();
+          setAgencyClients(clients || []);
+          if (!selectedClientId && clients?.length > 0) {
+            setSelectedClientId(clients[0].id);
+          }
+        }
+        if (overviewRes.ok) {
+          const overview = await overviewRes.json();
+          setAgencyOverview(overview.clients || []);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados de agência:', error);
+      }
+    };
+    loadAgencyData();
+  }, [isAgencyPlan, selectedClientId]);
 
   // Memoized stats to prevent re-calculations on re-renders
   const { creditLimit, creditsLeft, usagePercentage } = useMemo(() => {
-    const limit = PLAN_LIMITS[subscription.planId];
+    const resolvedPlan = subscription.planId === 'regular' ? 'starter' : subscription.planId;
+    const limit = PLAN_LIMITS[resolvedPlan as PlanId] || PLAN_LIMITS.trial;
     return {
       creditLimit: limit,
       creditsLeft: limit - subscription.creditsUsed,
@@ -150,6 +224,12 @@ const MainApp: React.FC<MainAppProps> = ({
   }, [subscription]);
 
   const handleGenerate = async (data: Omit<ReviewData, 'id' | 'createdAt'>) => {
+    if (isTrialActive && trialResponsesUsed >= trialLimit) {
+      setError("Limite de 10 respostas do trial atingido. Faz upgrade para continuar.");
+      setShowUpgradeModal(true);
+      return;
+    }
+
     if (subscription.creditsUsed >= creditLimit) {
         setShowUpgradeModal(true);
         return;
@@ -157,21 +237,47 @@ const MainApp: React.FC<MainAppProps> = ({
     setIsLoading(true);
     setError(null);
     try {
+      const selectedClient = agencyClients.find((c) => c.id === selectedClientId);
       const savedProfile = localStorage.getItem('demo_business_profile');
-      const businessContext = savedProfile ? JSON.parse(savedProfile) : undefined;
+      const fallbackProfile = savedProfile ? JSON.parse(savedProfile) : undefined;
+      const businessContext = selectedClient ? {
+        businessName: selectedClient.name,
+        businessType: selectedClient.type || undefined,
+        location: '',
+        localSeoKeywords: selectedClient.platformIds || [],
+      } : fallbackProfile;
       const result = await generateResponse({ ...data, id: 'temp', createdAt: new Date() }, businessContext);
       const finishedReview: ReviewData = { 
         ...data, id: Date.now().toString(), createdAt: new Date(), isFavorite: false,
-        generatedResponse: result.response, sentiment: result.sentiment, keywords: result.keywords
+        generatedResponse: result.response, sentiment: result.sentiment, keywords: result.keywords,
+        establishmentId: selectedClientId || undefined,
+        establishmentName: selectedClient?.name
       };
       setCurrentReview(finishedReview);
       setHistory(prev => [finishedReview, ...prev]);
       setSubscription(prev => ({ ...prev, creditsUsed: prev.creditsUsed + 1 }));
+      if (isTrialActive && onTrialResponseUsed) {
+        await onTrialResponseUsed();
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao gerar resposta.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGenerateFromReview = async (review: ReviewData) => {
+    await handleGenerate({
+      platform: review.platform,
+      customerName: review.customerName,
+      rating: review.rating,
+      reviewText: review.reviewText,
+      tone: review.tone,
+      language: review.language,
+      extraInstructions: review.extraInstructions,
+      responseType: review.responseType,
+    });
+    setActiveTab('generate');
   };
 
   const NavButton = ({ tab, icon: Icon, label, onClick }: { tab?: typeof activeTab, icon: any, label: string, onClick?: () => void }) => (
@@ -194,6 +300,11 @@ const MainApp: React.FC<MainAppProps> = ({
       {label}
     </button>
   );
+
+  const handleLogout = async () => {
+    await signOut();
+    onLogout();
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex overflow-hidden">
@@ -218,6 +329,7 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="calendar" icon={CalendarIcon} label={nav.menu.calendar} />
           <NavButton tab="business-profile" icon={Store} label={nav.menu.profile} />
           <NavButton tab="platforms" icon={List} label={nav.menu.platforms} />
+          {isAgencyPlan && <NavButton tab="agency" icon={Building2} label="Agency" />}
           <NavButton tab="invoicing" icon={FileText} label={nav.menu.invoicing} />
           <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />
           
@@ -248,7 +360,7 @@ const MainApp: React.FC<MainAppProps> = ({
                         </button>
                     ))}
                 </div>
-                <button onClick={onLogout} className="p-2 text-slate-500 hover:text-red-500 transition-colors">
+                <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-500 transition-colors">
                     <LogOut size={16} />
                 </button>
              </div>
@@ -263,8 +375,33 @@ const MainApp: React.FC<MainAppProps> = ({
         </header>
 
         <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+          {isAgencyPlan && (
+            <div className="mb-4 flex items-center justify-end">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-500 dark:text-slate-400">Negócio:</span>
+                <select
+                  value={selectedClientId || ''}
+                  onChange={(e) => setSelectedClientId(e.target.value ? Number(e.target.value) : null)}
+                  className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                >
+                  {agencyClients.map((client) => (
+                    <option key={client.id} value={client.id}>{client.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
           <Suspense fallback={<TabSkeleton />}>
             <div key={activeTab} className="animate-fade-in">
+              {isTrialActive && (
+                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 px-4 py-3">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    {trialDaysRemaining} dias restantes do teu trial
+                    {" "}({trialResponsesUsed}/{trialLimit} respostas usadas)
+                  </p>
+                </div>
+              )}
+
               {activeTab === 'overview' && (
                 <div className="space-y-8">
                   <div className="bg-gradient-to-br from-brand-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
@@ -314,13 +451,21 @@ const MainApp: React.FC<MainAppProps> = ({
                 </div>
               )}
 
-              {activeTab === 'analytics' && <Dashboard history={history} />}
+              {activeTab === 'analytics' && (
+                <Dashboard
+                  history={history}
+                  currentPlan={subscription.planId}
+                  responsesRemaining={Math.max(0, creditLimit - subscription.creditsUsed)}
+                  onGenerateFromReview={handleGenerateFromReview}
+                />
+              )}
               {activeTab === 'crm' && <CRMPage lang={lang} />}
               {activeTab === 'social-manager' && <SocialMediaManager lang={lang} />}
               {activeTab === 'discovery' && <BusinessDiscoveryPage lang={lang} />}
               {activeTab === 'calendar' && <SocialMediaCalendar lang={lang} />}
-              {activeTab === 'platforms' && <PlatformList lang={lang} />}
+              {activeTab === 'platforms' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'business-profile' && <BusinessProfilePage />}
+              {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
               {activeTab === 'pricing' && <BillingPage lang={lang} />}
               {activeTab === 'accounting' && <AccountingPage />}
               {activeTab === 'invoicing' && <InvoicingPage />}

@@ -12,7 +12,7 @@ interface PricingSectionProps {
 
 const plans: Plan[] = [
   { id: 'trial', price: 0, credits: 10, users: 1, nameKey: 'trial' },
-  { id: 'regular', price: 19.99, credits: 50, users: 1, nameKey: 'regular', highlight: true },
+  { id: 'starter', price: 19.99, credits: 50, users: 1, nameKey: 'regular', highlight: true },
   { id: 'pro', price: 49.99, credits: 150, users: 1, nameKey: 'pro' },
   { id: 'agency', price: 149.99, credits: 500, users: 5, nameKey: 'agency' },
 ];

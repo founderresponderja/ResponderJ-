@@ -117,6 +117,7 @@ export const establishments = pgTable("establishments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
+  logoUrl: text("logo_url"),
   type: text("type"),
   brandTone: text("brand_tone"),
   responseGuidelines: text("response_guidelines"),
@@ -170,12 +171,36 @@ export const responses = pgTable("responses", {
   isSelected: boolean("is_selected").default(false),
   isPublished: boolean("is_published").default(false),
   publishedAt: timestamp("published_at"),
+  approvalStatus: text("approval_status").default("pending"), // pending, approved, edited
+  originalResponseText: text("original_response_text"),
+  editCount: integer("edit_count").default(0),
+  learningMeta: jsonb("learning_meta"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {
     userResponsesIdx: index("user_responses_idx").on(table.userId),
     reviewResponseIdx: index("review_response_idx").on(table.reviewId),
+  };
+});
+
+export const responseLearningPatterns = pgTable("response_learning_patterns", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  language: text("language").notNull(),
+  tone: text("tone").notNull(),
+  sentiment: text("sentiment").notNull(),
+  openingStyle: text("opening_style"),
+  closingStyle: text("closing_style"),
+  preferredPhrases: jsonb("preferred_phrases"),
+  avoidedPhrases: jsonb("avoided_phrases"),
+  editCount: integer("edit_count").default(1),
+  lastEditedAt: timestamp("last_edited_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    learningLookupIdx: index("learning_lookup_idx").on(table.userId, table.language, table.tone, table.sentiment),
   };
 });
 
@@ -475,6 +500,26 @@ export const corporateSocialAccounts = pgTable("corporate_social_accounts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const socialPlatformConnections = pgTable("social_platform_connections", {
+  id: serial("id").primaryKey(),
+  userExternalId: text("user_external_id").notNull(), // Clerk user ID
+  establishmentId: integer("establishment_id"),
+  platform: text("platform").notNull(),
+  status: text("status").default("connected"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  meta: jsonb("meta"),
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    userPlatformIdx: uniqueIndex("social_platform_user_unique").on(table.userExternalId, table.platform, table.establishmentId),
+    platformIdx: index("social_platform_platform_idx").on(table.platform),
+  };
+});
+
 export const corporatePosts = pgTable("corporate_posts", {
   id: text("id").primaryKey(),
   content: text("content"),
@@ -617,3 +662,8 @@ export type InsertAutomationRule = typeof automationRules.$inferInsert;
 
 export type QualityFeedback = typeof qualityFeedback.$inferSelect;
 export type InsertQualityFeedback = typeof qualityFeedback.$inferInsert;
+
+export type SocialPlatformConnection = typeof socialPlatformConnections.$inferSelect;
+export type InsertSocialPlatformConnection = typeof socialPlatformConnections.$inferInsert;
+export type ResponseLearningPattern = typeof responseLearningPatterns.$inferSelect;
+export type InsertResponseLearningPattern = typeof responseLearningPatterns.$inferInsert;

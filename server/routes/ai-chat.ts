@@ -5,7 +5,7 @@ import { rateLimitMiddleware } from "../performance-optimizations";
 
 const router = Router();
 // Initialize Gemini with API Key from environment
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 // Knowledge base and persona definition for Sofia
 const SOFIA_SYSTEM_INSTRUCTION = `

@@ -1,39 +1,61 @@
 
-import React, { useState } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
+import React from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
 import { ReviewData } from '../types';
-import { 
-  Activity, 
-  Clock, 
-  Zap, 
-  MessageSquare, 
-  TrendingUp, 
-  TrendingDown, 
-  Calendar,
-  Layout,
-  Smile,
-  Heart,
-  Tag,
-  Bot
+import {
+  Activity,
+  Clock,
+  MessageSquare,
+  Star,
+  MapPin,
+  Sparkles,
+  CreditCard,
+  Bot,
 } from 'lucide-react';
 
 interface DashboardProps {
   history: ReviewData[];
+  currentPlan: string;
+  responsesRemaining: number;
+  onGenerateFromReview: (review: ReviewData) => void;
 }
 
-const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f97316', '#ef4444', '#8b5cf6', '#ec4899'];
-const SENTIMENT_COLORS: Record<string, string> = {
-  Positive: '#22c55e', // green-500
-  Neutral: '#94a3b8', // slate-400
-  Negative: '#ef4444', // red-500
-};
+const WEEK_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
 
-const Dashboard: React.FC<DashboardProps> = ({ history }) => {
-  const [dateRange, setDateRange] = useState("7d");
+const Dashboard: React.FC<DashboardProps> = ({ history, currentPlan, responsesRemaining, onGenerateFromReview }) => {
+  const [analytics, setAnalytics] = React.useState<{
+    totalResponses: number;
+    responseRate: number;
+    averageResponseTimeHours: number;
+    averageRatingByPlatform: Record<string, number>;
+    weeklyActivity: Array<{ day: string; responses: number }>;
+  } | null>(null);
 
-  if (history.length === 0) {
+  React.useEffect(() => {
+    let mounted = true;
+    const loadAnalytics = async () => {
+      try {
+        const response = await fetch('/api/analytics/dashboard');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (mounted) setAnalytics(data);
+      } catch {
+        // Keep local dashboard fallback if analytics endpoint fails.
+      }
+    };
+    loadAnalytics();
+    return () => { mounted = false; };
+  }, []);
+
+  if (history.length === 0 && !analytics?.totalResponses) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 animate-fade-in min-h-[400px]">
         <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
@@ -47,433 +69,180 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
     );
   }
 
-  // Filtragem de dados baseada no dateRange (Simulação, pois history pode não ter datas antigas suficientes)
-  const filteredHistory = history; 
+  const totalResponses = analytics?.totalResponses ?? history.length;
+  const averageRating = analytics
+    ? (Object.values(analytics.averageRatingByPlatform || {}).reduce((acc, item) => acc + item, 0) / Math.max(1, Object.keys(analytics.averageRatingByPlatform || {}).length))
+    : (history.reduce((acc, item) => acc + (item.rating || 0), 0) / Math.max(1, history.length));
+  const avgRatingDisplay = averageRating.toFixed(1);
+  const estimatedGoogleImpressions = history.filter(h => h.platform === 'Google Maps').length * 120;
+  const hoursSaved = analytics ? ((analytics.averageResponseTimeHours || 0) * totalResponses) / 60 : (totalResponses * 3) / 60;
+  const hoursSavedDisplay = hoursSaved.toFixed(1);
 
-  // Stats Calculations
-  const totalResponses = filteredHistory.length;
-  const creditsUsed = totalResponses; // 1 crédito por resposta
-  // Simulação de métricas que não temos na base de dados
-  const avgResponseTime = "2.3s"; 
-  const successRate = totalResponses > 0 ? "98.2%" : "0%";
-
-  // Calculate Ratings Distribution
-  const ratingCounts = [0, 0, 0, 0, 0];
-  filteredHistory.forEach(r => {
-    if (r.rating >= 1 && r.rating <= 5) {
-      ratingCounts[r.rating - 1]++;
-    }
+  const last7Days = Array.from({ length: 7 }).map((_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - index));
+    return date;
   });
 
-  const ratingData = ratingCounts.map((count, index) => ({
-    name: `${index + 1} ★`,
-    value: count
-  }));
-
-  // Calculate Platform Distribution
-  const platformCounts: Record<string, number> = {};
-  filteredHistory.forEach(r => {
-    platformCounts[r.platform] = (platformCounts[r.platform] || 0) + 1;
+  const weeklyData = analytics?.weeklyActivity?.length
+    ? analytics.weeklyActivity.map((item) => ({ name: item.day, respostas: item.responses }))
+    : last7Days.map((date) => {
+    const yyyy = date.getFullYear();
+    const mm = `${date.getMonth() + 1}`.padStart(2, '0');
+    const dd = `${date.getDate()}`.padStart(2, '0');
+    const key = `${yyyy}-${mm}-${dd}`;
+    const count = history.filter((item) => {
+      const d = new Date(item.createdAt);
+      const y = d.getFullYear();
+      const m = `${d.getMonth() + 1}`.padStart(2, '0');
+      const day = `${d.getDate()}`.padStart(2, '0');
+      return `${y}-${m}-${day}` === key;
+    }).length;
+    return {
+      name: WEEK_LABELS[(date.getDay() + 6) % 7],
+      respostas: count,
+    };
   });
 
-  // Calculate Tone Distribution
-  const toneCounts: Record<string, number> = {};
-  filteredHistory.forEach(r => {
-    toneCounts[r.tone] = (toneCounts[r.tone] || 0) + 1;
-  });
+  const recentReviews = [...history].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6);
 
-  // Calculate Sentiment Distribution
-  const sentimentCounts: Record<string, number> = { Positive: 0, Neutral: 0, Negative: 0 };
-  let hasSentimentData = false;
-  filteredHistory.forEach(r => {
-    if (r.sentiment) {
-      sentimentCounts[r.sentiment] = (sentimentCounts[r.sentiment] || 0) + 1;
-      hasSentimentData = true;
-    }
-  });
-
-  const sentimentData = Object.keys(sentimentCounts).map(key => ({
-    name: key === 'Positive' ? 'Positivo' : key === 'Negative' ? 'Negativo' : 'Neutro',
-    key: key,
-    value: sentimentCounts[key],
-  })).filter(d => d.value > 0);
-
-  // Calculate Top Keywords
-  const keywordCounts: Record<string, number> = {};
-  filteredHistory.forEach(r => {
-    if (r.keywords) {
-      r.keywords.forEach(k => {
-        const normalized = k.trim(); // Keep original casing for display usually, but could lowerCase
-        keywordCounts[normalized] = (keywordCounts[normalized] || 0) + 1;
-      });
-    }
-  });
-  
-  const topKeywords = Object.entries(keywordCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([keyword, count]) => ({ keyword, count }));
-
-
-  const platformData = Object.keys(platformCounts).map(key => ({
-    name: key,
-    value: platformCounts[key],
-    percentage: Math.round((platformCounts[key] / totalResponses) * 100)
-  })).sort((a, b) => b.value - a.value);
-
-  const toneData = Object.keys(toneCounts).map(key => ({
-    name: key,
-    value: toneCounts[key],
-    percentage: Math.round((toneCounts[key] / totalResponses) * 100)
-  })).sort((a, b) => b.value - a.value);
+  const openSofiaHelp = () => {
+    window.dispatchEvent(new Event('sofia:open'));
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header com Filtro de Data */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Análises</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Visão geral do desempenho e uso.</p>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Resumo operacional e performance da tua equipa.</p>
         </div>
-        
-        <div className="bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 inline-flex">
-          {['7d', '30d', '90d', '1a'].map((range) => (
-            <button
-              key={range}
-              onClick={() => setDateRange(range)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                dateRange === range
-                  ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-            >
-              {range === '1a' ? '1 Ano' : range.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={openSofiaHelp}
+          className="px-4 py-2 rounded-lg bg-gradient-to-r from-brand-600 to-purple-600 text-white text-sm font-semibold flex items-center gap-2"
+        >
+          <Bot size={16} /> Ajuda IA
+        </button>
       </div>
 
-      {/* Cards de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Responses */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Respostas</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total respostas geradas</p>
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{totalResponses}</p>
             </div>
             <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-xs font-medium">
-            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <TrendingUp size={14} /> +15%
-            </span>
-            <span className="text-slate-400 ml-2">vs. período anterior</span>
-          </div>
         </div>
 
-        {/* Credits Used */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Créditos Usados</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">{creditsUsed}</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Avaliação média</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">{avgRatingDisplay}★</p>
             </div>
             <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
-              <Zap className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              <Star className="w-6 h-6 text-amber-600 dark:text-amber-400" />
             </div>
-          </div>
-          <div className="mt-4 flex items-center text-xs font-medium">
-            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <TrendingUp size={14} /> +8%
-            </span>
-            <span className="text-slate-400 ml-2">vs. período anterior</span>
           </div>
         </div>
 
-        {/* Avg Response Time */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Tempo Médio</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">{avgResponseTime}</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Impressões Google Maps (estim.)</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">{estimatedGoogleImpressions}</p>
             </div>
             <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-              <Clock className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <MapPin className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             </div>
-          </div>
-          <div className="mt-4 flex items-center text-xs font-medium">
-            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <TrendingDown size={14} /> -12%
-            </span>
-            <span className="text-slate-400 ml-2">melhoria</span>
           </div>
         </div>
 
-        {/* Success Rate */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Taxa de Sucesso</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">{successRate}</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Horas poupadas</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">{hoursSavedDisplay}h</p>
             </div>
             <div className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/30 rounded-xl flex items-center justify-center">
-              <Activity className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+              <Clock className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
             </div>
-          </div>
-          <div className="mt-4 flex items-center text-xs font-medium">
-            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <TrendingUp size={14} /> +2.1%
-            </span>
-            <span className="text-slate-400 ml-2">vs. período anterior</span>
           </div>
         </div>
       </div>
 
-      {/* Row 2: Sentiment and Keywords */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Sentiment Analysis */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Heart className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </div>
-            <h3 className="font-semibold text-slate-800 dark:text-white">Análise de Sentimento</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-5 h-5 text-brand-600" />
+            <h3 className="font-semibold text-slate-800 dark:text-white">Evolução semanal de respostas</h3>
           </div>
-          
-          <div className="h-64 w-full flex items-center justify-center">
-            {hasSentimentData ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={sentimentData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {sentimentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={SENTIMENT_COLORS[entry.key] || COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: '8px', 
-                      border: 'none', 
-                      backgroundColor: '#1e293b', 
-                      color: '#fff' 
-                    }} 
-                  />
-                  <Legend verticalAlign="bottom" height={36} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="text-slate-400 text-sm">Sem dados de sentimento disponíveis</div>
-            )}
-          </div>
-        </div>
-
-        {/* Top Keywords */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Tag className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </div>
-            <h3 className="font-semibold text-slate-800 dark:text-white">Tópicos Frequentes</h3>
-          </div>
-          
-          {topKeywords.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {topKeywords.map((item, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700"
-                >
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.keyword}</span>
-                  <span className="text-xs font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 px-1.5 py-0.5 rounded-full">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex h-64 items-center justify-center text-slate-400 text-sm">
-              Sem palavras-chave disponíveis
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Row 3: Distribution Lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Platform Distribution */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Layout className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </div>
-            <h3 className="font-semibold text-slate-800 dark:text-white">Distribuição por Plataforma</h3>
-          </div>
-          
-          {platformData.length > 0 ? (
-            <div className="space-y-5">
-              {platformData.map((item, index) => (
-                <div key={item.name}>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.name}</span>
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] rounded-full font-bold">
-                        {item.value}
-                      </span>
-                    </div>
-                    <span className="text-xs font-semibold text-slate-500">{item.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="bg-indigo-600 dark:bg-indigo-500 h-2.5 rounded-full transition-all duration-1000 ease-out" 
-                      style={{ width: `${item.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              Sem dados disponíveis
-            </div>
-          )}
-        </div>
-
-        {/* Tone Usage */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Smile className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </div>
-            <h3 className="font-semibold text-slate-800 dark:text-white">Tons de Resposta Usados</h3>
-          </div>
-          
-          {toneData.length > 0 ? (
-            <div className="space-y-5">
-              {toneData.map((item, index) => (
-                <div key={item.name}>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.name}</span>
-                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] rounded-full font-bold">
-                        {item.value}
-                      </span>
-                    </div>
-                    <span className="text-xs font-semibold text-slate-500">{item.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="bg-cyan-600 dark:bg-cyan-500 h-2.5 rounded-full transition-all duration-1000 ease-out" 
-                      style={{ width: `${item.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              Sem dados disponíveis
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Ratings Chart */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <Calendar className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-            </div>
-            <h3 className="font-semibold text-slate-800 dark:text-white">Distribuição de Estrelas</h3>
-          </div>
-        </div>
-        
-        <div className="h-64 w-full">
-          {totalResponses > 0 ? (
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ratingData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.1} />
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{fill: '#94a3b8', fontSize: 12}} 
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  allowDecimals={false} 
-                  tick={{fill: '#94a3b8', fontSize: 12}} 
-                />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', 
-                    backgroundColor: '#1e293b', 
-                    color: '#fff',
-                    padding: '8px 12px'
-                  }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-                  {ratingData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" strokeOpacity={0.2} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="respostas" fill="#6d28d9" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
-              <p className="text-slate-400 text-sm">Dados insuficientes para gerar gráfico</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-5 h-5 text-brand-600" />
+            <h3 className="font-semibold text-slate-800 dark:text-white">Plano e consumo mensal</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Plano atual</p>
+              <p className="text-xl font-bold capitalize">{currentPlan}</p>
             </div>
-          )}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <p className="text-xs uppercase tracking-wide text-slate-500 mb-1">Respostas restantes este mês</p>
+              <p className="text-xl font-bold">{Math.max(0, responsesRemaining)}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800">
+              <button
+                onClick={openSofiaHelp}
+                className="text-sm font-semibold text-brand-700 dark:text-brand-300 flex items-center gap-2"
+              >
+                <Sparkles size={16} /> Precisas de ajuda? Fala com a Ajuda IA
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      
-      {/* Recent History */}
+
       <div className="mt-8">
         <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
           <Activity className="w-5 h-5 text-brand-600 dark:text-brand-400" />
-          Histórico Recente
+          Reviews recentes
         </h3>
         <div className="space-y-4">
-          {history.map((review) => (
+          {recentReviews.map((review) => (
             <div key={review.id} className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 transition-colors">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-2 py-1 rounded">
                     {review.platform}
                   </span>
-                  {/* Visual Indicator for Auto-Replies */}
                   {review.responseType === 'auto_reply' && (
                     <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded border border-purple-100 dark:border-purple-900">
                       <Bot size={12} /> Auto
                     </span>
-                  )}
-                  {review.isFavorite && (
-                    <Heart size={14} className="text-rose-500" fill="currentColor" />
                   )}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-slate-400 dark:text-slate-500">
                     {new Date(review.createdAt).toLocaleDateString()}
                   </span>
-                  <button className={`text-slate-400 hover:text-rose-500 transition-colors ${review.isFavorite ? 'text-rose-500' : ''}`}>
-                    <Heart size={16} fill={review.isFavorite ? "currentColor" : "none"} />
-                  </button>
                 </div>
               </div>
               <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
@@ -485,9 +254,17 @@ const Dashboard: React.FC<DashboardProps> = ({ history }) => {
               <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded text-sm text-slate-700 dark:text-slate-300 text-sm border-l-4 border-brand-400">
                 {review.generatedResponse}
               </div>
+              <div className="mt-3">
+                <button
+                  onClick={() => onGenerateFromReview(review)}
+                  className="px-3 py-2 text-sm font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg"
+                >
+                  Gerar Resposta IA
+                </button>
+              </div>
             </div>
           ))}
-          {history.length === 0 && (
+          {recentReviews.length === 0 && (
              <p className="text-slate-400 dark:text-slate-500 italic">Ainda não há histórico.</p>
           )}
         </div>

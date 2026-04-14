@@ -1,81 +1,98 @@
 
-import { corporateSocialService } from "./corporate-social-service";
-import { storage } from "../storage";
-import { GoogleGenAI } from "@google/genai";
+import { and, eq } from "drizzle-orm";
+import { db } from "../db";
+import { socialPlatformConnections } from "@shared/schema";
+import { decryptSensitiveData } from "../encryption";
 
 // Serviço dedicado à gestão de reviews do Google Business Profile
 export class GoogleReviewsService {
-  private static baseUrl = 'https://mybusiness.googleapis.com/v4';
+  private static accountManagementUrl = "https://mybusinessaccountmanagement.googleapis.com/v1";
+  private static businessInfoUrl = "https://mybusinessbusinessinformation.googleapis.com/v1";
 
   /**
    * Obtém reviews de uma conta conectada
    */
-  static async fetchReviews(userId: string, accountId: string) {
-    // Em produção, isto usaria o token de acesso real guardado no corporateSocialAccounts
-    // Recuperamos a conta para obter o token
-    const account = await storage.getCorporateSocialAccount(accountId);
-    
-    if (!account) {
-      throw new Error("Conta Google não encontrada ou desconectada.");
-    }
+  static async fetchReviews(userExternalId: string, establishmentId?: number | null) {
+    const [connection] = await db.select().from(socialPlatformConnections).where(and(
+      eq(socialPlatformConnections.userExternalId, userExternalId),
+      eq(socialPlatformConnections.platform, "google"),
+      eq(socialPlatformConnections.establishmentId, establishmentId ?? null),
+      eq(socialPlatformConnections.status, "connected"),
+    ));
+    if (!connection?.accessToken) return [];
 
-    // Desencriptar token (simulado pela infraestrutura existente)
-    const credentials = corporateSocialService.decryptCredentials(account.accessToken);
-    
-    // NOTA: Em produção real, faríamos o fetch à API do Google:
-    // const response = await fetch(`${this.baseUrl}/${account.username}/reviews`, {
-    //   headers: { Authorization: `Bearer ${credentials.accessToken}` }
-    // });
-    
-    // Como não temos credenciais reais do Google nesta simulação, retornamos 
-    // dados estruturados como se viessem da API, mas marcados para o sistema.
-    
-    return [
-      {
-        reviewId: `gp_review_${Date.now()}_1`,
-        reviewer: { displayName: "Cliente Exemplo Real" },
-        comment: "Excelente serviço e atendimento muito rápido. Recomendo!",
-        starRating: "FIVE",
-        createTime: new Date().toISOString(),
-        reviewReply: null // Sem resposta ainda
-      },
-      {
-        reviewId: `gp_review_${Date.now()}_2`,
-        reviewer: { displayName: "Maria Visitante" },
-        comment: "A comida estava boa, mas o ambiente estava um pouco barulhento.",
-        starRating: "FOUR",
-        createTime: new Date(Date.now() - 86400000).toISOString(),
-        reviewReply: {
-          comment: "Obrigado pelo feedback, Maria. Vamos trabalhar na acústica.",
-          updateTime: new Date().toISOString()
-        }
-      }
-    ];
+    const accessToken = await decryptSensitiveData(connection.accessToken);
+    if (!accessToken) return [];
+
+    const locations = await this.fetchLocations(accessToken);
+    const allReviews: any[] = [];
+    for (const location of locations) {
+      const locationReviews = await this.fetchReviewsByLocation(location.name, accessToken);
+      allReviews.push(...locationReviews.map((review: any) => ({ ...review, locationName: location.name })));
+    }
+    return allReviews;
   }
 
   /**
    * Publica uma resposta a uma review no Google
    */
-  static async replyToReview(userId: string, accountId: string, reviewId: string, replyText: string) {
-    const account = await storage.getCorporateSocialAccount(accountId);
-    
-    if (!account) {
+  static async replyToReview(userExternalId: string, reviewName: string, replyText: string, establishmentId?: number | null) {
+    const [connection] = await db.select().from(socialPlatformConnections).where(and(
+      eq(socialPlatformConnections.userExternalId, userExternalId),
+      eq(socialPlatformConnections.platform, "google"),
+      eq(socialPlatformConnections.establishmentId, establishmentId ?? null),
+      eq(socialPlatformConnections.status, "connected"),
+    ));
+    if (!connection?.accessToken) {
       throw new Error("Conta Google não encontrada.");
     }
 
-    // Lógica de simulação de chamada à API
-    console.log(`[Google API] A publicar resposta na review ${reviewId}: "${replyText}"`);
-    
-    // Em produção:
-    // await fetch(`${this.baseUrl}/${account.username}/reviews/${reviewId}/reply`, {
-    //   method: 'PUT',
-    //   body: JSON.stringify({ comment: replyText }),
-    //   headers: { Authorization: `Bearer ...` }
-    // });
+    const accessToken = await decryptSensitiveData(connection.accessToken);
+    if (!accessToken) {
+      throw new Error("Google access token inválido.");
+    }
 
-    return {
-      success: true,
-      updateTime: new Date().toISOString()
-    };
+    const response = await fetch(`https://mybusiness.googleapis.com/v4/${reviewName}/reply`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ comment: replyText }),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Google reply failed (${response.status}): ${errText}`);
+    }
+
+    return response.json();
+  }
+
+  private static async fetchLocations(accessToken: string) {
+    const accountsResponse = await fetch(`${this.accountManagementUrl}/accounts`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!accountsResponse.ok) return [];
+
+    const accountsData = await accountsResponse.json() as { accounts?: Array<{ name: string }> };
+    const locations: Array<{ name: string }> = [];
+    for (const account of accountsData.accounts || []) {
+      const response = await fetch(`${this.businessInfoUrl}/${account.name}/locations`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) continue;
+      const payload = await response.json() as { locations?: Array<{ name: string }> };
+      locations.push(...(payload.locations || []));
+    }
+    return locations;
+  }
+
+  private static async fetchReviewsByLocation(locationName: string, accessToken: string) {
+    const response = await fetch(`https://mybusiness.googleapis.com/v4/${locationName}/reviews`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) return [];
+    const payload = await response.json() as { reviews?: any[] };
+    return payload.reviews || [];
   }
 }

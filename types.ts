@@ -33,6 +33,8 @@ export enum Language {
 
 export interface ReviewData {
   id: string;
+  establishmentId?: number;
+  establishmentName?: string;
   platform: Platform;
   customerName: string;
   rating: number; // 1-5
@@ -60,6 +62,10 @@ export interface SocialPost {
   scheduledDate: Date;
   contentType: ContentType;
   engagement?: string;
+  sourceType?: 'manual' | 'review_response';
+  reviewId?: number;
+  responseId?: number;
+  content?: string;
 }
 
 export interface ChartData {
@@ -67,7 +73,7 @@ export interface ChartData {
   value: number;
 }
 
-export type PlanId = 'trial' | 'regular' | 'pro' | 'agency';
+export type PlanId = 'trial' | 'starter' | 'regular' | 'pro' | 'agency';
 
 export interface Plan {
   id: PlanId;

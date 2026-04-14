@@ -5,22 +5,30 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
   apiVersion: "2025-07-30.basil" as any,
 });
 
+const getEnv = (...keys: string[]) => {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (value) return value;
+  }
+  return undefined;
+};
+
 export class BillingService {
   static PAYMENT_PLANS = {
     starter: {
       id: "starter",
       name: "Starter",
-      priceId: "price_starter",
-      price: 19.00,
+      priceId: getEnv("STRIPE_PRICE_ID_STARTER", "STRIPE_STARTER_PRICE_ID") || "price_starter",
+      price: 19.99,
       currency: "eur",
-      credits: 200,
+      credits: 50,
       locations: 1,
-      users: 3,
+      users: 1,
       byokSupported: true,
       features: [
-        "200 respostas AI por mês",
+        "50 respostas AI por mês",
         "1 localização de negócio",
-        "3 utilizadores",
+        "1 utilizador",
         "BYOK (IA) opcional",
         "Suporte por email"
       ]
@@ -28,37 +36,34 @@ export class BillingService {
     pro: {
       id: "pro", 
       name: "Pro",
-      priceId: "price_pro",
-      price: 49.00,
+      priceId: getEnv("STRIPE_PRICE_ID_PRO", "STRIPE_PRO_PRICE_ID") || "price_pro",
+      price: 49.99,
       currency: "eur", 
-      credits: 1000,
-      locations: 3,
-      users: -1, // ilimitado
+      credits: 150,
+      locations: 1,
+      users: 1,
       byokSupported: false,
       features: [
-        "1.000 respostas AI por mês",
-        "3 localizações de negócio",
-        "Utilizadores ilimitados",
-        "Importação CSV em lote",
-        "Memória avançada",
-        "Suporte prioritário"
+        "150 respostas AI por mês",
+        "1 utilizador",
+        "Suporte prioritário",
+        "Análise avançada"
       ]
     },
     agency: {
       id: "agency",
       name: "Agência", 
-      priceId: "price_agency",
-      price: 149.00,
+      priceId: getEnv("STRIPE_PRICE_ID_AGENCY", "STRIPE_AGENCY_PRICE_ID") || "price_agency",
+      price: 149.99,
       currency: "eur",
-      credits: 5000,
-      locations: 10,
-      users: -1, // ilimitado
+      credits: 500,
+      locations: 5,
+      users: 5,
       byokSupported: false,
       features: [
-        "5.000 respostas AI por mês",
-        "10 localizações de negócio",
-        "Utilizadores ilimitados",
-        "Acesso à API completa",
+        "500 respostas AI por mês",
+        "5 utilizadores",
+        "Plano para agência/enterprise",
         "Suporte prioritário 24/7"
       ]
     }
@@ -120,10 +125,11 @@ export class BillingService {
     if (user.stripeSubscriptionId) {
       try {
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        const subscriptionAny = subscription as any;
         subscriptionData = {
           id: subscription.id,
           status: subscription.status,
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          currentPeriodEnd: new Date(subscriptionAny.current_period_end * 1000),
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
           plan: this.PAYMENT_PLANS[user.subscriptionPlan as keyof typeof this.PAYMENT_PLANS]
         };
@@ -227,7 +233,7 @@ export class BillingService {
     return {
       success: true,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000)
+      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000)
     };
   }
 

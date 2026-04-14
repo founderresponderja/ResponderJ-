@@ -64,6 +64,7 @@ interface SocialAccount {
 
 interface Comment {
   id: string;
+  responseId?: number;
   platform: SocialAccount['platform'];
   author: string;
   content: string;
@@ -200,6 +201,38 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
   const t = translations[lang].app.social;
   const common = translations[lang].common;
 
+  const loadPendingResponses = React.useCallback(async () => {
+    try {
+      const response = await fetch('/api/reviews-ai/pending');
+      if (!response.ok) return;
+      const payload = await response.json();
+      const pending = Array.isArray(payload.items) ? payload.items : [];
+      if (!pending.length) return;
+
+      const mapped: Comment[] = pending.map((item: any) => ({
+        id: String(item.reviewId || item.responseId),
+        responseId: Number(item.responseId),
+        platform: String(item.platform || 'google').toLowerCase() as Comment['platform'],
+        author: item.customerName || 'Cliente',
+        content: item.reviewText || item.responseText || '',
+        date: item.createdAt || new Date().toISOString(),
+        sentiment: item.rating && item.rating <= 2 ? 'negative' : item.rating && item.rating >= 4 ? 'positive' : 'neutral',
+        status: item.isPublished ? 'replied' : 'pending',
+        priority: item.rating && item.rating <= 2 ? 'high' : 'medium',
+        postPreview: `Review ${String(item.platform || 'Google')}`,
+        postUrl: '#',
+        tags: item.approvalStatus ? [item.approvalStatus] : undefined,
+      }));
+      setComments(mapped);
+    } catch (error) {
+      console.error('Erro ao carregar pendentes IA:', error);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    loadPendingResponses();
+  }, [loadPendingResponses]);
+
   // Actions
   const handleConnect = (platform: string) => {
     setIsLoading(true);
@@ -273,13 +306,21 @@ const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
     }
   };
 
-  const handlePublishResponse = () => {
-    if (selectedComment) {
-      setComments(comments.map(c => 
+  const handlePublishResponse = async () => {
+    if (!selectedComment) return;
+    try {
+      if (selectedComment.responseId) {
+        await fetch(`/api/reviews-ai/responses/${selectedComment.responseId}/approve`, { method: 'POST' });
+        await fetch(`/api/reviews-ai/responses/${selectedComment.responseId}/publish`, { method: 'POST' });
+      }
+      setComments(comments.map(c =>
         c.id === selectedComment.id ? { ...c, status: 'replied' } : c
       ));
       setIsGenerateModalOpen(false);
       setSelectedComment(null);
+      await loadPendingResponses();
+    } catch (error) {
+      console.error('Erro ao publicar resposta:', error);
     }
   };
 

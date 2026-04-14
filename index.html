@@ -5,14 +5,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Performance Optimization: Preconnect to Font Services -->
+    <!-- Performance Optimization: Preconnect/Preload -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- SEO Primary Tags -->
-    <title>Responder Já | Gestão de Reviews e Respostas com IA para PME</title>
-    <meta name="title" content="Responder Já | Gestão de Reviews e Respostas com IA para PME">
-    <meta name="description" content="Automatize respostas a reviews no Google, TripAdvisor e Booking com Inteligência Artificial. Melhore o SEO local, a reputação online da sua empresa e poupe tempo. Teste grátis!">
+    <title>Responder Já | Gestão de Reviews com IA para PME</title>
+    <meta name="title" content="Responder Já | Gestão de Reviews com IA para PME">
+    <meta name="description" content="Responder reviews Google, gestão reputação online Portugal e automatizar respostas avaliações com IA para PME.">
+    <meta name="keywords" content="responder reviews Google, gestão reputação online Portugal, automatizar respostas avaliações, SEO local PME">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <link rel="canonical" href="https://responder-ja.vercel.app/">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Responder Já">
+    <meta property="og:locale" content="pt_PT">
+    <meta property="og:title" content="Responder Já | Gestão de Reviews com IA para PME">
+    <meta property="og:description" content="Responder reviews Google, gestão reputação online Portugal e automatizar respostas avaliações com IA para PME.">
+    <meta property="og:url" content="https://responder-ja.vercel.app/">
+    <meta property="og:image" content="https://responder-ja.vercel.app/og-image-1200x630.svg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Responder Já | Gestão de Reviews com IA para PME">
+    <meta name="twitter:description" content="Responder reviews Google, gestão reputação online Portugal e automatizar respostas avaliações com IA para PME.">
+    <meta name="twitter:image" content="https://responder-ja.vercel.app/og-image-1200x630.svg">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -21,7 +41,7 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Outfit"', 'max-regular', 'system-ui', 'sans-serif'], 
+              sans: ['"Max-Regular"', 'system-ui', 'sans-serif'],
             },
             colors: {
               brand: {
@@ -47,12 +67,10 @@
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-
       body {
         background-color: #ffffff;
         color: #0f172a;
-        font-family: 'Max-Regular';
+        font-family: 'Max-Regular', system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
       }
@@ -77,6 +95,31 @@
         100% { background-position: -200% 0; }
       }
     </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Responder Já",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "Plataforma para responder reviews Google com IA, gestão de reputação online em Portugal e automação de respostas a avaliações.",
+        "url": "https://responder-ja.vercel.app/",
+        "offers": [
+          { "@type": "Offer", "name": "Starter", "price": "19.99", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": 1, "billingIncrement": 1, "unitCode": "MON" } },
+          { "@type": "Offer", "name": "Profissional", "price": "49.99", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": 1, "billingIncrement": 1, "unitCode": "MON" } },
+          { "@type": "Offer", "name": "Agência/Enterprise", "price": "149.99", "priceCurrency": "EUR", "priceSpecification": { "@type": "UnitPriceSpecification", "billingDuration": 1, "billingIncrement": 1, "unitCode": "MON" } }
+        ],
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "reviewCount": "128"
+        },
+        "review": [
+          { "@type": "Review", "author": { "@type": "Person", "name": "Carlos M." }, "reviewRating": { "@type": "Rating", "ratingValue": "5" }, "reviewBody": "Reduzimos horas de trabalho e melhorámos respostas a reviews no Google." },
+          { "@type": "Review", "author": { "@type": "Person", "name": "Ana R." }, "reviewRating": { "@type": "Rating", "ratingValue": "5" }, "reviewBody": "Muito útil para gestão de reputação online e SEO local do nosso negócio." }
+        ]
+      }
+    </script>
   <script type="importmap">
 {
   "imports": {

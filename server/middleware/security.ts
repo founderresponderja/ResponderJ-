@@ -111,7 +111,8 @@ export const csrfProtection = (req: any, res: any, next: any) => {
     '/api/callback',    // OpenID callback
     '/api/auth/register', // Registo
     '/api/auth/login',   // Login directo
-    '/api/admin/downloads' // Downloads administrativos
+    '/api/admin/downloads', // Downloads administrativos
+    '/api/billing/webhook' // Stripe webhook signed payload
   ];
   
   // Debug para downloads

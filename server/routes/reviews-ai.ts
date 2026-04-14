@@ -6,13 +6,21 @@ import { reviews, responses, establishments, users } from "@shared/schema";
 import { requireAuth } from "../auth";
 import { aiResponseService } from "../services/ai-response-service";
 import { storage } from "../storage";
+import { GoogleReviewsService } from "../services/google-reviews-service";
 
 const router = Router();
 
+function resolveUserId(req: any): number | null {
+  const raw = req.user?.id;
+  const maybe = Number(raw);
+  if (Number.isFinite(maybe) && maybe > 0) return maybe;
+  return null;
+}
+
 router.post("/generate-responses", requireAuth, async (req: any, res) => {
   try {
-    const { reviewText, platform, tone, language, customerName, visitDate, product, location } = req.body;
-    const userId = req.user?.claims?.sub || req.user?.id;
+    const { reviewText, platform, tone, language, customerName, visitDate, product, location, extraInstructions } = req.body;
+    const userId = resolveUserId(req);
 
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     if (!reviewText?.trim()) return res.status(400).json({ message: "Review text required" });
@@ -28,16 +36,28 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
       .where(eq(establishments.userId, userId))
       .limit(1);
 
+    const effectiveTone = tone || establishment?.brandTone || "profissional";
+    const seoKeywords = [
+      establishment?.name,
+      establishment?.type,
+      location,
+      product,
+    ].filter(Boolean) as string[];
+
     // 3. Generate via Gemini 2.5
     const variations = await aiResponseService.generateReviewResponses({
+      userId,
       reviewText,
       platform: platform || 'google_maps',
-      tone: tone || "Professional",
-      language: language || "pt",
+      tone: effectiveTone,
+      language,
+      localSeoKeywords: seoKeywords,
+      extraInstructions,
       establishmentContext: establishment ? {
         name: establishment.name,
         type: establishment.type || undefined,
         responseGuidelines: establishment.responseGuidelines || undefined,
+        location,
       } : undefined,
       dynamicFields: { customerName }
     });
@@ -48,11 +68,14 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
 
     // 4. Save Review
     const sentiment = await aiResponseService.detectSentiment(reviewText);
+    const detectedLanguage = await aiResponseService.detectLanguage(reviewText);
     const [savedReview] = await db.insert(reviews).values({
       establishmentId: establishment?.id,
       platform: platform || 'google_maps',
       reviewText,
-      language: language || "pt",
+      language: detectedLanguage,
+      authorName: customerName,
+      reviewDate: new Date(),
       sentiment
     }).returning();
 
@@ -64,12 +87,23 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
         userId: userId,
         variationNumber: v.variationNumber,
         responseText: v.responseText,
-        tone: v.tone,
-        language: v.language,
+        originalResponseText: v.responseText,
+        tone: v.tone || effectiveTone,
+        language: v.language || detectedLanguage,
         responseType: v.responseType,
         customerName,
+        visitDate,
+        product,
+        location,
         creditsUsed: 1,
-        aiModel: "gemini-2.5-flash"
+        aiModel: "gemini-2.5-flash",
+        approvalStatus: "pending",
+        isSelected: false,
+        isPublished: false,
+        learningMeta: {
+          sentiment: v.sentiment || sentiment,
+          seoKeywords: v.seoKeywords || seoKeywords,
+        },
       }).returning();
       savedResponses.push(r);
     }
@@ -102,6 +136,8 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
       success: true,
       reviewId: savedReview.id,
       responses: variations,
+      sentiment,
+      detectedLanguage,
       creditsRemaining: updatedUser?.credits || 0
     });
 
@@ -114,7 +150,8 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
 // Reuse existing GET endpoints...
 router.get("/history", requireAuth, async (req: any, res) => {
     try {
-        const userId = req.user?.claims?.sub || req.user?.id;
+        const userId = resolveUserId(req);
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
         const limit = 20;
         
         const data = await db.select().from(responses)
@@ -126,6 +163,154 @@ router.get("/history", requireAuth, async (req: any, res) => {
     } catch (e) {
         res.status(500).json({message: "Error fetching history"});
     }
+});
+
+router.get("/pending", requireAuth, async (req: any, res) => {
+  try {
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const pendingRows = await db.select({
+      responseId: responses.id,
+      reviewId: responses.reviewId,
+      responseText: responses.responseText,
+      tone: responses.tone,
+      language: responses.language,
+      approvalStatus: responses.approvalStatus,
+      isSelected: responses.isSelected,
+      isPublished: responses.isPublished,
+      createdAt: responses.createdAt,
+      customerName: responses.customerName,
+      platform: reviews.platform,
+      reviewText: reviews.reviewText,
+      rating: reviews.rating,
+      externalId: reviews.externalId,
+    }).from(responses)
+      .leftJoin(reviews, eq(reviews.id, responses.reviewId))
+      .where(and(eq(responses.userId, userId), eq(responses.isPublished, false)))
+      .orderBy(desc(responses.createdAt))
+      .limit(100);
+
+    res.json({ items: pendingRows });
+  } catch (error) {
+    console.error("Pending responses fetch error:", error);
+    res.status(500).json({ message: "Erro ao obter respostas pendentes" });
+  }
+});
+
+router.patch("/responses/:id/edit", requireAuth, async (req: any, res) => {
+  try {
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const responseId = Number(req.params.id);
+    const editedText = String(req.body?.responseText || "").trim();
+    if (!editedText) return res.status(400).json({ message: "responseText é obrigatório" });
+
+    const [existing] = await db.select().from(responses)
+      .where(and(eq(responses.id, responseId), eq(responses.userId, userId)))
+      .limit(1);
+    if (!existing) return res.status(404).json({ message: "Resposta não encontrada" });
+
+    const [parentReview] = await db.select().from(reviews)
+      .where(eq(reviews.id, existing.reviewId as number))
+      .limit(1);
+
+    const updated = await storage.updateAiResponse(responseId, {
+      responseText: editedText,
+      approvalStatus: "edited",
+      editCount: (existing.editCount || 0) + 1,
+      learningMeta: {
+        ...(existing.learningMeta as Record<string, any> || {}),
+        editedAt: new Date().toISOString(),
+      },
+    });
+
+    await aiResponseService.recordEditLearning({
+      userId,
+      language: existing.language || parentReview?.language || "pt",
+      tone: existing.tone || "profissional",
+      sentiment: ((parentReview?.sentiment as any) || "neutral"),
+      originalText: existing.originalResponseText || existing.responseText,
+      editedText,
+    });
+
+    res.json({ success: true, response: updated });
+  } catch (error) {
+    console.error("Edit response error:", error);
+    res.status(500).json({ message: "Erro ao editar resposta" });
+  }
+});
+
+router.post("/responses/:id/approve", requireAuth, async (req: any, res) => {
+  try {
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const responseId = Number(req.params.id);
+    const [existing] = await db.select().from(responses)
+      .where(and(eq(responses.id, responseId), eq(responses.userId, userId)))
+      .limit(1);
+    if (!existing) return res.status(404).json({ message: "Resposta não encontrada" });
+
+    const updated = await storage.updateAiResponse(responseId, {
+      isSelected: true,
+      approvalStatus: existing.editCount && existing.editCount > 0 ? "edited" : "approved",
+    });
+
+    res.json({ success: true, response: updated });
+  } catch (error) {
+    console.error("Approve response error:", error);
+    res.status(500).json({ message: "Erro ao aprovar resposta" });
+  }
+});
+
+router.post("/responses/:id/publish", requireAuth, async (req: any, res) => {
+  try {
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const responseId = Number(req.params.id);
+    const [existing] = await db.select().from(responses)
+      .where(and(eq(responses.id, responseId), eq(responses.userId, userId)))
+      .limit(1);
+    if (!existing) return res.status(404).json({ message: "Resposta não encontrada" });
+    if (!existing.isSelected) return res.status(400).json({ message: "Aprova primeiro a resposta antes de publicar" });
+
+    const [parentReview] = await db.select().from(reviews)
+      .where(eq(reviews.id, existing.reviewId as number))
+      .limit(1);
+    if (!parentReview) return res.status(404).json({ message: "Review não encontrada para publicação" });
+
+    let publishMeta: Record<string, any> = { mode: "internal" };
+    if (parentReview.platform === "google" && parentReview.externalId) {
+      try {
+        await GoogleReviewsService.replyToReview(
+          String(userId),
+          String(parentReview.externalId),
+          existing.responseText,
+          parentReview.establishmentId ?? null,
+        );
+        publishMeta = { mode: "google_api", publishedExternally: true };
+      } catch (error: any) {
+        return res.status(502).json({
+          message: "Falha ao publicar no Google. Verifica ligação OAuth e permissões.",
+          detail: error?.message || "google_publish_failed",
+        });
+      }
+    }
+
+    const updated = await storage.updateAiResponse(responseId, {
+      isPublished: true,
+      publishedAt: new Date(),
+      learningMeta: {
+        ...(existing.learningMeta as Record<string, any> || {}),
+        publishMeta,
+      },
+    });
+
+    res.json({ success: true, response: updated });
+  } catch (error) {
+    console.error("Publish response error:", error);
+    res.status(500).json({ message: "Erro ao publicar resposta" });
+  }
 });
 
 export default router;

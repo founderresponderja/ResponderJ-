@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -36,6 +36,7 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [posts, setPosts] = useState<SocialPost[]>(MOCK_POSTS);
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPost, setNewPost] = useState<Partial<SocialPost>>({
     title: '',
@@ -101,7 +102,7 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
     }
   };
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPost.title) return;
 
@@ -116,6 +117,16 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
     };
 
     setPosts([...posts, post]);
+    if (newPost.sourceType === 'review_response' && newPost.responseId && newPost.status === 'scheduled') {
+      await fetch('/api/calendar/schedule-review-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          responseId: newPost.responseId,
+          scheduledFor: new Date(newPost.scheduledDate || selectedDate).toISOString(),
+        }),
+      });
+    }
     setIsModalOpen(false);
     setNewPost({ title: '', platform: 'instagram', status: 'draft', contentType: 'image', scheduledDate: new Date() });
   };
@@ -127,6 +138,34 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
     drafts: posts.filter(p => p.status === 'draft').length,
     engagement: '3.8%'
   };
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/calendar/posts');
+        if (!res.ok) return;
+        const data = await res.json();
+        const mapped = (data.posts || []).map((p: any) => ({
+          ...p,
+          scheduledDate: new Date(p.scheduledDate),
+        }));
+        setPosts((prev) => [...mapped, ...prev.filter((x) => x.sourceType !== 'review_response')]);
+      } catch {}
+    };
+    load();
+  }, []);
+
+  const weekDays = useMemo(() => {
+    const base = new Date(selectedDate);
+    const dow = base.getDay();
+    const start = new Date(base);
+    start.setDate(base.getDate() - dow);
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + idx);
+      return d;
+    });
+  }, [selectedDate]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -178,6 +217,11 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
         </div>
       </div>
 
+      <div className="flex items-center gap-2">
+        <button onClick={() => setViewMode('month')} className={`px-3 py-1.5 rounded-lg text-sm ${viewMode === 'month' ? 'bg-brand-600 text-white' : 'bg-slate-200 dark:bg-slate-800'}`}>Mensal</button>
+        <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 rounded-lg text-sm ${viewMode === 'week' ? 'bg-brand-600 text-white' : 'bg-slate-200 dark:bg-slate-800'}`}>Semanal</button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar Grid */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
@@ -193,6 +237,8 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
             </div>
           </div>
 
+          {viewMode === 'month' && (
+          <>
           <div className="grid grid-cols-7 gap-2 mb-2 text-center text-sm font-medium text-slate-500 dark:text-slate-400">
             {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <div key={i}>{d}</div>)}
           </div>
@@ -242,6 +288,33 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
               );
             })}
           </div>
+          </>
+          )}
+
+          {viewMode === 'week' && (
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+              {weekDays.map((day, idx) => {
+                const dayPosts = posts.filter((p) => {
+                  const d = new Date(p.scheduledDate);
+                  return d.toDateString() === day.toDateString();
+                });
+                return (
+                  <div key={idx} className="border border-slate-200 dark:border-slate-800 rounded-lg p-3 min-h-36">
+                    <p className="text-xs font-semibold text-slate-500 mb-2">{day.toLocaleDateString(lang, { weekday: 'short', day: '2-digit' })}</p>
+                    <div className="space-y-2">
+                      {dayPosts.map((p) => (
+                        <div key={p.id} className="text-xs p-2 rounded bg-slate-100 dark:bg-slate-800">
+                          <p className="font-semibold">{p.title}</p>
+                          <p className="text-slate-500">{p.platform} · {p.status}</p>
+                        </div>
+                      ))}
+                      {dayPosts.length === 0 && <p className="text-xs text-slate-400">Sem posts</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Selected Day Details */}
@@ -277,6 +350,9 @@ const SocialMediaCalendar: React.FC<SocialMediaCalendarProps> = ({ lang }) => {
                     </button>
                   </div>
                   <h4 className="font-semibold text-slate-800 dark:text-slate-200 text-sm mb-1">{post.title}</h4>
+                  {post.sourceType === 'review_response' && (
+                    <p className="text-[11px] text-brand-600 dark:text-brand-400 mb-1">Post de resposta a review</p>
+                  )}
                   <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-2">
                     <span className="flex items-center gap-1">
                       {getContentTypeIcon(post.contentType)} {post.contentType}

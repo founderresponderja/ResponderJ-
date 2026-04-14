@@ -46,6 +46,8 @@ const app = express();
 (app as any).use(legalComplianceHeaders);
 
 // 2. Body Parsing & GDPR
+// Stripe webhook needs raw body for signature validation.
+(app as any).use('/api/billing/webhook', express.raw({ type: 'application/json' }));
 // Fix: Added any cast to bypass type mismatch errors with middleware overloads
 (app as any).use(express.json({ limit: '1mb' })); // Limit body size for performance
 // Fix: Added any cast to bypass type mismatch errors with middleware overloads

@@ -2,18 +2,79 @@ import React from 'react';
 import { Platform } from '../types';
 import { ExternalLink, CircleCheckBig } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
+import { useUser } from '@clerk/clerk-react';
 
 interface PlatformListProps {
   lang: Language;
+  establishmentId?: number | null;
+  planId?: string;
 }
 
-const PlatformList: React.FC<PlatformListProps> = ({ lang }) => {
+const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, planId = "free" }) => {
   const t = translations[lang].app;
+  const { user } = useUser();
+  const [connections, setConnections] = React.useState<Record<string, { connected: boolean; status: string; lastSyncAt?: string }>>({});
+  const [loadingPlatform, setLoadingPlatform] = React.useState<string | null>(null);
+  const clerkUserId = user?.id;
+
+  const loadStatus = React.useCallback(async () => {
+    if (!clerkUserId) return;
+    const response = await fetch(`/api/platforms/status?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
+    if (!response.ok) return;
+    const data = await response.json();
+    setConnections(data);
+  }, [clerkUserId, establishmentId]);
+
+  React.useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  const handleConnect = async (platformKey: string) => {
+    if (!clerkUserId) return;
+    setLoadingPlatform(platformKey);
+    try {
+      const response = await fetch(`/api/platforms/connect/${platformKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clerkUserId, establishmentId, planId }),
+      });
+      if (response.status === 402) {
+        const payload = await response.json().catch(() => ({}));
+        const allowed = payload?.allowed === "unlimited" ? "ilimitado" : payload?.allowed ?? 1;
+        window.alert(`Atingiste o limite de plataformas do teu plano (${allowed}). Faz upgrade para continuares.`);
+        return;
+      }
+      const data = await response.json();
+      if (data?.oauthUrl) {
+        window.location.href = data.oauthUrl;
+        return;
+      }
+      await loadStatus();
+    } finally {
+      setLoadingPlatform(null);
+    }
+  };
+
+  const handleDisconnect = async (platformKey: string) => {
+    if (!clerkUserId) return;
+    setLoadingPlatform(platformKey);
+    try {
+      await fetch(`/api/platforms/disconnect/${platformKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clerkUserId, establishmentId, planId }),
+      });
+      await loadStatus();
+    } finally {
+      setLoadingPlatform(null);
+    }
+  };
 
   // Ideally descriptions should be in translations too, but for brevity keeping some static here
   const platformInfo = [
     {
       name: Platform.GOOGLE,
+      key: 'google',
       description: "Essencial para SEO local e visibilidade. O motor de busca mais usado.",
       url: "https://www.google.com/business/",
       color: "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900"
@@ -26,12 +87,14 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang }) => {
     },
     {
       name: Platform.BOOKING,
+      key: 'booking',
       description: "Líder em hospitalidade e reviews detalhados de hóspedes verificados.",
       url: "https://admin.booking.com/",
       color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900"
     },
     {
       name: Platform.TRIPADVISOR,
+      key: 'tripadvisor',
       description: "Forte impacto na reputação turística global e rankings de viagem.",
       url: "https://www.tripadvisor.com/Owners",
       color: "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
@@ -44,6 +107,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang }) => {
     },
     {
       name: Platform.FACEBOOK,
+      key: 'facebook',
       description: "Fundamental para comunidade e interação social direta com a marca.",
       url: "https://business.facebook.com/",
       color: "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-900"
@@ -87,15 +151,40 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang }) => {
             <p className="text-slate-600 dark:text-slate-400 mb-6 flex-grow text-sm leading-relaxed">
               {p.description}
             </p>
-            <div className="mt-auto">
-              <a 
-                href={p.url} 
-                target="_blank" 
+            <div className="mt-auto space-y-3">
+              <a
+                href={p.url}
+                target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 text-brand-600 dark:text-brand-400 font-medium hover:text-brand-800 dark:hover:text-brand-300 transition-colors"
               >
                 {t.manageOn} {p.name.split(' ')[0]} <ExternalLink size={16} />
               </a>
+
+              {p.key && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`text-xs font-semibold ${connections[p.key]?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {connections[p.key]?.connected ? 'Conectado' : 'Não conectado'}
+                  </span>
+                  {connections[p.key]?.connected ? (
+                    <button
+                      onClick={() => handleDisconnect(p.key)}
+                      disabled={loadingPlatform === p.key}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    >
+                      {loadingPlatform === p.key ? 'A desligar...' : 'Desconectar'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleConnect(p.key)}
+                      disabled={loadingPlatform === p.key || !clerkUserId}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-60"
+                    >
+                      {loadingPlatform === p.key ? 'A conectar...' : 'Conectar'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /app/
+Disallow: /invite/
+Disallow: /convite/
+
+Sitemap: https://responder-ja.vercel.app/sitemap.xml
