@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { reviewSyncService } from "../../server/services/review-sync-service";
+import { reviewSyncService } from "../../server/services/review-sync-service.js";
 
 export default async function handler(req: Request, res: Response) {
   const cronSecret = process.env.CRON_SECRET;

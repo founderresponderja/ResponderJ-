@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { registerRoutes, setupAuthRoutes } from "../server/routes";
+import { registerRoutes, setupAuthRoutes } from "../server/routes.js";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();

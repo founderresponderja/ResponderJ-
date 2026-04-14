@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import handler from "./index";
+import handler from "./index.js";
 
 // Dedicated serverless entrypoint for /api/generate-response.
 // Actual implementation and middleware are handled by api/index + server routes.
