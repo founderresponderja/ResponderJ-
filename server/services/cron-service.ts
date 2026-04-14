@@ -1,5 +1,5 @@
-import { notificationService } from './notification-service';
-import { automationService } from './automation-service';
+import { notificationService } from './notification-service.js';
+import { automationService } from './automation-service.js';
 
 // Serviço de tarefas automáticas agendadas
 export class CronService {

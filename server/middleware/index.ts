@@ -10,7 +10,7 @@ export {
   isAdminMiddleware,
   isSuperAdminMiddleware,
   isAgencyOwnerMiddleware
-} from './auth';
+} from './auth.js';
 
 // Security Middleware
 export {
@@ -21,17 +21,17 @@ export {
   generateRateLimit,
   securityHeaders,
   csrfProtection
-} from './security';
+} from './security.js';
 
 // CSRF Protection
 export {
   protectCSRF,
   getCSRFToken,
   addCSRFToken
-} from './csrf';
+} from './csrf.js';
 
 // Database Protection
-export { protectDatabaseQueries } from './sql-injection-protection';
+export { protectDatabaseQueries } from './sql-injection-protection.js';
 
 // GDPR Compliance
 export {
@@ -41,7 +41,7 @@ export {
   getCookieConfigurations,
   gdprAuditLog,
   legalComplianceHeaders
-} from './gdpr-compliance';
+} from './gdpr-compliance.js';
 
 // Error Handling
 export {
@@ -52,11 +52,11 @@ export {
   notFoundHandler,
   validateSchema,
   AppError
-} from './errorHandler';
+} from './errorHandler.js';
 
 // Trial Rate Limiting
-export { trialRateLimit } from './trial-rate-limiting';
+export { trialRateLimit } from './trial-rate-limiting.js';
 
 // Advanced Security
-export { AdvancedThreatDetector } from './advanced-threat-detection';
-export { GDPREnhancedCompliance } from './gdpr-enhanced-compliance';
+export { AdvancedThreatDetector } from './advanced-threat-detection.js';
+export { GDPREnhancedCompliance } from './gdpr-enhanced-compliance.js';

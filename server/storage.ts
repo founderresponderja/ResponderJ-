@@ -11,7 +11,7 @@ import {
   creditPackages, InsertCreditPackage, CreditPackage,
   invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback
 } from "@shared/schema";
-import { db, pool } from "./db";
+import { db, pool } from "./db.js";
 import { eq, ilike, or, and, desc, sql, gte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";

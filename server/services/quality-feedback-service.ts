@@ -4,8 +4,8 @@
  * Sistema para avaliar e melhorar respostas IA
  */
 
-import { storage } from '../storage';
-import { wsNotificationService } from './websocket-notification-service';
+import { storage } from '../storage.js';
+import { wsNotificationService } from './websocket-notification-service.js';
 
 interface QualityFeedbackRequest {
   responseId: string;

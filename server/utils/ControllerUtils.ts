@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import { z } from 'zod';
-import { storage } from "../storage";
-import { Logger, ErrorType } from './Logger';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { storage } from "../storage.js";
+import { Logger, ErrorType } from './Logger.js';
+import { AppError, asyncHandler } from '../middleware/errorHandler.js';
 
 // Re-export AppError for compatibility with index.ts exports
 export { AppError };

@@ -1,7 +1,7 @@
 
 import { Router } from "express";
 import { GoogleGenAI } from "@google/genai";
-import { rateLimitMiddleware } from "../performance-optimizations";
+import { rateLimitMiddleware } from "../performance-optimizations.js";
 
 const router = Router();
 // Initialize Gemini with API Key from environment

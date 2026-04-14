@@ -5,9 +5,9 @@
  */
 
 // Core Utilities
-export { Logger, LogLevel, ErrorType } from './Logger';
-export { ControllerUtils, AppError } from './ControllerUtils';
-export { urlBuilder, URLBuilder } from './url-builder';
+export { Logger, LogLevel, ErrorType } from './Logger.js';
+export { ControllerUtils, AppError } from './ControllerUtils.js';
+export { urlBuilder, URLBuilder } from './url-builder.js';
 
 // Common Types
 export interface RequestContext {

@@ -1,7 +1,7 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../auth";
-import { generateApiKeyGuideHTML } from "../services/pdf-generator";
+import { requireAuth } from "../auth.js";
+import { generateApiKeyGuideHTML } from "../services/pdf-generator.js";
 import fs from 'fs';
 import path from 'path';
 

@@ -1,13 +1,13 @@
 import express, { type Request, type Response, type NextFunction, type RequestHandler } from "express";
 import compression from "compression"; // Added for performance
 import { createServer } from "http";
-import { registerRoutes, setupAuthRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes, setupAuthRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
 
-import { securityHeaders, csrfProtection } from "./middleware/security";
-import { legalComplianceHeaders, secureCookieMiddleware, gdprAuditLog } from "./middleware/gdpr-compliance";
-import { domainManager } from "./config/domains";
-import { wsNotificationService } from "./services/websocket-notification-service";
+import { securityHeaders, csrfProtection } from "./middleware/security.js";
+import { legalComplianceHeaders, secureCookieMiddleware, gdprAuditLog } from "./middleware/gdpr-compliance.js";
+import { domainManager } from "./config/domains.js";
+import { wsNotificationService } from "./services/websocket-notification-service.js";
 
 const app = express();
 

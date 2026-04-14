@@ -1,5 +1,5 @@
-import { SecurityLogEntry } from "./logging-service";
-import { AlertService } from "./alert-service";
+import { SecurityLogEntry } from "./logging-service.js";
+import { AlertService } from "./alert-service.js";
 
 export class ThreatDetectionService {
   private static suspiciousIPs = new Set<string>();

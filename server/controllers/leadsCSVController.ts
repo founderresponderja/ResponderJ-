@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { storage } from "../storage";
-import { ControllerUtils } from "../utils/ControllerUtils";
+import { storage } from "../storage.js";
+import { ControllerUtils } from "../utils/ControllerUtils.js";
 
 export class LeadsCSVController {
   // Importar leads de CSV

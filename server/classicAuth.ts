@@ -1,10 +1,10 @@
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { Express, Request, Response } from "express";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import { newLoginSchema, newRegisterSchema, forgotPasswordSchema, resetPasswordSchema } from "@shared/schema";
 import { MailService } from '@sendgrid/mail';
-import { urlBuilder } from "./utils";
+import { urlBuilder } from "./utils.js";
 
 const mailService = new MailService();
 if (process.env.SENDGRID_API_KEY) {

@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../auth";
-import { emailSequenceService } from "../services/email-sequence-service";
+import { requireAuth, requireAdmin } from "../auth.js";
+import { emailSequenceService } from "../services/email-sequence-service.js";
 
 const router = Router();
 

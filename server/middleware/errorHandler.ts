@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { Logger, ErrorType, StructuredError } from '../utils/Logger';
+import { Logger, ErrorType, StructuredError } from '../utils/Logger.js';
 import { Buffer } from 'buffer';
 
 // Estender interface Request para incluir propriedades customizadas

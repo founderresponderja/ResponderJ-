@@ -1,5 +1,5 @@
-import { LoggingService, SecurityLogEntry } from "./logging-service";
-import { ThreatDetectionService } from "./threat-detection-service";
+import { LoggingService, SecurityLogEntry } from "./logging-service.js";
+import { ThreatDetectionService } from "./threat-detection-service.js";
 
 export interface SecurityMetrics {
   totalRequests: number;

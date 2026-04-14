@@ -1,10 +1,10 @@
 
 import type { Express } from "express";
-import { isAdminMiddleware } from "../middleware/auth";
-import { LeadsController } from "../controllers/leadsController";
-import { LeadsAIController } from "../controllers/leadsAIController";
-import { LeadsCSVController } from "../controllers/leadsCSVController";
-import { LeadsEmailController } from "../controllers/leadsEmailController";
+import { isAdminMiddleware } from "../middleware/auth.js";
+import { LeadsController } from "../controllers/leadsController.js";
+import { LeadsAIController } from "../controllers/leadsAIController.js";
+import { LeadsCSVController } from "../controllers/leadsCSVController.js";
+import { LeadsEmailController } from "../controllers/leadsEmailController.js";
 
 export function registerAdminLeadsRoutes(app: any) {
   

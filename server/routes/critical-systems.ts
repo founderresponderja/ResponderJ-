@@ -1,9 +1,9 @@
 
 import { Express } from 'express';
-import { requireAuth } from '../auth';
+import { requireAuth } from '../auth.js';
 // These services might need to be created if they don't exist, but we assume they are part of the project structure
-import { businessMetricsService } from '../services/business-metrics-service';
-import { distributedCache, responseCache, sessionCache, apiCache } from '../services/distributed-cache-service';
+import { businessMetricsService } from '../services/business-metrics-service.js';
+import { distributedCache, responseCache, sessionCache, apiCache } from '../services/distributed-cache-service.js';
 import { createHash } from 'crypto';
 
 export function registerCriticalSystemsRoutes(app: any): void {

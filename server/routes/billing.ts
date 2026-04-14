@@ -1,8 +1,8 @@
 
 import type { Express } from "express";
-import { BillingService } from "../services/billing-service";
-import { requireAuth } from "../auth";
-import { storage } from "../storage";
+import { BillingService } from "../services/billing-service.js";
+import { requireAuth } from "../auth.js";
+import { storage } from "../storage.js";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {

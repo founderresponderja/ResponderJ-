@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { storage } from "../storage";
-import { ControllerUtils, AppError } from "../utils/ControllerUtils";
+import { storage } from "../storage.js";
+import { ControllerUtils, AppError } from "../utils/ControllerUtils.js";
 
 export class LeadsController {
   // Listar leads com paginação

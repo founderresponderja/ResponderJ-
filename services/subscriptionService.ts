@@ -1,5 +1,5 @@
 import { loadStripe } from '@stripe/stripe-js';
-import { PlanId } from '../types';
+import { PlanId } from '../types.js';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 

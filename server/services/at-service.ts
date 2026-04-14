@@ -1,4 +1,4 @@
-import { encrypt, decrypt } from "../encryption";
+import { encrypt, decrypt } from "../encryption.js";
 import { createHash } from "crypto";
 
 // Portuguese Tax Authority (AT) Service

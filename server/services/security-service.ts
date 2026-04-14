@@ -1,7 +1,7 @@
-import { LoggingService, SecurityLogEntry } from "./logging-service";
-import { AlertService } from "./alert-service";
-import { ThreatDetectionService } from "./threat-detection-service";
-import { SecurityMetricsService } from "./security-metrics-service";
+import { LoggingService, SecurityLogEntry } from "./logging-service.js";
+import { AlertService } from "./alert-service.js";
+import { ThreatDetectionService } from "./threat-detection-service.js";
+import { SecurityMetricsService } from "./security-metrics-service.js";
 
 export class SecurityService {
   private static instance: SecurityService;

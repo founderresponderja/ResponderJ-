@@ -1,8 +1,8 @@
 
 import type { Express } from "express";
-import { storage } from "../../storage";
-import { requireAuth } from "../../auth";
-import { SecurityLogService } from "../../services/security-log-service";
+import { storage } from "../../storage.js";
+import { requireAuth } from "../../auth.js";
+import { SecurityLogService } from "../../services/security-log-service.js";
 
 /**
  * Configuração de rotas relacionadas com utilizadores

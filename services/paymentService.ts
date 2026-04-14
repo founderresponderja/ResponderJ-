@@ -1,4 +1,4 @@
-import { PlanId } from "../types";
+import { PlanId } from "../types.js";
 
 export const processReplitPayment = async (planId: PlanId): Promise<boolean> => {
     // This is a simulation of the Replit Payment Flow.

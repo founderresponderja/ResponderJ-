@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../auth";
+import { requireAuth } from "../auth.js";
 
 interface ContentPost {
   id: string;

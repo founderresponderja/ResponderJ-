@@ -1,12 +1,12 @@
 
 import { Router } from "express";
 import { eq, and, desc } from "drizzle-orm";
-import { db } from "../db";
+import { db } from "../db.js";
 import { reviews, responses, establishments, users } from "@shared/schema";
-import { requireAuth } from "../auth";
-import { aiResponseService } from "../services/ai-response-service";
-import { storage } from "../storage";
-import { GoogleReviewsService } from "../services/google-reviews-service";
+import { requireAuth } from "../auth.js";
+import { aiResponseService } from "../services/ai-response-service.js";
+import { storage } from "../storage.js";
+import { GoogleReviewsService } from "../services/google-reviews-service.js";
 
 const router = Router();
 

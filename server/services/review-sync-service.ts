@@ -1,7 +1,7 @@
-import { db } from "../db";
+import { db } from "../db.js";
 import { reviews, socialPlatformConnections } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
-import { GoogleReviewsService } from "./google-reviews-service";
+import { GoogleReviewsService } from "./google-reviews-service.js";
 
 type PlatformName = "google" | "tripadvisor" | "booking" | "facebook";
 

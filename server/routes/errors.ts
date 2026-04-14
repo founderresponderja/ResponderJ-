@@ -2,9 +2,9 @@
 import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import { z } from 'zod';
-import { Logger, ErrorType } from '../utils/Logger';
-import { ControllerUtils } from '../utils/ControllerUtils';
-import { AppError } from '../middleware/errorHandler';
+import { Logger, ErrorType } from '../utils/Logger.js';
+import { ControllerUtils } from '../utils/ControllerUtils.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 const router: any = createRouter();
 

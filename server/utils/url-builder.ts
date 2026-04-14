@@ -4,7 +4,7 @@
  * Resolve o problema de URLs hardcoded e garante flexibilidade
  */
 
-import { domainManager } from '../config/domains';
+import { domainManager } from '../config/domains.js';
 
 export class URLBuilder {
   private static instance: URLBuilder;

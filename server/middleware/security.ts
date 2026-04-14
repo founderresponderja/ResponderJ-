@@ -8,7 +8,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import process from 'process';
 import { Buffer } from 'buffer';
-import { domainManager } from '../config/domains';
+import { domainManager } from '../config/domains.js';
 
 // Rate limiting store
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -376,7 +376,7 @@ export const securityLogger = (req: any, res: any, next: any) => {
     // Import and use SecurityLogService for structured logging
     try {
       // Import dinâmico para evitar dependência circular
-      const { SecurityLogService } = await import('../services/security-log-service');
+      const { SecurityLogService } = await import('../services/security-log-service.js');
       
       // Determine log level and type based on status code and endpoint
       let level: 'info' | 'warning' | 'error' | 'critical' = 'info';

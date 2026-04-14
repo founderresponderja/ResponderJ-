@@ -4,7 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { SecurityLogService } from '../services/security-log-service';
+import { SecurityLogService } from '../services/security-log-service.js';
 
 /**
  * 🛡️ Middleware de autenticação com logging de segurança

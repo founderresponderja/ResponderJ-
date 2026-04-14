@@ -4,11 +4,11 @@ import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import { User, registerUserSchema, loginUserSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
-import { emailSequenceService } from './services/email-sequence-service';
-import { urlBuilder } from "./utils";
+import { emailSequenceService } from './services/email-sequence-service.js';
+import { urlBuilder } from "./utils.js";
 
 // Estende a tipagem do Express para incluir o User na Request
 declare global {

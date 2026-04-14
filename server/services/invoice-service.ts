@@ -1,8 +1,8 @@
 
-import { storage } from "../storage";
-import ATService, { type InvoiceData, type ATCredentials } from "./at-service";
-import PDFService from "./pdf-service";
-import { EmailService } from "./email-service";
+import { storage } from "../storage.js";
+import ATService, { type InvoiceData, type ATCredentials } from "./at-service.js";
+import PDFService from "./pdf-service.js";
+import { EmailService } from "./email-service.js";
 import type { 
   Invoice, 
   InvoiceItem, 

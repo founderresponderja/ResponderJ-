@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../auth";
+import { requireAuth } from "../auth.js";
 import { GoogleGenAI, Type } from "@google/genai";
 import { randomUUID } from "crypto";
 

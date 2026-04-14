@@ -1,4 +1,4 @@
-import { emailSequenceService } from './email-sequence-service';
+import { emailSequenceService } from './email-sequence-service.js';
 
 /**
  * Serviço de agendamento para processamento automático de emails

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { db } from "../db";
+import { db } from "../db.js";
 import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "@shared/schema";
 

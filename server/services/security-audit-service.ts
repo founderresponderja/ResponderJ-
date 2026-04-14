@@ -1,7 +1,7 @@
 
-import { storage } from '../storage';
-import { isEncrypted, getEncryptionInfo } from '../encryption';
-import { db } from '../db';
+import { storage } from '../storage.js';
+import { isEncrypted, getEncryptionInfo } from '../encryption.js';
+import { db } from '../db.js';
 import { users, corporateSocialAccounts, invoiceSettings } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 

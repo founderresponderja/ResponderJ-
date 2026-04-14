@@ -1,9 +1,9 @@
 import { OAuth2Client } from 'google-auth-library';
 import { Express } from "express";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { urlBuilder } from "./utils";
+import { urlBuilder } from "./utils.js";
 
 // =====================================
 // CONFIGURAÇÃO GOOGLE OAUTH

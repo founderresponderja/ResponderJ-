@@ -1,8 +1,8 @@
 
 import type { Express } from "express";
-import { requireAuth, requireAdmin } from "../../auth";
-import { adminRateLimit } from "../../middleware/security";
-import { SecurityAuditService } from "../../services/security-audit-service";
+import { requireAuth, requireAdmin } from "../../auth.js";
+import { adminRateLimit } from "../../middleware/security.js";
+import { SecurityAuditService } from "../../services/security-audit-service.js";
 
 /**
  * Configuração de rotas de segurança e auditoria

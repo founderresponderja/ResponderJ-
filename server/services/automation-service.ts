@@ -1,9 +1,9 @@
-import { db } from "../db";
+import { db } from "../db.js";
 import { reviews, responses, establishments, users } from "@shared/schema";
 import { eq, isNull } from "drizzle-orm";
-import { storage } from "../storage";
-import { aiResponseService } from "./ai-response-service";
-import { emailService } from "./email-service";
+import { storage } from "../storage.js";
+import { aiResponseService } from "./ai-response-service.js";
+import { emailService } from "./email-service.js";
 
 export const automationService = {
   /**

@@ -6,9 +6,9 @@
 // =====================================
 
 import { Request, Response, NextFunction } from 'express';
-import { encryptData, decryptData } from './enhanced-encryption';
-import { SecurityLogService } from '../services/security-log-service';
-import { db } from '../db';
+import { encryptData, decryptData } from './enhanced-encryption.js';
+import { SecurityLogService } from '../services/security-log-service.js';
+import { db } from '../db.js';
 import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 

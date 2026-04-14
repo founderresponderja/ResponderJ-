@@ -2,8 +2,8 @@
 import { Express } from "express";
 import bcrypt from "bcrypt";
 import { z } from "zod";
-import { storage } from "../storage";
-import { requireAuth } from "../auth";
+import { storage } from "../storage.js";
+import { requireAuth } from "../auth.js";
 
 // Schema para validação de entrada
 const createUserSchema = z.object({

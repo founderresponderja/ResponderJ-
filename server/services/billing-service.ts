@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { storage } from "../storage";
+import { storage } from "../storage.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
   apiVersion: "2025-07-30.basil" as any,

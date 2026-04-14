@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../../auth";
+import { requireAuth } from "../../auth.js";
 import archiver from 'archiver';
 import fs from 'fs';
 import path from 'path';

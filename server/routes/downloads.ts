@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../auth";
+import { requireAuth, requireAdmin } from "../auth.js";
 
 export function registerDownloadRoutes(app: any) {
     // Secure file download endpoint

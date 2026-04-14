@@ -1,5 +1,5 @@
 import sgMail, { MailService } from '@sendgrid/mail';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 import fs from 'fs';
 import path from 'path';
 

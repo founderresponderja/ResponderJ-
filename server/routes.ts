@@ -1,61 +1,61 @@
 
 import type { Express } from "express";
-import { storage } from "./storage";
-import { setupAuth, requireAuth, requireSuperAdmin } from "./auth";
+import { storage } from "./storage.js";
+import { setupAuth, requireAuth, requireSuperAdmin } from "./auth.js";
 import { 
   applySecurity, 
   authRateLimit, 
   apiRateLimit, 
   adminRateLimit, 
   generateRateLimit 
-} from "./middleware/security";
-import { protectCSRF, getCSRFToken, addCSRFToken } from "./middleware/csrf";
-import { protectDatabaseQueries } from "./middleware/sql-injection-protection";
+} from "./middleware/security.js";
+import { protectCSRF, getCSRFToken, addCSRFToken } from "./middleware/csrf.js";
+import { protectDatabaseQueries } from "./middleware/sql-injection-protection.js";
 import { 
   legalComplianceHeaders,
   updateCookieConsent, 
   getCookieConfigurations
-} from "./middleware/gdpr-compliance";
-import { trialRateLimit } from "./middleware/trial-rate-limiting";
+} from "./middleware/gdpr-compliance.js";
+import { trialRateLimit } from "./middleware/trial-rate-limiting.js";
 import { 
   isAdminMiddleware,
   isSuperAdminMiddleware, 
   isAgencyOwnerMiddleware
-} from './middleware/auth';
+} from './middleware/auth.js';
 
 // Import services dynamically to avoid circular dependencies issues on startup
-import { emailService } from "./services/email-service";
-import { onboardingEmailService } from "./services/onboarding-email";
-import { trialService } from "./services/trial-service";
-import { referralService } from "./services/referral-service";
+import { emailService } from "./services/email-service.js";
+import { onboardingEmailService } from "./services/onboarding-email.js";
+import { trialService } from "./services/trial-service.js";
+import { referralService } from "./services/referral-service.js";
 
 // Route imports
-import landingPageRoutes from "./routes/admin/landing-page";
-import suggestionRoutes from "./routes/suggestions";
-import { registerSecurityDashboardRoutes } from "./routes/security-dashboard";
-import { registerSystemRoutes } from "./routes/system";
-import { registerAdminLeadsRoutes } from "./routes/admin-leads";
-import { registerAdminSystemRoutes } from "./routes/admin-system";
-import { setupAdminManagementRoutes } from "./routes/admin-management";
-import { registerDownloadRoutes } from "./routes/downloads";
-import { setupTechnicalSpecsRoutes } from "./routes/admin/technical";
-import { setupEmailSequenceRoutes } from './routes/email-sequence';
-import { registerAnalyticsRoutes } from "./routes/analytics"; 
-import { registerApiKeysGuideRoutes } from "./routes/api-keys-guide"; 
-import { registerAutomationRoutes } from "./routes/automation"; 
-import { registerBillingRoutes } from "./routes/billing"; 
-import { registerDiscoveryRoutes } from "./routes/discovery"; 
-import { registerContentRoutes } from "./routes/content"; 
-import { registerCorporateSocialRoutes } from "./routes/corporate-social";
-import { registerCriticalSystemsRoutes } from "./routes/critical-systems";
-import reviewsRouter from "./routes/reviews";
-import reviewsAiRouter from "./routes/reviews-ai"; 
-import qualityFeedbackRouter from "./routes/quality-feedback";
-import errorRoutes from "./routes/errors";
-import sofiaChatRoutes from "./routes/ai-chat"; // NEW IMPORT
-import platformIntegrationsRoutes from "./routes/platform-integrations";
+import landingPageRoutes from "./routes/admin/landing-page.js";
+import suggestionRoutes from "./routes/suggestions.js";
+import { registerSecurityDashboardRoutes } from "./routes/security-dashboard.js";
+import { registerSystemRoutes } from "./routes/system.js";
+import { registerAdminLeadsRoutes } from "./routes/admin-leads.js";
+import { registerAdminSystemRoutes } from "./routes/admin-system.js";
+import { setupAdminManagementRoutes } from "./routes/admin-management.js";
+import { registerDownloadRoutes } from "./routes/downloads.js";
+import { setupTechnicalSpecsRoutes } from "./routes/admin/technical.js";
+import { setupEmailSequenceRoutes } from './routes/email-sequence.js';
+import { registerAnalyticsRoutes } from "./routes/analytics.js"; 
+import { registerApiKeysGuideRoutes } from "./routes/api-keys-guide.js"; 
+import { registerAutomationRoutes } from "./routes/automation.js"; 
+import { registerBillingRoutes } from "./routes/billing.js"; 
+import { registerDiscoveryRoutes } from "./routes/discovery.js"; 
+import { registerContentRoutes } from "./routes/content.js"; 
+import { registerCorporateSocialRoutes } from "./routes/corporate-social.js";
+import { registerCriticalSystemsRoutes } from "./routes/critical-systems.js";
+import reviewsRouter from "./routes/reviews.js";
+import reviewsAiRouter from "./routes/reviews-ai.js"; 
+import qualityFeedbackRouter from "./routes/quality-feedback.js";
+import errorRoutes from "./routes/errors.js";
+import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
+import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 
-import { db } from "./db";
+import { db } from "./db.js";
 import { users, establishments, reviews, responses, socialPlatformConnections } from "@shared/schema";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 
@@ -76,7 +76,7 @@ export async function setupAuthRoutes(app: any): Promise<void> {
   
   // Rate Limiting
   try {
-    const { smartRateLimit } = await import('./middleware/rate-limiting');
+    const { smartRateLimit } = await import('./middleware/rate-limiting.js');
     app.use(smartRateLimit);
   } catch (e) {
     console.warn("Middleware rate-limiting não encontrado, ignorando.");
@@ -394,12 +394,12 @@ export async function registerRoutes(app: any): Promise<void> {
   });
 
   try {
-    const landingPageRoutes = (await import('./routes/admin/landing-page')).default;
+    const landingPageRoutes = (await import('./routes/admin/landing-page.js')).default;
     app.use('/api/admin/landing-page', requireAuth, requireAdmin, landingPageRoutes);
   } catch (e) { console.warn("Landing page routes not found"); }
 
   try {
-    const adminContentRoutes = (await import("./routes/admin/content")).default;
+    const adminContentRoutes = (await import("./routes/admin/content.js")).default;
     app.use("/api/admin/content", requireAuth, requireAdmin, adminContentRoutes);
   } catch (e) { console.warn("Admin content routes not found"); }
 
@@ -836,7 +836,7 @@ export async function registerRoutes(app: any): Promise<void> {
       }
 
       const businessProfile = businessProfileId ? await storage.getBusinessProfile(userId) : null;
-      const { aiResponseService } = await import("./services/ai-response-service");
+      const { aiResponseService } = await import("./services/ai-response-service.js");
 
       const businessContext = {
         businessName: businessProfile?.businessName,
@@ -1120,7 +1120,7 @@ export async function registerRoutes(app: any): Promise<void> {
       const userId = req.user.id;
       const { text, platform } = req.body;
       
-      const { aiResponseService } = await import("./services/ai-response-service");
+      const { aiResponseService } = await import("./services/ai-response-service.js");
       const analysis = await aiResponseService.analyzeSentiment(text);
       
       const sentimentData = {
@@ -1145,12 +1145,12 @@ export async function registerRoutes(app: any): Promise<void> {
     registerSystemRoutes(app);
     setupAdminManagementRoutes(app);
     setupTechnicalSpecsRoutes(app);
-    const adminSocialMediaRoutes = (await import("./routes/admin-social-media")).default;
+    const adminSocialMediaRoutes = (await import("./routes/admin-social-media.js")).default;
     app.use("/api/admin/social-media", adminSocialMediaRoutes);
-    const reportsRoutes = (await import("./routes/reports")).default;
+    const reportsRoutes = (await import("./routes/reports.js")).default;
     app.use("/api/admin/reports", reportsRoutes);
     
-    const aiTrainingRoutes = (await import("./routes/ai-training")).default;
+    const aiTrainingRoutes = (await import("./routes/ai-training.js")).default;
     app.use("/api/ai-training", aiTrainingRoutes);
 
     app.use("/api/reviews", reviewsRouter);

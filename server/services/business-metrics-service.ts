@@ -1,4 +1,4 @@
-import { SecurityService } from "./security-service";
+import { SecurityService } from "./security-service.js";
 
 export const businessMetricsService = {
   async getCriticalMetricsDashboard() {

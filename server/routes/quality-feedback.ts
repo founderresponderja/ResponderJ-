@@ -1,7 +1,7 @@
 
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../auth";
-import { QualityFeedbackService } from "../services/quality-feedback-service";
+import { requireAuth, requireAdmin } from "../auth.js";
+import { QualityFeedbackService } from "../services/quality-feedback-service.js";
 
 const router = Router();
 

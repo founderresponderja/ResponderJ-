@@ -1,6 +1,6 @@
 
-import { storage } from '../storage';
-import { urlBuilder } from '../utils/url-builder';
+import { storage } from '../storage.js';
+import { urlBuilder } from '../utils/url-builder.js';
 
 export interface TrialStatus {
   isActive: boolean;

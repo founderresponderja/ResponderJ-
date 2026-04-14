@@ -1,9 +1,9 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../auth";
-import { storage } from "../storage";
+import { requireAuth } from "../auth.js";
+import { storage } from "../storage.js";
 import { InsertAutomationRule } from "@shared/schema";
-import { automationService } from "../services/automation-service";
+import { automationService } from "../services/automation-service.js";
 
 export function registerAutomationRoutes(app: any) {
   // Listar regras de automação

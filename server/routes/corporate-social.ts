@@ -1,9 +1,9 @@
 
 import type { Express } from "express";
-import { corporateSocialService } from "../services/corporate-social-service";
-import { storage } from "../storage";
-import { requireAuth } from "../auth";
-import { urlBuilder } from "../utils";
+import { corporateSocialService } from "../services/corporate-social-service.js";
+import { storage } from "../storage.js";
+import { requireAuth } from "../auth.js";
+import { urlBuilder } from "../utils.js";
 
 export function registerCorporateSocialRoutes(app: any) {
   // Listar configurações das plataformas disponíveis

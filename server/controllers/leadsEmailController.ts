@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { storage } from "../storage";
-import { emailService } from "../services/email-service";
-import { ControllerUtils } from "../utils/ControllerUtils";
+import { storage } from "../storage.js";
+import { emailService } from "../services/email-service.js";
+import { ControllerUtils } from "../utils/ControllerUtils.js";
 
 export class LeadsEmailController {
   // Processar sequência de emails automáticos

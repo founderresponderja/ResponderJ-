@@ -1,5 +1,5 @@
 
-import { ReviewData } from "../types";
+import { ReviewData } from "../types.js";
 
 export interface BusinessContext {
   businessName?: string;

@@ -1,8 +1,8 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../auth";
-import { storage } from "../storage";
-import { db } from "../db";
+import { requireAuth } from "../auth.js";
+import { storage } from "../storage.js";
+import { db } from "../db.js";
 import { desc, eq, inArray } from "drizzle-orm";
 import { responses, reviews } from "@shared/schema";
 

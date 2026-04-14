@@ -17,7 +17,7 @@ export async function registerModularRoutes(app: Express): Promise<void> {
   try {
     // Rotas de autenticação
     try {
-      const { setupAuthenticationRoutes } = await import("../routes/auth/auth-routes");
+      const { setupAuthenticationRoutes } = await import("../routes/auth/auth-routes.js");
       await setupAuthenticationRoutes(app);
     } catch (e) {
       // Módulo opcional ou ainda não criado
@@ -25,7 +25,7 @@ export async function registerModularRoutes(app: Express): Promise<void> {
 
     // Rotas de utilizador
     try {
-      const { setupUserRoutes } = await import("../routes/user/user-routes");
+      const { setupUserRoutes } = await import("../routes/user/user-routes.js");
       await setupUserRoutes(app);
     } catch (e) {
       // Módulo opcional ou ainda não criado
@@ -33,7 +33,7 @@ export async function registerModularRoutes(app: Express): Promise<void> {
 
     // Rotas de segurança
     try {
-      const { setupSecurityRoutes } = await import("../routes/security/security-routes");
+      const { setupSecurityRoutes } = await import("../routes/security/security-routes.js");
       await setupSecurityRoutes(app);
     } catch (e) {
       // Módulo opcional ou ainda não criado
@@ -41,7 +41,7 @@ export async function registerModularRoutes(app: Express): Promise<void> {
 
     // Rotas de API Keys
     try {
-      const { setupApiKeysRoutes } = await import("../routes/api-keys/api-keys-routes");
+      const { setupApiKeysRoutes } = await import("../routes/api-keys/api-keys-routes.js");
       await setupApiKeysRoutes(app);
     } catch (e) {
       // Módulo opcional ou ainda não criado

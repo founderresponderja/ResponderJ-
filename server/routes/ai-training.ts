@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../auth";
-import { aiTrainingService } from "../services/ai-training-service";
+import { requireAuth, requireAdmin } from "../auth.js";
+import { aiTrainingService } from "../services/ai-training-service.js";
 
 const router = Router();
 

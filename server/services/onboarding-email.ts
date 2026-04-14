@@ -1,5 +1,5 @@
-import { emailService } from "./email-service";
-import { urlBuilder } from "../utils";
+import { emailService } from "./email-service.js";
+import { urlBuilder } from "../utils.js";
 
 export const onboardingEmailService = {
   async sendWelcome(user: any) {

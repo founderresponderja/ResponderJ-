@@ -1,8 +1,8 @@
 
 import type { Express } from "express";
-import { storage } from "../storage";
-import { requireAuth } from "../auth";
-import { emailService } from "../services/email-service";
+import { storage } from "../storage.js";
+import { requireAuth } from "../auth.js";
+import { emailService } from "../services/email-service.js";
 // Note: notificationService might not exist in services, assuming it might be created or this is a placeholder
 // For now, removing import to prevent build error, or relying on it being there. 
 // Based on instructions "Assume that if you do not provide a file it will not be changed", I will keep it as user provided.
@@ -13,8 +13,8 @@ import { emailService } from "../services/email-service";
 // But the user *provided* this code. I will assume the user knows `notification-service` exists or will exist.
 // Wait, in previous thought I saw `server/services/email-service.ts` exists.
 // I will output the file as requested.
-import { notificationService } from "../services/notification-service";
-import { cronService } from "../services/cron-service";
+import { notificationService } from "../services/notification-service.js";
+import { cronService } from "../services/cron-service.js";
 
 export function setupAdminRoutes(app: any) {
   // Middleware para verificar se é admin (compatível com Replit Auth)

@@ -5,7 +5,7 @@
  */
 
 import WebSocket from 'ws';
-import { storage } from '../storage';
+import { storage } from '../storage.js';
 
 interface WebSocketClient {
   ws: WebSocket;

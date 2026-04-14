@@ -1,6 +1,6 @@
 
-import { emailService } from "./email-service";
-import { storage } from "../storage";
+import { emailService } from "./email-service.js";
+import { storage } from "../storage.js";
 
 export const notificationService = {
   async sendCampaignEmail(subject: string, htmlContent: string, target: string) {

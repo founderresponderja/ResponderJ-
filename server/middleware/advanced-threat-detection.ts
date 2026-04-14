@@ -7,7 +7,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { SecurityLogService } from '../services/security-log-service';
+import { SecurityLogService } from '../services/security-log-service.js';
 
 interface ThreatPattern {
   name: string;

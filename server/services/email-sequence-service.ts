@@ -1,6 +1,6 @@
-import { storage } from "../storage";
-import { emailService } from "./email-service";
-import { urlBuilder } from "../utils";
+import { storage } from "../storage.js";
+import { emailService } from "./email-service.js";
+import { urlBuilder } from "../utils.js";
 
 export const emailSequenceService = {
   async createSequenceForUser(userId: string) {

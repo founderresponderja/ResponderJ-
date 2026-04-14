@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../auth";
+import { requireAuth, requireAdmin } from "../auth.js";
 import process from "process";
 
 const router = Router();

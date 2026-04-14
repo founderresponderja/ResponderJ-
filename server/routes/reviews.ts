@@ -1,8 +1,8 @@
 
 import { Router } from "express";
-import { requireAuth } from "../auth";
-import { storage } from "../storage";
-import { GoogleReviewsService } from "../services/google-reviews-service";
+import { requireAuth } from "../auth.js";
+import { storage } from "../storage.js";
+import { GoogleReviewsService } from "../services/google-reviews-service.js";
 
 const router = Router();
 

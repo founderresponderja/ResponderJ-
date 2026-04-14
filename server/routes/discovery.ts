@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../auth";
+import { requireAuth } from "../auth.js";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Configuração da Google GenAI para análise de negócios

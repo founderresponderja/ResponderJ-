@@ -1,10 +1,10 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { and, eq, ne } from "drizzle-orm";
-import { db } from "../db";
+import { db } from "../db.js";
 import { socialPlatformConnections } from "@shared/schema";
-import { encryptSensitiveData } from "../encryption";
-import { reviewSyncService } from "../services/review-sync-service";
+import { encryptSensitiveData } from "../encryption.js";
+import { reviewSyncService } from "../services/review-sync-service.js";
 
 const router = Router();
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;

@@ -1,6 +1,6 @@
-import { db } from '../db';
-import { SecurityLogService } from './security-log-service';
-import { encryptSensitiveData } from '../encryption';
+import { db } from '../db.js';
+import { SecurityLogService } from './security-log-service.js';
+import { encryptSensitiveData } from '../encryption.js';
 import archiver from 'archiver';
 import { promises as fs, createReadStream, createWriteStream } from 'fs';
 import path from 'path';
