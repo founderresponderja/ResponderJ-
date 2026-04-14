@@ -224,6 +224,7 @@ const MainApp: React.FC<MainAppProps> = ({
   }, [subscription]);
 
   const handleGenerate = async (data: Omit<ReviewData, 'id' | 'createdAt'>) => {
+    console.log('button clicked');
     if (isTrialActive && trialResponsesUsed >= trialLimit) {
       setError("Limite de 10 respostas do trial atingido. Faz upgrade para continuar.");
       setShowUpgradeModal(true);

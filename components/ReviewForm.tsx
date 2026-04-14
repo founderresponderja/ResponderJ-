@@ -23,6 +23,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('button clicked');
     onGenerate({
       platform,
       customerName: customerName || 'Cliente',

@@ -47,6 +47,7 @@ export const generateResponse = async (review: GenerationInput | ReviewData, con
     headers['x-csrf-token'] = csrfToken;
   }
 
+  console.log('calling API');
   const response = await fetch('/api/generate-response', {
     method: 'POST',
     headers,
@@ -62,12 +63,14 @@ export const generateResponse = async (review: GenerationInput | ReviewData, con
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
+    console.log('response:', err);
     throw new Error(err.message || "Failed to generate response");
   }
 
   const data = await response.json();
+  console.log('response:', data);
   return {
-    response: data.generatedResponse,
+    response: data.responseText || data.generatedResponse || "",
     sentiment: data.sentiment || "Neutral",
     keywords: data.keywords || []
   };
