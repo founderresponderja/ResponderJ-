@@ -1,15 +1,11 @@
 import express from "express";
 import type { Request, Response } from "express";
 import { GoogleGenAI } from "@google/genai";
-import { access } from "node:fs/promises";
-import { resolve } from "node:path";
-import { migrate } from "drizzle-orm/neon-serverless/migrator";
-import { db, ensureDatabaseConnection } from "../server/db.js";
+import { ensureDatabaseConnection } from "../server/db.js";
 
 const app = express();
 let initialized = false;
 let initializing: Promise<void> | null = null;
-let migrationsDone = false;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 type ChatLanguage = "pt" | "en" | "es";
@@ -52,10 +48,7 @@ async function initApp() {
   initializing = (async () => {
     await ensureDatabaseConnection();
 
-    if (!migrationsDone) {
-      await runStartupMigrations();
-      migrationsDone = true;
-    }
+    await runStartupMigrations();
 
     const { setupAuthRoutes, registerRoutes } = await import("../server/routes.js");
 
@@ -73,31 +66,7 @@ async function initApp() {
 }
 
 async function runStartupMigrations() {
-  const migrationsFolder = "./drizzle";
-  const resolvedMigrationsFolder = resolve(process.cwd(), migrationsFolder);
-
-  try {
-    await access(resolvedMigrationsFolder);
-  } catch {
-    console.warn(
-      `[migrations] pasta ${migrationsFolder} não encontrada; a ignorar migrações Drizzle no startup`
-    );
-    return;
-  }
-
-  try {
-    const migrationTimeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Migration timeout")), 3000)
-    );
-
-    await Promise.race([
-      migrate(db, { migrationsFolder }),
-      migrationTimeout
-    ]);
-    console.log("[migrations] Drizzle migrations executadas com sucesso");
-  } catch (error) {
-    console.warn("[migrations] skipped due to timeout or error:", (error as Error)?.message || error);
-  }
+  console.warn("[migrations] automatic startup migrations disabled");
 }
 
 export default async function handler(req: Request, res: Response) {

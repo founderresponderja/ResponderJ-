@@ -13,6 +13,7 @@
     "migrate:agency-mode": "node scripts/apply-sql-migration.mjs migrations/20260409_agency_mode_multi_business.sql"
   },
   "dependencies": {
+    "@clerk/backend": "^2.7.3",
     "@clerk/clerk-react": "^5.61.4",
     "@google/genai": "^1.33.0",
     "@neondatabase/serverless": "^1.0.2",

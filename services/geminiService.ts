@@ -1,5 +1,6 @@
 
 import { ReviewData } from "../types.js";
+import { useAuth } from "@clerk/clerk-react";
 
 export interface BusinessContext {
   businessName?: string;
@@ -37,7 +38,11 @@ async function getCsrfToken() {
   }
 }
 
-export const generateResponse = async (review: GenerationInput | ReviewData, context?: BusinessContext): Promise<AIResponse> => {
+export const generateResponse = async (
+  review: GenerationInput | ReviewData,
+  context?: BusinessContext,
+  clerkToken?: string | null
+): Promise<AIResponse> => {
   const csrfToken = await getCsrfToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
@@ -45,6 +50,9 @@ export const generateResponse = async (review: GenerationInput | ReviewData, con
   
   if (csrfToken) {
     headers['x-csrf-token'] = csrfToken;
+  }
+  if (clerkToken) {
+    headers['Authorization'] = `Bearer ${clerkToken}`;
   }
 
   console.log('calling API');
@@ -73,6 +81,15 @@ export const generateResponse = async (review: GenerationInput | ReviewData, con
     response: data.responseText || data.generatedResponse || "",
     sentiment: data.sentiment || "Neutral",
     keywords: data.keywords || []
+  };
+};
+
+export const useGenerateResponse = () => {
+  const { getToken } = useAuth();
+
+  return async (review: GenerationInput | ReviewData, context?: BusinessContext) => {
+    const token = await getToken();
+    return generateResponse(review, context, token);
   };
 };
 

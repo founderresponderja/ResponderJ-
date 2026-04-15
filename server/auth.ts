@@ -4,6 +4,7 @@ import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { createClerkClient, verifyToken } from "@clerk/backend";
 import { storage } from "./storage.js";
 import { User, registerUserSchema, loginUserSchema } from "../shared/schema.js";
 import bcrypt from "bcrypt";
@@ -30,6 +31,8 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
+const clerkSecretKey = process.env.CLERK_SECRET_KEY;
+const clerkClient = clerkSecretKey ? createClerkClient({ secretKey: clerkSecretKey }) : null;
 
 // =====================================
 // FUNÇÕES DE HASHING E SEGURANÇA
@@ -298,10 +301,63 @@ function sanitizeUser(user: any) {
 }
 
 export function requireAuth(req: any, res: any, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Sessão expirada ou inválida." });
-  }
-  next();
+  const ensureAuth = async () => {
+    if (req.isAuthenticated()) {
+      return true;
+    }
+
+    const authHeader = req.headers.authorization as string | undefined;
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    const cookieHeader = String(req.headers.cookie || "");
+    const sessionCookie = cookieHeader
+      .split(";")
+      .map((entry) => entry.trim())
+      .find((entry) => entry.startsWith("__session="))
+      ?.split("=")[1];
+
+    const clerkToken = bearerToken || sessionCookie;
+    if (!clerkToken || !clerkSecretKey) {
+      return false;
+    }
+
+    try {
+      const payload = await verifyToken(clerkToken, { secretKey: clerkSecretKey });
+      const claims = payload as Record<string, any>;
+      let email =
+        claims.email ||
+        claims.email_address ||
+        claims.primary_email_address ||
+        claims?.unsafe_metadata?.email;
+
+      if (!email && claims.sub && clerkClient) {
+        const clerkUser = await clerkClient.users.getUser(claims.sub as string);
+        email = clerkUser.primaryEmailAddress?.emailAddress;
+      }
+
+      if (!email) {
+        return false;
+      }
+
+      const user = await storage.getUserByEmail(String(email).toLowerCase());
+      if (!user || !user.isActive) {
+        return false;
+      }
+
+      req.user = user;
+      return true;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  ensureAuth()
+    .then((isAuthed) => {
+      if (!isAuthed) {
+        return res.status(401).json({ message: "Sessão expirada ou inválida." });
+      }
+      next();
+    })
+    .catch(() => res.status(401).json({ message: "Sessão expirada ou inválida." }));
 }
 
 /**

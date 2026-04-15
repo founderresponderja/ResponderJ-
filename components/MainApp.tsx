@@ -40,7 +40,7 @@ import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
 import AssistantTip from './AssistantTip';
 import { Logo } from './Logo';
-import { generateResponse } from '../services/geminiService';
+import { useGenerateResponse } from '../services/geminiService';
 import { processReplitPayment } from '../services/paymentService';
 import { ReviewData, PlanId, UserSubscription } from '../types';
 import { translations, Language } from '../utils/translations';
@@ -121,6 +121,7 @@ const MainApp: React.FC<MainAppProps> = ({
   onTrialResponseUsed
 }) => {
   const { signOut } = useClerk();
+  const generateResponse = useGenerateResponse();
   const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'invoicing' | 'business-profile' | 'calendar' | 'crm' | 'social-manager' | 'team' | 'discovery' | 'agency'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);

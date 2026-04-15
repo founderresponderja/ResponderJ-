@@ -35,7 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { Switch } from './ui/Switch';
 import { translations, Language } from '../utils/translations';
-import { generateResponse } from '../services/geminiService';
+import { useGenerateResponse } from '../services/geminiService';
 import { Language as AppLanguage } from '../types';
 import AutomationRules from './AutomationRules';
 
@@ -181,6 +181,7 @@ const SentimentBadge = ({ sentiment }: { sentiment: string }) => {
 };
 
 const SocialMediaManager: React.FC<SocialMediaManagerProps> = ({ lang }) => {
+  const generateResponse = useGenerateResponse();
   const [activeTab, setActiveTab] = useState("accounts");
   const [accounts, setAccounts] = useState<SocialAccount[]>(MOCK_ACCOUNTS);
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
