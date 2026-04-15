@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform } from '../types';
-import { ExternalLink, CircleCheckBig } from 'lucide-react';
+import { ExternalLink, CircleCheckBig, RefreshCw, MessageSquareText } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useUser } from '@clerk/clerk-react';
 
@@ -15,6 +15,9 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   const { user } = useUser();
   const [connections, setConnections] = React.useState<Record<string, { connected: boolean; status: string; lastSyncAt?: string }>>({});
   const [loadingPlatform, setLoadingPlatform] = React.useState<string | null>(null);
+  const [pendingItems, setPendingItems] = React.useState<any[]>([]);
+  const [syncingGoogle, setSyncingGoogle] = React.useState(false);
+  const [generatingFor, setGeneratingFor] = React.useState<number | null>(null);
   const clerkUserId = user?.id;
 
   const loadStatus = React.useCallback(async () => {
@@ -28,6 +31,17 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   React.useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  const loadPending = React.useCallback(async () => {
+    const response = await fetch('/api/reviews-ai/pending');
+    if (!response.ok) return;
+    const data = await response.json();
+    setPendingItems(Array.isArray(data?.items) ? data.items : []);
+  }, []);
+
+  React.useEffect(() => {
+    loadPending();
+  }, [loadPending]);
 
   const handleConnect = async (platformKey: string) => {
     if (!clerkUserId) return;
@@ -67,6 +81,48 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       await loadStatus();
     } finally {
       setLoadingPlatform(null);
+    }
+  };
+
+  const handleSyncGoogle = async () => {
+    if (!clerkUserId) return;
+    setSyncingGoogle(true);
+    try {
+      const response = await fetch(`/api/platforms/sync/google?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        window.alert(errorPayload?.error || 'Falha ao sincronizar Google.');
+        return;
+      }
+      await loadPending();
+      window.alert('Sincronização Google concluída.');
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
+  const handleGenerateResponse = async (item: any) => {
+    setGeneratingFor(item.responseId || item.reviewId || null);
+    try {
+      const response = await fetch('/api/reviews-ai/generate-responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reviewText: item.reviewText || item.responseText || '',
+          platform: item.platform || 'google',
+          customerName: item.customerName || item.authorName || 'Cliente',
+          tone: item.tone || 'profissional',
+          language: item.language || 'pt',
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        window.alert(payload?.message || 'Falha ao gerar resposta IA.');
+        return;
+      }
+      await loadPending();
+    } finally {
+      setGeneratingFor(null);
     }
   };
 
@@ -188,6 +244,43 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white">Avaliações pendentes</h3>
+          <button
+            onClick={handleSyncGoogle}
+            disabled={syncingGoogle || !connections.google?.connected}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCw size={14} className={syncingGoogle ? 'animate-spin' : ''} />
+            {syncingGoogle ? 'A sincronizar...' : 'Sync Google'}
+          </button>
+        </div>
+        {pendingItems.length === 0 ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Sem avaliações pendentes de resposta.</p>
+        ) : (
+          <div className="space-y-3">
+            {pendingItems.map((item) => (
+              <div key={item.responseId || item.reviewId} className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-brand-600">{item.platform || 'google'}</span>
+                  <span className="text-xs text-slate-500">{item.customerName || 'Cliente'}</span>
+                </div>
+                <p className="mb-3 text-sm text-slate-700 dark:text-slate-300">{item.reviewText || item.responseText || ''}</p>
+                <button
+                  onClick={() => handleGenerateResponse(item)}
+                  disabled={generatingFor === (item.responseId || item.reviewId)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  <MessageSquareText size={14} />
+                  {generatingFor === (item.responseId || item.reviewId) ? 'A gerar...' : 'Gerar Resposta IA'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 mt-8 flex items-start gap-4">

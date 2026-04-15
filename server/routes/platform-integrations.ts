@@ -11,7 +11,7 @@ const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const oauthStateStore = new Map<string, { clerkUserId: string; platform: string; establishmentId?: number; createdAt: number }>();
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:3000";
-const GOOGLE_CALLBACK_URL = `${APP_BASE_URL}/api/platforms/callback/google`;
+const GOOGLE_CALLBACK_URL = "https://responderja.pt/api/platforms/callback/google";
 const FACEBOOK_CALLBACK_URL = `${APP_BASE_URL}/api/platforms/callback/facebook`;
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -57,8 +57,8 @@ async function countConnectedPlatforms(clerkUserId: string, establishmentId?: nu
 }
 
 async function exchangeGoogleCodeForTokens(code: string) {
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     throw new Error("Google OAuth credentials are not configured.");
   }
@@ -90,8 +90,12 @@ async function exchangeGoogleCodeForTokens(code: string) {
 }
 
 function buildGoogleOAuthUrl(state: string) {
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID || "";
+  if (!clientId) {
+    throw new Error("Google OAuth credentials are not configured.");
+  }
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID || "",
+    client_id: clientId,
     redirect_uri: GOOGLE_CALLBACK_URL,
     response_type: "code",
     access_type: "offline",
@@ -251,29 +255,34 @@ router.get("/callback/:platform", async (req, res) => {
 
   oauthStateStore.delete(state);
 
-  let accessToken = `oauth_code_${code}`;
-  let refreshToken = `refresh_${code}`;
+  let accessToken = "";
+  let refreshToken = "";
   let tokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  let meta: Record<string, any> = { oauthConnectedAt: new Date().toISOString(), mode: "mock_oauth" };
+  let meta: Record<string, any> = { oauthConnectedAt: new Date().toISOString(), mode: "oauth_api" };
 
   if (platform === "google") {
     try {
       const tokenData = await exchangeGoogleCodeForTokens(code);
-      if (tokenData.access_token) {
-        accessToken = tokenData.access_token;
-        refreshToken = tokenData.refresh_token || refreshToken;
-        tokenExpiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000);
-        meta = {
-          oauthConnectedAt: new Date().toISOString(),
-          mode: "oauth_api",
-          scope: tokenData.scope || "",
-          tokenType: tokenData.token_type || "Bearer",
-        };
+      if (!tokenData.access_token) {
+        return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=token_exchange_failed`);
       }
+      accessToken = tokenData.access_token;
+      refreshToken = tokenData.refresh_token || "";
+      tokenExpiresAt = new Date(Date.now() + (tokenData.expires_in || 3600) * 1000);
+      meta = {
+        oauthConnectedAt: new Date().toISOString(),
+        mode: "oauth_api",
+        scope: tokenData.scope || "",
+        tokenType: tokenData.token_type || "Bearer",
+      };
     } catch (error) {
-      console.error("Google OAuth token exchange failed, falling back to mock token:", error);
-      meta = { ...meta, oauthError: "token_exchange_failed" };
+      console.error("Google OAuth token exchange failed:", error);
+      return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=token_exchange_failed`);
     }
+  } else if (platform === "facebook") {
+    accessToken = `oauth_code_${code}`;
+    refreshToken = `refresh_${code}`;
+    meta = { oauthConnectedAt: new Date().toISOString(), mode: "mock_oauth" };
   }
 
   await upsertConnection({
@@ -288,6 +297,26 @@ router.get("/callback/:platform", async (req, res) => {
   });
 
   return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=connected`);
+});
+
+router.get("/sync/google", async (req, res) => {
+  const clerkUserId = resolveExternalUserId(req);
+  const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
+  if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
+
+  const rows = await db.select().from(socialPlatformConnections).where(and(
+    eq(socialPlatformConnections.userExternalId, clerkUserId),
+    eq(socialPlatformConnections.platform, "google"),
+    eq(socialPlatformConnections.status, "connected"),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
+  ));
+
+  if (rows.length === 0) {
+    return res.status(404).json({ error: "Nenhuma ligação Google ativa encontrada." });
+  }
+
+  await reviewSyncService.syncGoogle(rows);
+  return res.json({ ok: true, syncedConnections: rows.length, syncedAt: new Date().toISOString() });
 });
 
 router.post("/disconnect/:platform", async (req, res) => {

@@ -41,7 +41,6 @@ const PlatformList = lazy(() => import('./PlatformList'));
 const AccountingPage = lazy(() => import('./AccountingPage'));
 const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
-const SocialMediaManager = lazy(() => import('./SocialMediaManager'));
 const CRMPage = lazy(() => import('./CRMPage'));
 const AgencyOverviewPage = lazy(() => import('./AgencyOverviewPage'));
 
@@ -442,7 +441,7 @@ const MainApp: React.FC<MainAppProps> = ({
                 />
               )}
               {activeTab === 'crm' && isAgencyPlan && <CRMPage lang={lang} />}
-              {activeTab === 'social-manager' && <SocialMediaManager lang={lang} />}
+              {activeTab === 'social-manager' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'platforms' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'business-profile' && <BusinessProfilePage />}
               {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
