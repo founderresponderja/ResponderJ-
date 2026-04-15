@@ -9,7 +9,7 @@ import { db, ensureDatabaseConnection } from "../server/db.js";
 const app = express();
 let initialized = false;
 let initializing: Promise<void> | null = null;
-let migrationsRun = false;
+let migrationsDone = false;
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 type ChatLanguage = "pt" | "en" | "es";
@@ -52,9 +52,9 @@ async function initApp() {
   initializing = (async () => {
     await ensureDatabaseConnection();
 
-    if (!migrationsRun) {
+    if (!migrationsDone) {
       await runStartupMigrations();
-      migrationsRun = true;
+      migrationsDone = true;
     }
 
     const { setupAuthRoutes, registerRoutes } = await import("../server/routes.js");
@@ -86,11 +86,17 @@ async function runStartupMigrations() {
   }
 
   try {
-    await migrate(db, { migrationsFolder });
+    const migrationTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Migration timeout")), 3000)
+    );
+
+    await Promise.race([
+      migrate(db, { migrationsFolder }),
+      migrationTimeout
+    ]);
     console.log("[migrations] Drizzle migrations executadas com sucesso");
   } catch (error) {
-    console.error("[migrations] startup migration failed", error);
-    throw error;
+    console.warn("[migrations] skipped due to timeout or error:", (error as Error)?.message || error);
   }
 }
 

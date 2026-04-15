@@ -18,6 +18,13 @@ const getEnv = (...keys: string[]) => {
 };
 
 export function registerBillingRoutes(app: any) {
+  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs)
+    );
+    return Promise.race([promise, timeoutPromise]);
+  };
+
   const CHECKOUT_PLANS: Record<string, { label: string; amount: number; description: string; envPriceKeys: string[] }> = {
     starter: {
       label: "Starter",
@@ -195,19 +202,30 @@ export function registerBillingRoutes(app: any) {
     try {
       const clerkUserId = req.query?.clerkUserId as string | undefined;
       const email = req.query?.email as string | undefined;
-      console.log("[billing/subscription-status] start", {
-        hasDatabaseUrl: !!process.env.DATABASE_URL,
-        hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-        hasEmail: !!email,
-        hasClerkUserId: !!clerkUserId,
-      });
       if (!email && !clerkUserId) {
         return res.json({ active: false, status: "trial", planId: "trial" });
       }
 
-      const customers = email
-        ? await stripe.customers.list({ email, limit: 1 })
-        : await stripe.customers.list({ limit: 20 });
+      // Quick DB lookup first to avoid slow Stripe round-trips on cold starts.
+      const dbUser = email ? await storage.getUserByEmail(email) : undefined;
+      const dbPlan = dbUser?.subscriptionPlan || dbUser?.selectedPlan || "trial";
+
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return res.json({
+          active: dbPlan !== "trial" && dbPlan !== "free",
+          status: dbPlan === "free" ? "trial" : dbPlan,
+          planId: dbPlan,
+          source: "database_fallback_no_stripe",
+        });
+      }
+
+      const customers = await withTimeout(
+        email
+          ? stripe.customers.list({ email, limit: 1 })
+          : stripe.customers.list({ limit: 20 }),
+        2000,
+        "stripe.customers.list"
+      );
 
       const candidateCustomer = customers.data.find((customer) => {
         const sameEmail = email ? customer.email === email : true;
@@ -216,24 +234,26 @@ export function registerBillingRoutes(app: any) {
       });
 
       if (!candidateCustomer) {
-        const dbUser = email ? await storage.getUserByEmail(email) : undefined;
         if (!dbUser) {
           return res.json({ active: false, status: "trial", planId: "trial" });
         }
-        const userPlan = dbUser.subscriptionPlan || dbUser.selectedPlan || "trial";
         return res.json({
-          active: userPlan !== "trial" && userPlan !== "free",
-          status: userPlan === "free" ? "trial" : userPlan,
-          planId: userPlan,
+          active: dbPlan !== "trial" && dbPlan !== "free",
+          status: dbPlan === "free" ? "trial" : dbPlan,
+          planId: dbPlan,
           source: "database_fallback",
         });
       }
 
-      const subscriptions = await stripe.subscriptions.list({
-        customer: candidateCustomer.id,
-        status: "all",
-        limit: 10,
-      });
+      const subscriptions = await withTimeout(
+        stripe.subscriptions.list({
+          customer: candidateCustomer.id,
+          status: "all",
+          limit: 10,
+        }),
+        2000,
+        "stripe.subscriptions.list"
+      );
 
       const activeSub = subscriptions.data.find((sub) => sub.status === "active" || sub.status === "trialing");
       if (!activeSub) {
