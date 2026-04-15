@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "node scripts/generate-seo-assets.mjs && vite build",
     "preview": "vite preview",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "migrate:ai-engine": "node scripts/apply-sql-migration.mjs migrations/20260409_ai_engine_approval_learning.sql",
     "migrate:agency-mode": "node scripts/apply-sql-migration.mjs migrations/20260409_agency_mode_multi_business.sql"
   },
@@ -57,6 +59,7 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "drizzle-kit": "^0.31.4",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
