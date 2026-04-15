@@ -83,7 +83,19 @@ export const protectCSRF = (req: any, res: any, next: any) => {
   }
   
   // Excluir algumas rotas específicas (como callbacks de auth, formulários públicos e downloads admin)
-  const exemptRoutes = ['/api/callback', '/api/login', '/api/logout', '/api/suggestions', '/api/classic-login', '/api/classic-register', '/api/admin/create-test-users', '/api/admin/downloads', '/api/generate-response'];
+  const exemptRoutes = [
+    '/api/callback',
+    '/api/login',
+    '/api/logout',
+    '/api/suggestions',
+    '/api/classic-login',
+    '/api/classic-register',
+    '/api/admin/create-test-users',
+    '/api/admin/downloads',
+    '/api/generate-response',
+    '/api/reviews-ai/generate',
+    '/api/ai/generate-response'
+  ];
   
   // Debug para downloads
   if (req.path.startsWith('/api/admin/downloads')) {

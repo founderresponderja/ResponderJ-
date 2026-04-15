@@ -9,7 +9,7 @@ import {
   adminRateLimit, 
   generateRateLimit 
 } from "./middleware/security.js";
-import { protectCSRF, getCSRFToken, addCSRFToken } from "./middleware/csrf.js";
+import { getCSRFToken, addCSRFToken } from "./middleware/csrf.js";
 import { protectDatabaseQueries } from "./middleware/sql-injection-protection.js";
 import { 
   legalComplianceHeaders,
@@ -817,7 +817,7 @@ export async function registerRoutes(app: any): Promise<void> {
   });
 
   // Generate Response
-  app.post('/api/generate-response', protectCSRF, requireAuth, trialRateLimit, generateRateLimit, async (req: any, res: any) => {
+  app.post('/api/generate-response', requireAuth, trialRateLimit, generateRateLimit, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       const { platform, originalMessage, tone, businessProfileId, responseType, extraInstructions } = req.body;
