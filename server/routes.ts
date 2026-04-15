@@ -1,7 +1,7 @@
 
 import type { Express } from "express";
 import { storage } from "./storage.js";
-import { setupAuth, requireAuth, requireSuperAdmin } from "./auth.js";
+import { setupAuth, requireAuth, requireFeature, requireSuperAdmin } from "./auth.js";
 import { 
   applySecurity, 
   authRateLimit, 
@@ -44,7 +44,6 @@ import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerApiKeysGuideRoutes } from "./routes/api-keys-guide.js"; 
 import { registerAutomationRoutes } from "./routes/automation.js"; 
 import { registerBillingRoutes } from "./routes/billing.js"; 
-import { registerDiscoveryRoutes } from "./routes/discovery.js"; 
 import { registerContentRoutes } from "./routes/content.js"; 
 import { registerCorporateSocialRoutes } from "./routes/corporate-social.js";
 import { registerCriticalSystemsRoutes } from "./routes/critical-systems.js";
@@ -398,7 +397,7 @@ export async function registerRoutes(app: any): Promise<void> {
   });
 
   // Agency Management
-  app.get('/api/agency/members', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.get('/api/agency/members', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
     try {
       const user = req.user;
       if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
@@ -425,7 +424,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/agency/invite-member', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.post('/api/agency/invite-member', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
     try {
       const { email, role } = req.body;
       const user = req.user;
@@ -442,7 +441,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.patch('/api/agency/members/:memberId', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.patch('/api/agency/members/:memberId', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
     try {
       const { memberId } = req.params;
       const updates = req.body;
@@ -454,7 +453,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.get('/api/agency/delegations', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.get('/api/agency/delegations', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
     try {
       const user = req.user;
       if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
@@ -466,7 +465,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/agency/delegate-admin', requireAuth, isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.post('/api/agency/delegate-admin', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
     try {
       const user = req.user;
       const { userId, type, days } = req.body;
@@ -488,7 +487,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.get('/api/agency/clients', requireAuth, async (req: any, res: any) => {
+  app.get('/api/agency/clients', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       const user = await storage.getUser(userId);
@@ -521,7 +520,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/agency/clients', requireAuth, async (req: any, res: any) => {
+  app.post('/api/agency/clients', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       const user = await storage.getUser(userId);
@@ -556,7 +555,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.patch('/api/agency/clients/:clientId', requireAuth, async (req: any, res: any) => {
+  app.patch('/api/agency/clients/:clientId', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       const clientId = Number(req.params.clientId);
@@ -583,7 +582,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.get('/api/agency/overview', requireAuth, async (req: any, res: any) => {
+  app.get('/api/agency/overview', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       const monthStart = new Date();
@@ -855,60 +854,7 @@ export async function registerRoutes(app: any): Promise<void> {
   });
 
   // Calendar productivity endpoints
-  app.get('/api/calendar/posts', requireAuth, async (req: any, res: any) => {
-    try {
-      const userId = Number(req.user?.id);
-      const rows = await db.select().from(responses)
-        .where(eq(responses.userId, userId))
-        .orderBy(desc(responses.createdAt))
-        .limit(200);
-
-      const posts = rows.map((r) => ({
-        id: String(r.id),
-        title: r.customerName ? `Resposta para ${r.customerName}` : `Resposta ${r.id}`,
-        platform: (r as any).platform || 'google',
-        status: r.isPublished ? 'published' : (r.approvalStatus === 'approved' ? 'scheduled' : 'draft'),
-        scheduledDate: r.publishedAt || r.createdAt,
-        contentType: 'text',
-        content: r.responseText,
-        sourceType: 'review_response',
-        reviewId: r.reviewId,
-        responseId: r.id,
-      }));
-
-      res.json({ posts });
-    } catch (error) {
-      res.status(500).json({ message: "Erro ao carregar calendário" });
-    }
-  });
-
-  app.post('/api/calendar/schedule-review-post', requireAuth, async (req: any, res: any) => {
-    try {
-      const userId = Number(req.user?.id);
-      const responseId = Number(req.body?.responseId);
-      const scheduledFor = req.body?.scheduledFor ? new Date(req.body.scheduledFor) : null;
-      if (!responseId || !scheduledFor) {
-        return res.status(400).json({ message: "responseId e scheduledFor são obrigatórios." });
-      }
-
-      const [existing] = await db.select().from(responses).where(and(
-        eq(responses.id, responseId),
-        eq(responses.userId, userId),
-      )).limit(1);
-      if (!existing) return res.status(404).json({ message: "Resposta não encontrada." });
-
-      const [updated] = await db.update(responses).set({
-        approvalStatus: existing.approvalStatus === 'pending' ? 'approved' : existing.approvalStatus,
-        publishedAt: scheduledFor,
-      } as any).where(eq(responses.id, responseId)).returning();
-
-      res.json({ success: true, scheduled: updated });
-    } catch (error) {
-      res.status(500).json({ message: "Erro ao agendar post da review" });
-    }
-  });
-
-  app.get('/api/leads', requireAuth, async (req: any, res: any) => {
+  app.get('/api/leads', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const search = String(req.query.search || "").toLowerCase();
       const status = String(req.query.status || "");
@@ -928,7 +874,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/leads', requireAuth, async (req: any, res: any) => {
+  app.post('/api/leads', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const payload = req.body || {};
       if (!payload.companyName?.trim()) return res.status(400).json({ message: "companyName obrigatório" });
@@ -951,7 +897,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.patch('/api/leads/:id/status', requireAuth, async (req: any, res: any) => {
+  app.patch('/api/leads/:id/status', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const id = Number(req.params.id);
       const nextStatus = String(req.body?.status || 'novo');
@@ -962,7 +908,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.get('/api/leads/suggestions/from-reviews', requireAuth, async (req: any, res: any) => {
+  app.get('/api/leads/suggestions/from-reviews', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       const positiveReviews = await db.select().from(reviews).where(and(
@@ -1083,7 +1029,6 @@ export async function registerRoutes(app: any): Promise<void> {
     registerApiKeysGuideRoutes(app);
     registerAutomationRoutes(app);
     registerBillingRoutes(app);
-    registerDiscoveryRoutes(app);
     registerContentRoutes(app);
     registerCorporateSocialRoutes(app);
     registerCriticalSystemsRoutes(app);

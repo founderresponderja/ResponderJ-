@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireAdmin } from "../auth.js";
+import { requireAuth, requireFeature } from "../auth.js";
 import { aiTrainingService } from "../services/ai-training-service.js";
 
 const router = Router();
@@ -8,7 +8,7 @@ const router = Router();
  * Executar análise completa de tipos de resposta
  * POST /api/ai-training/analyze
  */
-router.post("/analyze", requireAuth, async (req: any, res) => {
+router.post("/analyze", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
     const userId = req.user?.id;
     const { limitResponses = 100 } = req.body;
@@ -58,7 +58,7 @@ router.post("/analyze", requireAuth, async (req: any, res) => {
  * Obter apenas os tipos de resposta identificados (sem re-análise)
  * GET /api/ai-training/response-types
  */
-router.get("/response-types", requireAuth, async (req: any, res) => {
+router.get("/response-types", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
     // Esta rota retorna os tipos padrão ou pode ser expandida para buscar tipos salvos
     const defaultPatterns = await aiTrainingService.performCompleteAnalysis(50);
@@ -84,7 +84,7 @@ router.get("/response-types", requireAuth, async (req: any, res) => {
  * Gerar exemplos para um tipo específico de resposta
  * POST /api/ai-training/generate-examples
  */
-router.post("/generate-examples", requireAuth, async (req: any, res) => {
+router.post("/generate-examples", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
     const userId = req.user?.id;
     const { responseType, count = 5 } = req.body;
@@ -143,7 +143,7 @@ router.post("/generate-examples", requireAuth, async (req: any, res) => {
  * Análise rápida dos padrões históricos (versão simplificada)
  * GET /api/ai-training/quick-analysis
  */
-router.get("/quick-analysis", requireAuth, async (req: any, res) => {
+router.get("/quick-analysis", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
     // Análise mais rápida com menos dados
     const quickAnalysis = await aiTrainingService.analyzeHistoricalResponses(25);
@@ -172,7 +172,7 @@ router.get("/quick-analysis", requireAuth, async (req: any, res) => {
  * Status do sistema de treino de IA
  * GET /api/ai-training/status
  */
-router.get("/status", requireAuth, async (req: any, res) => {
+router.get("/status", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
     // Verificar se OpenAI está configurada
     const hasOpenAI = !!process.env.OPENAI_API_KEY;

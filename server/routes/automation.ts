@@ -1,13 +1,13 @@
 
 import type { Express } from "express";
-import { requireAuth } from "../auth.js";
+import { requireAuth, requireFeature } from "../auth.js";
 import { storage } from "../storage.js";
 import { InsertAutomationRule } from "../../shared/schema.js";
 import { automationService } from "../services/automation-service.js";
 
 export function registerAutomationRoutes(app: any) {
   // Listar regras de automação
-  app.get("/api/automation/rules", requireAuth, async (req: any, res: any) => {
+  app.get("/api/automation/rules", requireAuth, requireFeature("hasAutoResponse"), async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
@@ -23,7 +23,7 @@ export function registerAutomationRoutes(app: any) {
   });
 
   // Criar nova regra de automação
-  app.post("/api/automation/rules", requireAuth, async (req: any, res: any) => {
+  app.post("/api/automation/rules", requireAuth, requireFeature("hasAutoResponse"), async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       if (!userId) {
@@ -51,7 +51,7 @@ export function registerAutomationRoutes(app: any) {
   });
 
   // Actualizar regra de automação
-  app.patch("/api/automation/rules/:id", requireAuth, async (req: any, res: any) => {
+  app.patch("/api/automation/rules/:id", requireAuth, requireFeature("hasAutoResponse"), async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -72,7 +72,7 @@ export function registerAutomationRoutes(app: any) {
   });
 
   // Eliminar regra de automação
-  app.delete("/api/automation/rules/:id", requireAuth, async (req: any, res: any) => {
+  app.delete("/api/automation/rules/:id", requireAuth, requireFeature("hasAutoResponse"), async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -93,7 +93,7 @@ export function registerAutomationRoutes(app: any) {
   });
 
   // Executar regras de automação (Simulador e Teste)
-  app.post("/api/automation/execute", requireAuth, async (req: any, res: any) => {
+  app.post("/api/automation/execute", requireAuth, requireFeature("hasAutoResponse"), async (req: any, res: any) => {
     try {
       const userId = req.user?.id || req.user?.claims?.sub;
       const { text, platform, sentiment, rating } = req.body;

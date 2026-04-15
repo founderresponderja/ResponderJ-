@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { createClerkClient, verifyToken } from "@clerk/backend";
 import { storage } from "./storage.js";
 import { User, registerUserSchema, loginUserSchema } from "../shared/schema.js";
+import { PLAN_CAPABILITIES, normalizePlan } from "../shared/planCapabilities.js";
 import bcrypt from "bcrypt";
 import { emailSequenceService } from './services/email-sequence-service.js';
 import { urlBuilder } from "./utils.js";
@@ -380,6 +381,33 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
       next();
     })
     .catch(() => res.status(401).json({ message: "Sessão expirada ou inválida." }));
+}
+
+export function requireFeature(feature: keyof (typeof PLAN_CAPABILITIES)["trial"]) {
+  return (req: any, res: any, next: NextFunction) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Autenticação necessária." });
+    }
+
+    if (user.isAdmin || user.isSuperAdmin) {
+      return next();
+    }
+
+    const plan = normalizePlan(user.selectedPlan || user.subscriptionPlan);
+    const capabilities = PLAN_CAPABILITIES[plan];
+
+    if (!capabilities[feature]) {
+      return res.status(403).json({
+        message: "Funcionalidade indisponível no plano atual.",
+        code: "FEATURE_UPGRADE_REQUIRED",
+        feature,
+        plan
+      });
+    }
+
+    next();
+  };
 }
 
 /**

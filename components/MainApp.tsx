@@ -9,13 +9,8 @@ import {
   Sun, 
   Moon, 
   CreditCard, 
-  Zap, 
-  X, 
-  Calculator, 
   Activity, 
-  ShieldCheck, 
   Store, 
-  Calendar as CalendarIcon,
   Bot,
   Coins,
   Crown,
@@ -23,17 +18,9 @@ import {
   ArrowRight,
   Menu,
   Users,
-  Heart,
-  GitBranch,
-  CheckCircle2,
-  Sparkles,
-  FileText,
-  Shield,
   Share2,
-  UserCog,
-  Compass,
-  Loader2,
-  Building2
+  Building2,
+  Lock
 } from 'lucide-react';
 
 import ReviewForm from './ReviewForm';
@@ -41,8 +28,10 @@ import ResponseCard from './ResponseCard';
 import AssistantTip from './AssistantTip';
 import { Logo } from './Logo';
 import { useGenerateResponse } from '../services/geminiService';
+import UpgradeModal from './UpgradeModal';
+import { PLAN_CAPABILITIES, normalizePlan } from '../shared/planCapabilities';
 import { processReplitPayment } from '../services/paymentService';
-import { ReviewData, PlanId, UserSubscription } from '../types';
+import { ReviewData, UserSubscription } from '../types';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
 
@@ -50,13 +39,10 @@ import { Theme } from '../App';
 const Dashboard = lazy(() => import('./Dashboard'));
 const PlatformList = lazy(() => import('./PlatformList'));
 const AccountingPage = lazy(() => import('./AccountingPage'));
-const InvoicingPage = lazy(() => import('./InvoicingPage'));
 const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
-const SocialMediaCalendar = lazy(() => import('./SocialMediaCalendar'));
 const SocialMediaManager = lazy(() => import('./SocialMediaManager'));
 const CRMPage = lazy(() => import('./CRMPage'));
-const BusinessDiscoveryPage = lazy(() => import('./BusinessDiscoveryPage'));
 const AgencyOverviewPage = lazy(() => import('./AgencyOverviewPage'));
 
 type AgencyClient = {
@@ -86,14 +72,6 @@ interface MainAppProps {
   onTrialResponseUsed?: () => Promise<void> | void;
 }
 
-const PLAN_LIMITS: Record<PlanId, number> = {
-    trial: 10,
-    starter: 50,
-    regular: 50,
-    pro: 150,
-    agency: 500
-};
-
 // Internal Skeleton for Tabs
 const TabSkeleton = () => (
   <div className="space-y-6 animate-fade-in w-full">
@@ -122,7 +100,7 @@ const MainApp: React.FC<MainAppProps> = ({
 }) => {
   const { signOut } = useClerk();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'invoicing' | 'business-profile' | 'calendar' | 'crm' | 'social-manager' | 'team' | 'discovery' | 'agency'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
   const [agencyClients, setAgencyClients] = useState<AgencyClient[]>([]);
@@ -150,8 +128,8 @@ const MainApp: React.FC<MainAppProps> = ({
   });
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeModalMessage, setUpgradeModalMessage] = useState("Faz upgrade para desbloquear esta funcionalidade.");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [showChangelog, setShowChangelog] = useState(false);
 
   // Persistence hooks optimized
   useEffect(() => {
@@ -178,12 +156,13 @@ const MainApp: React.FC<MainAppProps> = ({
 
   const t = translations[lang].app;
   const nav = translations[lang].nav;
-  const isAgencyPlan = subscription.planId === 'agency';
+  const normalizedPlan = normalizePlan(subscription.planId);
+  const planCapabilities = PLAN_CAPABILITIES[normalizedPlan];
+  const isAgencyPlan = planCapabilities.hasClientManagement;
 
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
     if (path === '/agency') setActiveTab('agency');
-    if (path === '/calendar') setActiveTab('calendar');
     if (path === '/leads') setActiveTab('crm');
   }, []);
 
@@ -215,14 +194,14 @@ const MainApp: React.FC<MainAppProps> = ({
 
   // Memoized stats to prevent re-calculations on re-renders
   const { creditLimit, creditsLeft, usagePercentage } = useMemo(() => {
-    const resolvedPlan = subscription.planId === 'regular' ? 'starter' : subscription.planId;
-    const limit = PLAN_LIMITS[resolvedPlan as PlanId] || PLAN_LIMITS.trial;
+    const limitFromPlan = planCapabilities.maxResponses;
+    const limit = limitFromPlan < 0 ? Number.MAX_SAFE_INTEGER : limitFromPlan;
     return {
       creditLimit: limit,
       creditsLeft: limit - subscription.creditsUsed,
-      usagePercentage: Math.min((subscription.creditsUsed / limit) * 100, 100)
+      usagePercentage: limit === Number.MAX_SAFE_INTEGER ? 0 : Math.min((subscription.creditsUsed / limit) * 100, 100)
     };
-  }, [subscription]);
+  }, [subscription, planCapabilities]);
 
   const handleGenerate = async (data: Omit<ReviewData, 'id' | 'createdAt'>) => {
     console.log('button clicked');
@@ -240,14 +219,12 @@ const MainApp: React.FC<MainAppProps> = ({
     setError(null);
     try {
       const selectedClient = agencyClients.find((c) => c.id === selectedClientId);
-      const savedProfile = localStorage.getItem('demo_business_profile');
-      const fallbackProfile = savedProfile ? JSON.parse(savedProfile) : undefined;
       const businessContext = selectedClient ? {
         businessName: selectedClient.name,
         businessType: selectedClient.type || undefined,
         location: '',
         localSeoKeywords: selectedClient.platformIds || [],
-      } : fallbackProfile;
+      } : undefined;
       const result = await generateResponse({ ...data, id: 'temp', createdAt: new Date() }, businessContext);
       const finishedReview: ReviewData = { 
         ...data, id: Date.now().toString(), createdAt: new Date(), isFavorite: false,
@@ -282,24 +259,34 @@ const MainApp: React.FC<MainAppProps> = ({
     setActiveTab('generate');
   };
 
-  const NavButton = ({ tab, icon: Icon, label, onClick }: { tab?: typeof activeTab, icon: any, label: string, onClick?: () => void }) => (
+  const openUpgradeModal = (description: string) => {
+    setUpgradeModalMessage(description);
+    setShowUpgradeModal(true);
+  };
+
+  const NavButton = ({ tab, icon: Icon, label, onClick, locked = false }: { tab?: typeof activeTab, icon: any, label: string, onClick?: () => void, locked?: boolean }) => (
     <button
       onClick={() => {
+        if (locked) {
+          openUpgradeModal("O teu plano atual não inclui esta funcionalidade.");
+          return;
+        }
         if (onClick) onClick();
         else if (tab) setActiveTab(tab);
         setIsMobileMenuOpen(false);
       }}
       className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group relative ${
-        activeTab === tab && !onClick
+        activeTab === tab && !onClick && !locked
           ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300' 
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
       }`}
     >
-      {activeTab === tab && !onClick && (
+      {activeTab === tab && !onClick && !locked && (
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-brand-500 rounded-r-full" />
       )}
       <Icon size={18} className={`${activeTab === tab ? 'scale-110 text-brand-600' : 'group-hover:scale-105'}`} />
       {label}
+      {locked && <Lock size={14} className="ml-auto text-amber-500" />}
     </button>
   );
 
@@ -325,19 +312,12 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
           <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
           <NavButton tab="social-manager" icon={Share2} label={nav.menu.social} />
-          <NavButton tab="discovery" icon={Compass} label={nav.menu.discovery} />
-          <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} />
-          <NavButton tab="crm" icon={Users} label={nav.menu.crm} />
-          <NavButton tab="calendar" icon={CalendarIcon} label={nav.menu.calendar} />
+          <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
+          {isAgencyPlan && <NavButton tab="crm" icon={Users} label={nav.menu.crm} />}
           <NavButton tab="business-profile" icon={Store} label={nav.menu.profile} />
           <NavButton tab="platforms" icon={List} label={nav.menu.platforms} />
           {isAgencyPlan && <NavButton tab="agency" icon={Building2} label="Agency" />}
-          <NavButton tab="invoicing" icon={FileText} label={nav.menu.invoicing} />
           <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />
-          
-          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 opacity-60">
-            <NavButton icon={GitBranch} label={nav.menu.news} onClick={() => setShowChangelog(true)} />
-          </div>
         </div>
 
         <div className="p-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
@@ -461,20 +441,26 @@ const MainApp: React.FC<MainAppProps> = ({
                   onGenerateFromReview={handleGenerateFromReview}
                 />
               )}
-              {activeTab === 'crm' && <CRMPage lang={lang} />}
+              {activeTab === 'crm' && isAgencyPlan && <CRMPage lang={lang} />}
               {activeTab === 'social-manager' && <SocialMediaManager lang={lang} />}
-              {activeTab === 'discovery' && <BusinessDiscoveryPage lang={lang} />}
-              {activeTab === 'calendar' && <SocialMediaCalendar lang={lang} />}
               {activeTab === 'platforms' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'business-profile' && <BusinessProfilePage />}
               {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
               {activeTab === 'pricing' && <BillingPage lang={lang} />}
               {activeTab === 'accounting' && <AccountingPage />}
-              {activeTab === 'invoicing' && <InvoicingPage />}
             </div>
           </Suspense>
         </main>
       </div>
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        description={upgradeModalMessage}
+        onUpgrade={() => {
+          setShowUpgradeModal(false);
+          setActiveTab('pricing');
+        }}
+      />
     </div>
   );
 }
