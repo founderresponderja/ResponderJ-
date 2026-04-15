@@ -338,8 +338,30 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
         return false;
       }
 
-      const user = await storage.getUserByEmail(String(email).toLowerCase());
-      if (!user || !user.isActive) {
+      let user = await storage.getUserByEmail(String(email).toLowerCase());
+      if (!user) {
+        if (!clerkClient || !claims.sub) {
+          return false;
+        }
+
+        const clerkUser = await clerkClient.users.getUser(claims.sub as string);
+        const firstName = clerkUser.firstName || "";
+        const lastName = clerkUser.lastName || "";
+
+        user = await storage.createUser({
+          email: String(email).toLowerCase(),
+          password: "clerk_oauth_user",
+          firstName,
+          lastName,
+          role: "user",
+          isActive: true,
+          credits: 10,
+          selectedPlan: "trial",
+          subscriptionPlan: "trial"
+        } as any);
+      }
+
+      if (!user.isActive) {
         return false;
       }
 
