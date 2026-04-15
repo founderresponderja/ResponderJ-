@@ -2,10 +2,10 @@ import express from "express";
 import type { Request, Response } from "express";
 import { registerRoutes, setupAuthRoutes } from "../server/routes.js";
 import { GoogleGenAI } from "@google/genai";
-import { readdir, readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { pool } from "../server/db.js";
+import { access } from "node:fs/promises";
+import { resolve } from "node:path";
+import { migrate } from "drizzle-orm/neon-serverless/migrator";
+import { db } from "../server/db.js";
 
 const app = express();
 let initialized = false;
@@ -70,37 +70,21 @@ async function initApp() {
 }
 
 async function runStartupMigrations() {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  const migrationsDir = resolve(currentDir, "../migrations");
+  const migrationsFolder = "./drizzle";
+  const resolvedMigrationsFolder = resolve(process.cwd(), migrationsFolder);
 
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        id SERIAL PRIMARY KEY,
-        filename TEXT NOT NULL UNIQUE,
-        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
+    await access(resolvedMigrationsFolder);
+  } catch {
+    console.warn(
+      `[migrations] pasta ${migrationsFolder} não encontrada; a ignorar migrações Drizzle no startup`
+    );
+    return;
+  }
 
-    const files = (await readdir(migrationsDir))
-      .filter((file) => file.endsWith(".sql"))
-      .sort();
-
-    for (const file of files) {
-      const alreadyApplied = await pool.query(
-        "SELECT 1 FROM schema_migrations WHERE filename = $1 LIMIT 1",
-        [file]
-      );
-      if (alreadyApplied.rowCount && alreadyApplied.rowCount > 0) {
-        continue;
-      }
-
-      const fullPath = resolve(migrationsDir, file);
-      const sql = await readFile(fullPath, "utf8");
-      await pool.query(sql);
-      await pool.query("INSERT INTO schema_migrations (filename) VALUES ($1)", [file]);
-      console.log(`[migrations] applied ${file}`);
-    }
+  try {
+    await migrate(db, { migrationsFolder });
+    console.log("[migrations] Drizzle migrations executadas com sucesso");
   } catch (error) {
     console.error("[migrations] startup migration failed", error);
     throw error;
