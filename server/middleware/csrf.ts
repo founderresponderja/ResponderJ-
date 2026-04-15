@@ -93,6 +93,8 @@ export const protectCSRF = (req: any, res: any, next: any) => {
     '/api/admin/create-test-users',
     '/api/admin/downloads',
     '/api/generate-response',
+    '/api/billing/subscription-status',
+    '/api/reviews-ai/',
     '/api/reviews-ai/generate',
     '/api/ai/generate-response'
   ];

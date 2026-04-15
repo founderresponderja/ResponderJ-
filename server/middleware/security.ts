@@ -112,7 +112,10 @@ export const csrfProtection = (req: any, res: any, next: any) => {
     '/api/auth/register', // Registo
     '/api/auth/login',   // Login directo
     '/api/admin/downloads', // Downloads administrativos
-    '/api/billing/webhook' // Stripe webhook signed payload
+    '/api/billing/webhook', // Stripe webhook signed payload
+    '/api/generate-response',
+    '/api/billing/subscription-status',
+    '/api/reviews-ai/'
   ];
   
   // Debug para downloads
