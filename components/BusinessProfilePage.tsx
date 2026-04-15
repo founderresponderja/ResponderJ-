@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 
 // Interfaces
 interface BusinessProfile {
-  id?: string;
+  id?: number;
   businessName: string;
   businessType: string;
-  description: string;
+  keywords: string;
   website: string;
   responseGuidelines: string;
   defaultTone: string;
@@ -17,7 +17,7 @@ const BusinessProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<BusinessProfile>({
     businessName: "",
     businessType: "",
-    description: "",
+    keywords: "",
     website: "",
     responseGuidelines: "",
     defaultTone: "professional"
@@ -27,28 +27,24 @@ const BusinessProfilePage: React.FC = () => {
   const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
 
   useEffect(() => {
-    // Simulação de fetch de dados
-    // Na implementação real, isto chamaria /api/business-profile
     const fetchProfile = async () => {
       try {
-        // Simulando delay de rede
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        // Tentar ler do localStorage para persistência local nesta demo
-        const savedProfile = localStorage.getItem('demo_business_profile');
-        if (savedProfile) {
-            setProfile(JSON.parse(savedProfile));
-        } else {
-            // Dados de exemplo se não houver nada guardado
-            setProfile({
-                businessName: "",
-                businessType: "",
-                description: "",
-                website: "",
-                responseGuidelines: "",
-                defaultTone: "professional"
-            });
+        const response = await fetch('/api/business-profile');
+        if (!response.ok) {
+          return;
         }
+        const data = await response.json();
+        if (!data) return;
+
+        setProfile({
+          id: data.id,
+          businessName: data.name || "",
+          businessType: data.type || "",
+          keywords: Array.isArray(data.platformIds) ? data.platformIds.join(", ") : "",
+          website: data.logoUrl || "",
+          responseGuidelines: data.responseGuidelines || "",
+          defaultTone: data.brandTone || "professional",
+        });
       } catch (error) {
         console.error("Error fetching profile", error);
       } finally {
@@ -76,12 +72,27 @@ const BusinessProfilePage: React.FC = () => {
     }
 
     try {
-        // Simulação de save
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Guardar no localStorage para demo
-        localStorage.setItem('demo_business_profile', JSON.stringify(profile));
-        
+        const payload = {
+          name: profile.businessName.trim(),
+          type: profile.businessType || null,
+          logoUrl: profile.website || null,
+          brandTone: profile.defaultTone,
+          responseGuidelines: profile.responseGuidelines || null,
+          platformIds: profile.keywords
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+        };
+
+        const response = await fetch('/api/business-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          throw new Error('failed_to_save_profile');
+        }
+
         setMessage({ type: 'success', text: "Perfil guardado com sucesso!" });
     } catch (error) {
         setMessage({ type: 'error', text: "Erro ao guardar perfil. Tente novamente." });
@@ -162,11 +173,11 @@ const BusinessProfilePage: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Descrição do Negócio</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Palavras-chave</label>
                         <textarea 
-                            value={profile.description}
-                            onChange={(e) => handleChange('description', e.target.value)}
-                            placeholder="Descreva o seu negócio, o que o torna único, pratos principais ou serviços..."
+                            value={profile.keywords}
+                            onChange={(e) => handleChange('keywords', e.target.value)}
+                            placeholder="Ex: restaurante familiar, peixe fresco, lisboa centro"
                             rows={3}
                             className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors"
                         />
@@ -218,7 +229,7 @@ const BusinessProfilePage: React.FC = () => {
                     <ul className="list-disc list-inside space-y-1 text-xs opacity-90">
                         <li>Respostas mais personalizadas e relevantes</li>
                         <li>Manter voz da marca consistente</li>
-                        <li>Incluir automaticamente informações de contacto quando relevante</li>
+                        <li>Melhorar contexto com palavras-chave do negócio</li>
                     </ul>
                 </div>
             </div>
