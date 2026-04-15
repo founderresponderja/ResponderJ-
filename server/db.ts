@@ -37,8 +37,7 @@ export const db = drizzle(pool, {
   logger: process.env.NODE_ENV === 'development' 
 });
 
-// Verificação de saúde da conexão no arranque
-(async () => {
+export async function ensureDatabaseConnection(): Promise<void> {
   try {
     const client = await pool.connect();
     try {
@@ -49,5 +48,6 @@ export const db = drizzle(pool, {
     }
   } catch (err) {
     console.error("❌ Falha crítica ao conectar à base de dados:", err);
+    throw err;
   }
-})();
+}

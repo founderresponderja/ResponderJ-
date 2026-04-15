@@ -1,11 +1,10 @@
 import express from "express";
 import type { Request, Response } from "express";
-import { registerRoutes, setupAuthRoutes } from "../server/routes.js";
 import { GoogleGenAI } from "@google/genai";
 import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { migrate } from "drizzle-orm/neon-serverless/migrator";
-import { db } from "../server/db.js";
+import { db, ensureDatabaseConnection } from "../server/db.js";
 
 const app = express();
 let initialized = false;
@@ -51,10 +50,14 @@ async function initApp() {
   }
 
   initializing = (async () => {
+    await ensureDatabaseConnection();
+
     if (!migrationsRun) {
       await runStartupMigrations();
       migrationsRun = true;
     }
+
+    const { setupAuthRoutes, registerRoutes } = await import("../server/routes.js");
 
     // Stripe webhook must receive raw body for signature validation.
     app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
