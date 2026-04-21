@@ -2,7 +2,7 @@ import React from 'react';
 import { Platform } from '../types';
 import { ExternalLink, CircleCheckBig, RefreshCw, MessageSquareText } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 
 interface PlatformListProps {
   lang: Language;
@@ -12,6 +12,7 @@ interface PlatformListProps {
 
 const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, planId = "free" }) => {
   const t = translations[lang].app;
+  const { getToken } = useAuth();
   const { user } = useUser();
   const [connections, setConnections] = React.useState<Record<string, { connected: boolean; status: string; lastSyncAt?: string }>>({});
   const [loadingPlatform, setLoadingPlatform] = React.useState<string | null>(null);
@@ -104,15 +105,20 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   const handleGenerateResponse = async (item: any) => {
     setGeneratingFor(item.responseId || item.reviewId || null);
     try {
-      const response = await fetch('/api/reviews-ai/generate-responses', {
+      const clerkToken = await getToken();
+      const response = await fetch('/api/generate-response', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}),
+        },
         body: JSON.stringify({
-          reviewText: item.reviewText || item.responseText || '',
           platform: item.platform || 'google',
-          customerName: item.customerName || item.authorName || 'Cliente',
+          originalMessage: item.reviewText || item.responseText || '',
           tone: item.tone || 'profissional',
-          language: item.language || 'pt',
+          businessProfileId: null,
+          responseType: 'resposta',
+          extraInstructions: '',
         }),
       });
       if (!response.ok) {
@@ -137,6 +143,8 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     },
     {
       name: Platform.THE_FORK,
+      key: 'thefork',
+      comingSoon: false,
       description: "Crucial para restaurantes na Europa. Aumenta reservas diretas.",
       url: "https://www.theforkmanager.com/",
       color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900"
@@ -157,6 +165,8 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     },
     {
       name: Platform.AIRBNB,
+      key: 'airbnb',
+      comingSoon: false,
       description: "Focado na experiência pessoal do hóspede e Superhost status.",
       url: "https://www.airbnb.com/hosting",
       color: "bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900"
@@ -170,18 +180,24 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     },
     {
       name: Platform.YELP,
+      key: 'yelp',
+      comingSoon: true,
       description: "Muito popular para serviços locais e descoberta de restaurantes.",
       url: "https://biz.yelp.com/",
       color: "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900"
     },
     {
       name: Platform.UBER_EATS,
+      key: 'uber_eats',
+      comingSoon: true,
       description: "Essencial para delivery. A reputação afeta diretamente as vendas.",
       url: "https://merchants.ubereats.com/",
       color: "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
     },
     {
       name: Platform.EXPEDIA,
+      key: 'expedia',
+      comingSoon: true,
       description: "Rede gigante de viagens. Importante para hotéis e alojamento.",
       url: "https://apps.expediapartnercentral.com/",
       color: "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900"
@@ -222,7 +238,11 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
                   <span className={`text-xs font-semibold ${connections[p.key]?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                     {connections[p.key]?.connected ? 'Conectado' : 'Não conectado'}
                   </span>
-                  {connections[p.key]?.connected ? (
+                  {p.comingSoon ? (
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                      Em breve
+                    </span>
+                  ) : connections[p.key]?.connected ? (
                     <button
                       onClick={() => handleDisconnect(p.key)}
                       disabled={loadingPlatform === p.key}

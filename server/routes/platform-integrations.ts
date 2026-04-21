@@ -1,6 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { db } from "../db.js";
 import { socialPlatformConnections } from "../../shared/schema.js";
 import { encryptSensitiveData } from "../encryption.js";
@@ -166,6 +166,16 @@ router.get("/status", async (req, res) => {
   const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
   if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
 
+  await db.update(socialPlatformConnections).set({
+    status: "disconnected",
+    updatedAt: new Date(),
+  }).where(and(
+    eq(socialPlatformConnections.userExternalId, clerkUserId),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
+    inArray(socialPlatformConnections.platform, ["thefork", "airbnb"]),
+    eq(socialPlatformConnections.status, "connected"),
+  ));
+
   const rows = await db.select().from(socialPlatformConnections)
     .where(and(
       eq(socialPlatformConnections.userExternalId, clerkUserId),
@@ -174,6 +184,9 @@ router.get("/status", async (req, res) => {
 
   const map: Record<string, any> = {};
   for (const row of rows) {
+    if (["thefork", "airbnb"].includes(row.platform)) {
+      continue;
+    }
     map[row.platform] = {
       connected: row.status === "connected",
       status: row.status,
