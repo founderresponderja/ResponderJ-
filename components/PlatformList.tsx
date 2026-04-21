@@ -21,6 +21,11 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   const [generatingFor, setGeneratingFor] = React.useState<number | null>(null);
   const clerkUserId = user?.id;
 
+  const hasAnyConnection = React.useMemo(
+    () => Object.values(connections).some((c) => c?.connected),
+    [connections]
+  );
+
   const loadStatus = React.useCallback(async () => {
     if (!clerkUserId) return;
     const response = await fetch(`/api/platforms/status?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
@@ -34,15 +39,24 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   }, [loadStatus]);
 
   const loadPending = React.useCallback(async () => {
-    const response = await fetch('/api/reviews-ai/pending');
-    if (!response.ok) return;
+    if (!clerkUserId) {
+      setPendingItems([]);
+      return;
+    }
+    const response = await fetch('/api/reviews-ai/pending', {
+      headers: { 'x-clerk-user-id': clerkUserId },
+    });
+    if (!response.ok) {
+      setPendingItems([]);
+      return;
+    }
     const data = await response.json();
     setPendingItems(Array.isArray(data?.items) ? data.items : []);
-  }, []);
+  }, [clerkUserId]);
 
   React.useEffect(() => {
     loadPending();
-  }, [loadPending]);
+  }, [loadPending, connections]);
 
   const handleConnect = async (platformKey: string) => {
     if (!clerkUserId) return;
@@ -87,6 +101,10 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
 
   const handleSyncGoogle = async () => {
     if (!clerkUserId) return;
+    if (!connections.google?.connected) {
+      window.alert('Conecta o Google My Business para sincronizar avaliações reais');
+      return;
+    }
     setSyncingGoogle(true);
     try {
       const response = await fetch(`/api/platforms/sync/google?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
@@ -267,19 +285,29 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">Avaliações pendentes</h3>
           <button
             onClick={handleSyncGoogle}
-            disabled={syncingGoogle || !connections.google?.connected}
+            disabled={syncingGoogle}
+            title={connections.google?.connected ? 'Sincronizar avaliações do Google' : 'Conecta o Google My Business para sincronizar avaliações reais'}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw size={14} className={syncingGoogle ? 'animate-spin' : ''} />
             {syncingGoogle ? 'A sincronizar...' : 'Sync Google'}
           </button>
         </div>
+        {!connections.google?.connected && (
+          <p className="mb-3 text-xs text-amber-600 dark:text-amber-400">
+            Conecta o Google My Business para sincronizar avaliações reais.
+          </p>
+        )}
         {pendingItems.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Sem avaliações pendentes de resposta.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {hasAnyConnection
+              ? 'Sem avaliações pendentes de resposta.'
+              : 'Liga uma plataforma para começar a receber avaliações.'}
+          </p>
         ) : (
           <div className="space-y-3">
             {pendingItems.map((item) => (

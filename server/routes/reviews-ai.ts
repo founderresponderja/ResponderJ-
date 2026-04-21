@@ -1,8 +1,8 @@
 
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNotNull, ne } from "drizzle-orm";
 import { db } from "../db.js";
-import { reviews, responses, establishments, users } from "../../shared/schema.js";
+import { reviews, responses, establishments, users, socialPlatformConnections } from "../../shared/schema.js";
 import { requireAuth } from "../auth.js";
 import { aiResponseService } from "../services/ai-response-service.js";
 import { storage } from "../storage.js";
@@ -170,6 +170,34 @@ router.get("/pending", requireAuth, async (req: any, res) => {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
+    // Gate on having at least one real platform connection. We key platform connections
+    // by the Clerk external id (header provided by the frontend) so that pending responses
+    // never show pre-existing mock data when the user has no platform linked.
+    const clerkUserId = String(
+      req.headers["x-clerk-user-id"] ||
+      req.query?.clerkUserId ||
+      req.user?.clerkUserId ||
+      ""
+    ).trim();
+
+    if (clerkUserId) {
+      const [connected] = await db.select({ id: socialPlatformConnections.id })
+        .from(socialPlatformConnections)
+        .where(and(
+          eq(socialPlatformConnections.userExternalId, clerkUserId),
+          eq(socialPlatformConnections.status, "connected"),
+        ))
+        .limit(1);
+
+      if (!connected) {
+        return res.json({ items: [] });
+      }
+    }
+
+    // Only return responses linked to a real (platform-synced) review. We identify real
+    // reviews by the presence of an externalId (Google Business, etc.). This guarantees we
+    // never surface draft/mock entries created from the manual "Generate" form, so the
+    // UI only shows pending items that came from an actual connected platform.
     const pendingRows = await db.select({
       responseId: responses.id,
       reviewId: responses.reviewId,
@@ -186,8 +214,13 @@ router.get("/pending", requireAuth, async (req: any, res) => {
       rating: reviews.rating,
       externalId: reviews.externalId,
     }).from(responses)
-      .leftJoin(reviews, eq(reviews.id, responses.reviewId))
-      .where(and(eq(responses.userId, userId), eq(responses.isPublished, false)))
+      .innerJoin(reviews, eq(reviews.id, responses.reviewId))
+      .where(and(
+        eq(responses.userId, userId),
+        eq(responses.isPublished, false),
+        isNotNull(reviews.externalId),
+        ne(reviews.externalId, ""),
+      ))
       .orderBy(desc(responses.createdAt))
       .limit(100);
 
