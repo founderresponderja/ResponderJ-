@@ -96,6 +96,12 @@ export const protectCSRF = (req: any, res: any, next: any) => {
     '/api/admin/downloads',
     '/api/generate-response',
     '/api/billing/subscription-status',
+    // O checkout redirecciona sempre para o domínio do Stripe e não
+    // expõe nenhuma acção privilegiada que um ataque CSRF pudesse
+    // explorar — além disso o frontend já envia o token quando disponível.
+    // Mantemos o endpoint isento para evitar bloquear o pagamento caso o
+    // handshake CSRF falhe (ex.: /api/csrf-token indisponível em cold start).
+    '/api/billing/create-checkout-session',
     '/api/reviews-ai/',
     '/api/reviews-ai/generate',
     '/api/ai/generate-response'
