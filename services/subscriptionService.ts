@@ -12,7 +12,7 @@ export async function createCheckoutSession(payload: { clerkUserId?: string; ema
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Nao foi possivel criar sessao de pagamento.');
+    throw new Error(err.error || 'Não foi possível criar sessão de pagamento.');
   }
 
   return res.json();
@@ -32,7 +32,7 @@ export async function getSubscriptionStatus(clerkUserId?: string, email?: string
 
 export async function redirectToCheckout(sessionId: string) {
   const stripe = await stripePromise;
-  if (!stripe) throw new Error('Stripe nao inicializado. Verifica VITE_STRIPE_PUBLISHABLE_KEY.');
+  if (!stripe) throw new Error('Stripe não inicializado. Verifica VITE_STRIPE_PUBLISHABLE_KEY.');
   const { error } = await stripe.redirectToCheckout({ sessionId });
   if (error) throw new Error(error.message);
 }

@@ -5,7 +5,11 @@ import { requireAuth } from "../auth.js";
 import { storage } from "../storage.js";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+if (!STRIPE_SECRET_KEY) {
+  console.warn("[stripe] STRIPE_SECRET_KEY is not configured. Checkout will fail.");
+}
+const stripe = new Stripe(STRIPE_SECRET_KEY || "sk_test_mock", {
   apiVersion: "2025-07-30.basil" as any,
 });
 
@@ -150,17 +154,35 @@ export function registerBillingRoutes(app: any) {
 
   app.post("/api/billing/create-checkout-session", async (req: any, res: any) => {
     try {
+      if (!STRIPE_SECRET_KEY) {
+        console.error("[stripe] checkout error: STRIPE_SECRET_KEY is not configured");
+        return res.status(500).json({
+          error: "Stripe não está configurado no servidor. Contacta o suporte.",
+          code: "stripe_not_configured",
+        });
+      }
+
       const { clerkUserId, email, planId } = req.body || {};
       if (!email) {
-        return res.status(400).json({ error: "Email e obrigatorio para criar checkout." });
+        return res.status(400).json({ error: "Email é obrigatório para criar checkout." });
       }
       if (!planId || !CHECKOUT_PLANS[planId]) {
-        return res.status(400).json({ error: "Plano invalido para checkout." });
+        return res.status(400).json({ error: "Plano inválido para checkout." });
       }
 
       const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
       const selectedPlan = CHECKOUT_PLANS[planId];
       const priceId = getEnv(...selectedPlan.envPriceKeys);
+
+      console.log("[stripe] creating checkout session", {
+        planId,
+        priceIdResolved: !!priceId,
+        priceIdPreview: priceId ? `${priceId.slice(0, 10)}...` : "inline_price_data_fallback",
+        envKeysChecked: selectedPlan.envPriceKeys,
+        liveMode: STRIPE_SECRET_KEY.startsWith("sk_live_"),
+        testMode: STRIPE_SECRET_KEY.startsWith("sk_test_"),
+        baseUrl,
+      });
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
@@ -176,7 +198,7 @@ export function registerBillingRoutes(app: any) {
                 price_data: {
                   currency: "eur",
                   product_data: {
-                    name: `Responder Ja ${selectedPlan.label}`,
+                    name: `Responder Já ${selectedPlan.label}`,
                     description: selectedPlan.description,
                   },
                   recurring: {
@@ -193,8 +215,20 @@ export function registerBillingRoutes(app: any) {
 
       res.json({ sessionId: session.id, url: session.url });
     } catch (error: any) {
-      console.error("Erro ao criar checkout session:", error);
-      res.status(500).json({ error: error.message });
+      // Detailed Stripe error logging (type, code, param and request id are the fields
+      // Stripe enriches its errors with; they are invaluable when diagnosing 4xx replies).
+      console.error("[stripe] checkout error:", error?.message, error?.type, {
+        code: error?.code,
+        param: error?.param,
+        statusCode: error?.statusCode,
+        requestId: error?.requestId,
+        raw: error?.raw,
+      });
+      res.status(500).json({
+        error: error?.message || "Não foi possível criar sessão de pagamento.",
+        code: error?.code,
+        type: error?.type,
+      });
     }
   });
 
