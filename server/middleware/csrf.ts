@@ -4,8 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { nanoid } from 'nanoid';
-import { createHash, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import process from 'process';
 import { Buffer } from 'buffer';
 
@@ -21,11 +20,14 @@ declare global {
 export const generateCSRFToken = (sessionId: string): string => {
   const secret = process.env.CSRF_SECRET || process.env.SESSION_SECRET || 'default-csrf-secret-change-in-production';
   const timestamp = Date.now().toString();
-  const random = nanoid(32);
-  
+  // Replaced `nanoid(32)` with `crypto.randomBytes` to avoid the ESM-only
+  // resolution of nanoid@5 breaking CommonJS serverless bundles. The output
+  // is still URL-safe and equivalent in entropy (~192 bits).
+  const random = randomBytes(24).toString('base64url');
+
   const payload = `${sessionId}:${timestamp}:${random}`;
   const hash = createHash('sha256').update(payload + secret).digest('hex');
-  
+
   return Buffer.from(`${payload}:${hash}`).toString('base64');
 };
 
