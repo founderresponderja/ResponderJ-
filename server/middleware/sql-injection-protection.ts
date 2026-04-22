@@ -165,6 +165,26 @@ const checkObjectForSQLInjection = (obj: any, path = ''): string | null => {
   return null;
 };
 
+// Prefixos de rotas API cuja path legitimamente contém verbos SQL-like
+// (create, update, delete, ...) e que, por isso, não podem ser submetidas
+// ao scan do path — isso dispara falsos positivos como o SQL_INJECTION_URL
+// que bloqueou /api/billing/create-checkout-session. Os scans de query,
+// body e headers continuam activos para estas rotas, logo a protecção real
+// contra SQL injection mantém-se.
+const apiPathWhitelistPrefixes = [
+  '/api/billing/',
+  '/api/reviews-ai/',
+  '/api/platforms/',
+  '/api/generate-response',
+  '/api/analytics/',
+  '/api/admin/',
+  '/api/agency/',
+  '/api/leads',
+  '/api/automation',
+  '/api/ai-training',
+  '/api/csrf-token',
+];
+
 // Middleware principal de proteção
 export const protectDatabaseQueries = (req: any, res: any, next: any) => {
   try {
@@ -189,13 +209,25 @@ export const protectDatabaseQueries = (req: any, res: any, next: any) => {
       return next();
     }
 
-    // Verificar URL e query parameters
-    if (req.url && containsSQLInjection(req.url, false)) {
-      console.error(`SQL INJECTION DETECTED IN URL: ${req.url} from IP ${req.ip}`);
-      return res.status(400).json({ 
-        error: 'Requisição suspeita detectada',
-        code: 'SQL_INJECTION_URL'
-      });
+    // Scan do URL: apenas a query string. O path é código do servidor,
+    // nunca input do utilizador, portanto não faz sentido submetê-lo aos
+    // padrões de SQL injection — o \b(create|update|delete|...) dispara
+    // em qualquer rota REST normal (ex.: /api/billing/create-checkout-session
+    // contém a palavra "create"). Os scans de query/body/headers abaixo
+    // fazem o trabalho real de detecção de payloads maliciosos.
+    const queryStringIndex = (req.url || '').indexOf('?');
+    const reqPath = String(req.path || '').toLowerCase();
+    const pathIsWhitelisted = apiPathWhitelistPrefixes.some((prefix) => reqPath.startsWith(prefix));
+
+    if (!pathIsWhitelisted && queryStringIndex !== -1) {
+      const queryString = req.url.slice(queryStringIndex + 1);
+      if (queryString && containsSQLInjection(queryString, false)) {
+        console.error(`SQL INJECTION DETECTED IN URL query: ${queryString} from IP ${req.ip}`);
+        return res.status(400).json({
+          error: 'Requisição suspeita detectada',
+          code: 'SQL_INJECTION_URL'
+        });
+      }
     }
     
     // Verificar query parameters
