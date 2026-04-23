@@ -85,6 +85,14 @@ export const protectCSRF = (req: any, res: any, next: any) => {
   }
   
   // Excluir algumas rotas específicas (como callbacks de auth, formulários públicos e downloads admin)
+  //
+  // /api/billing/ (prefixo inteiro):
+  //   Todos os endpoints de billing já exigem autenticação via Clerk JWT
+  //   (requireAuth) ou validação de assinatura do Stripe (webhook), portanto
+  //   o CSRF seria redundante e introduz pontos de falha — caso o handshake
+  //   /api/csrf-token falhe ou o token stateless do fast-path não case com
+  //   a sessão Express, o checkout bloqueia com 403 CSRF_TOKEN_INVALID.
+  //   A autenticação real já está garantida pelo JWT Clerk / signature Stripe.
   const exemptRoutes = [
     '/api/callback',
     '/api/login',
@@ -95,13 +103,7 @@ export const protectCSRF = (req: any, res: any, next: any) => {
     '/api/admin/create-test-users',
     '/api/admin/downloads',
     '/api/generate-response',
-    '/api/billing/subscription-status',
-    // O checkout redirecciona sempre para o domínio do Stripe e não
-    // expõe nenhuma acção privilegiada que um ataque CSRF pudesse
-    // explorar — além disso o frontend já envia o token quando disponível.
-    // Mantemos o endpoint isento para evitar bloquear o pagamento caso o
-    // handshake CSRF falhe (ex.: /api/csrf-token indisponível em cold start).
-    '/api/billing/create-checkout-session',
+    '/api/billing/',
     '/api/reviews-ai/',
     '/api/reviews-ai/generate',
     '/api/ai/generate-response'

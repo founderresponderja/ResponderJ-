@@ -103,7 +103,13 @@ export const csrfProtection = (req: any, res: any, next: any) => {
     return next();
   }
 
-  // Skip apenas endpoints específicos seguros
+  // Skip apenas endpoints específicos seguros.
+  //
+  // /api/billing/ (prefixo inteiro): Todos os endpoints de billing já
+  // exigem autenticação via Clerk JWT (requireAuth) ou validação de
+  // assinatura do Stripe (webhook). O CSRF seria redundante e já bloqueou
+  // checkouts em produção quando o token stateless do fast-path não casou
+  // com a sessão Express.
   const exemptPaths = [
     '/api/suggestions', // Formulário público
     '/api/auth/user',   // Auth check
@@ -112,9 +118,8 @@ export const csrfProtection = (req: any, res: any, next: any) => {
     '/api/auth/register', // Registo
     '/api/auth/login',   // Login directo
     '/api/admin/downloads', // Downloads administrativos
-    '/api/billing/webhook', // Stripe webhook signed payload
+    '/api/billing/',        // Todos os endpoints de billing (Clerk JWT / Stripe signature)
     '/api/generate-response',
-    '/api/billing/subscription-status',
     '/api/reviews-ai/'
   ];
   
