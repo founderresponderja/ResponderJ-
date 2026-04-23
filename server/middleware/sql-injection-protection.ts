@@ -165,14 +165,13 @@ const checkObjectForSQLInjection = (obj: any, path = ''): string | null => {
   return null;
 };
 
-// Prefixos de rotas API cuja path legitimamente contém verbos SQL-like
-// (create, update, delete, ...) e que, por isso, não podem ser submetidas
-// ao scan do path — isso dispara falsos positivos como o SQL_INJECTION_URL
-// que bloqueou /api/billing/create-checkout-session. Os scans de query,
-// body e headers continuam activos para estas rotas, logo a protecção real
-// contra SQL injection mantém-se.
+// Whitelist mantida apenas como documentação das rotas cujo path contém
+// verbos tipo `create`, `update`, `delete` e que, por isso, nunca poderiam
+// ser submetidos ao scan do path. Esta whitelist já não é consultada pelo
+// middleware — o path simplesmente nunca é scaneado (ver explicação abaixo) —
+// mas fica registada aqui para futuros revisores perceberem o contexto.
 const apiPathWhitelistPrefixes = [
-  '/api/billing/',
+  '/api/billing',
   '/api/reviews-ai/',
   '/api/platforms/',
   '/api/generate-response',
@@ -184,6 +183,7 @@ const apiPathWhitelistPrefixes = [
   '/api/ai-training',
   '/api/csrf-token',
 ];
+void apiPathWhitelistPrefixes;
 
 // Middleware principal de proteção
 export const protectDatabaseQueries = (req: any, res: any, next: any) => {
@@ -209,17 +209,19 @@ export const protectDatabaseQueries = (req: any, res: any, next: any) => {
       return next();
     }
 
-    // Scan do URL: apenas a query string. O path é código do servidor,
-    // nunca input do utilizador, portanto não faz sentido submetê-lo aos
-    // padrões de SQL injection — o \b(create|update|delete|...) dispara
-    // em qualquer rota REST normal (ex.: /api/billing/create-checkout-session
-    // contém a palavra "create"). Os scans de query/body/headers abaixo
-    // fazem o trabalho real de detecção de payloads maliciosos.
+    // ⚠️ IMPORTANTE: o path NUNCA é scaneado.
+    //
+    // O path de uma rota REST é código do servidor, não input do utilizador.
+    // Submetê-lo aos padrões de SQL injection produz falsos positivos triviais
+    // em qualquer verbo tipo CRUD:
+    //   - /api/billing/create-checkout-session → dispara \bcreate\b
+    //   - /api/users/update                     → dispara \bupdate\b
+    //   - /api/posts/delete                     → dispara \bdelete\b
+    //
+    // Tudo o que um atacante controla está em query-string, body ou headers,
+    // e isso continua 100% coberto pelos scans abaixo.
     const queryStringIndex = (req.url || '').indexOf('?');
-    const reqPath = String(req.path || '').toLowerCase();
-    const pathIsWhitelisted = apiPathWhitelistPrefixes.some((prefix) => reqPath.startsWith(prefix));
-
-    if (!pathIsWhitelisted && queryStringIndex !== -1) {
+    if (queryStringIndex !== -1) {
       const queryString = req.url.slice(queryStringIndex + 1);
       if (queryString && containsSQLInjection(queryString, false)) {
         console.error(`SQL INJECTION DETECTED IN URL query: ${queryString} from IP ${req.ip}`);
@@ -230,7 +232,7 @@ export const protectDatabaseQueries = (req: any, res: any, next: any) => {
       }
     }
     
-    // Verificar query parameters
+    // Verificar query parameters (objecto parseado)
     if (req.query) {
       const suspiciousField = checkObjectForSQLInjection(req.query, 'query');
       if (suspiciousField) {

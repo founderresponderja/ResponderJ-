@@ -1,5 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
+import { createHash, randomBytes } from "crypto";
 import { GoogleGenAI } from "@google/genai";
 import { ensureDatabaseConnection } from "../server/db.js";
 
@@ -69,7 +70,95 @@ async function runStartupMigrations() {
   console.warn("[migrations] automatic startup migrations disabled");
 }
 
+// ---------------------------------------------------------------------------
+// CSRF fast-path
+// ---------------------------------------------------------------------------
+// Because vercel.json rewrites every `/api/*` request to `/api/index`, the
+// dedicated `api/csrf-token.ts` serverless function is never reached in
+// production. Running this endpoint through `initApp()` means a cold DB / auth
+// bootstrap failure surfaces as a 500 here and cascades into every POST that
+// depends on a CSRF token (Stripe checkout, response generation, ...).
+//
+// This fast-path mirrors the logic of `api/csrf-token.ts` and runs BEFORE
+// `initApp()`, so the handshake is always served even when the full Express
+// app is unavailable. The token format is identical to the one produced by
+// `server/middleware/csrf.ts::generateCSRFToken`, so the Express-mounted
+// validator (when it does bootstrap) accepts tokens issued here.
+
+function resolveSessionIdFromRequest(req: Request): string {
+  try {
+    const cookieHeader = (req.headers && (req.headers.cookie as string)) || "";
+    if (!cookieHeader) return "no-session";
+    const match = cookieHeader.match(/connect\.sid=([^;]+)/);
+    return match?.[1] || "no-session";
+  } catch {
+    return "no-session";
+  }
+}
+
+function resolveCsrfSecret(): string {
+  return (
+    process.env.CSRF_SECRET ||
+    process.env.SESSION_SECRET ||
+    "default-csrf-secret-change-in-production"
+  );
+}
+
+function generateCsrfTokenFastPath(sessionId: string): string {
+  const secret = resolveCsrfSecret();
+  const timestamp = Date.now().toString();
+  const random = randomBytes(24).toString("base64url");
+  const payload = `${sessionId}:${timestamp}:${random}`;
+  const hash = createHash("sha256").update(payload + secret).digest("hex");
+  return Buffer.from(`${payload}:${hash}`).toString("base64");
+}
+
+function handleCsrfFastPath(req: Request, res: Response): boolean {
+  const url = req.url || "";
+  if (!url.startsWith("/api/csrf-token")) return false;
+
+  try {
+    if (req.method === "OPTIONS") {
+      res.status(204).end();
+      return true;
+    }
+    if (req.method && req.method !== "GET") {
+      res.status(405).json({ error: "Method not allowed" });
+      return true;
+    }
+
+    const sessionId = resolveSessionIdFromRequest(req);
+    const csrfToken = generateCsrfTokenFastPath(sessionId);
+    if (typeof res.setHeader === "function") {
+      res.setHeader("Cache-Control", "no-store");
+    }
+    res.status(200).json({ csrfToken });
+    return true;
+  } catch (error: any) {
+    console.error("[csrf-token fast-path] handler error:", {
+      message: error?.message,
+      stack: error?.stack,
+      nodeVersion: process.version,
+    });
+    try {
+      const fallback = Buffer.from(
+        `no-session:${Date.now()}:${randomBytes(24).toString("base64url")}:fallback`
+      ).toString("base64");
+      res.status(200).json({ csrfToken: fallback, degraded: true });
+    } catch {
+      res.status(200).json({ csrfToken: "", degraded: true });
+    }
+    return true;
+  }
+}
+
 export default async function handler(req: Request, res: Response) {
+  // Fast-path CSRF token endpoint — served without booting the Express app so
+  // a DB/auth cold start cannot bring the CSRF handshake down.
+  if (handleCsrfFastPath(req, res)) {
+    return;
+  }
+
   // Fast-path chat endpoint in serverless to avoid heavy app bootstrap failures.
   if (req.method === "POST" && req.url?.startsWith("/api/ai/chat")) {
     try {
