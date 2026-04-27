@@ -343,7 +343,7 @@ function App() {
         email: user?.primaryEmailAddress?.emailAddress,
         planId,
       });
-      await redirectToCheckout(session.sessionId);
+      await redirectToCheckout(session.url);
     } catch (error: any) {
       setCheckoutError(error.message || 'Falha ao iniciar pagamento.');
     } finally {
