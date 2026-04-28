@@ -50,6 +50,93 @@ export function registerBillingRoutes(app: any) {
     },
   };
 
+  // GET /api/billing/me
+  // Single source of truth for the frontend's subscription state.
+  // Reads exclusively from the DB; Stripe is updated only via webhooks.
+  app.get("/api/billing/me", requireAuth, async (req: any, res: any) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Plan capabilities (imported lazily to avoid circular deps at module load)
+      const { PLAN_CAPABILITIES, normalizePlan } = await import("../../shared/planCapabilities.js");
+      const planId = normalizePlan(user.subscriptionPlan || user.selectedPlan || "trial");
+      const caps = PLAN_CAPABILITIES[planId];
+
+      const creditsTotal = caps.maxResponses === -1 ? -1 : caps.maxResponses;
+      const creditsRemaining = Number(user.credits ?? 0);
+      const creditsUsedThisPeriod = Number(user.creditsUsedThisPeriod ?? 0);
+
+      // Trial detection: only "trial" plan with a future trialEndsAt counts as trialing
+      const trialEndsAt = user.currentPeriodEnd || null;
+      const now = new Date();
+      const isTrialing =
+        planId === "trial" &&
+        trialEndsAt instanceof Date
+          ? trialEndsAt.getTime() > now.getTime()
+          : planId === "trial" && trialEndsAt && new Date(trialEndsAt).getTime() > now.getTime();
+
+      // Status: derive from the plan and Stripe subscription presence
+      let status: "active" | "trial" | "expired" | "canceled" = "trial";
+      if (planId !== "trial") {
+        status = user.stripeSubscriptionId ? "active" : "expired";
+      } else if (!isTrialing) {
+        status = "expired";
+      }
+
+      // Count connected social platforms for the current user (direct DB query)
+      let platformsConnected = 0;
+      try {
+        const { db } = await import("../db.js");
+        const { socialPlatformConnections } = await import("../../shared/schema.js");
+        const { and, eq, sql } = await import("drizzle-orm");
+        const result = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(socialPlatformConnections)
+          .where(
+            and(
+              eq(socialPlatformConnections.userExternalId, String(user.id)),
+              eq(socialPlatformConnections.status, "connected")
+            )
+          );
+        platformsConnected = result[0]?.count ?? 0;
+      } catch (e: any) {
+        console.warn("[billing/me] could not count platforms:", e?.message);
+      }
+
+      const platformsLimit = caps.maxPlatforms === -1 ? -1 : caps.maxPlatforms;
+
+      return res.json({
+        planId,
+        status,
+        isTrialing: Boolean(isTrialing),
+        trialEndsAt: trialEndsAt ? new Date(trialEndsAt).toISOString() : null,
+        creditsRemaining,
+        creditsTotal,
+        creditsUsedThisPeriod,
+        currentPeriodStart: user.currentPeriodStart ? new Date(user.currentPeriodStart).toISOString() : null,
+        currentPeriodEnd: user.currentPeriodEnd ? new Date(user.currentPeriodEnd).toISOString() : null,
+        platformsConnected,
+        platformsLimit,
+        stripeCustomerId: user.stripeCustomerId || null,
+        stripeSubscriptionId: user.stripeSubscriptionId || null,
+        capabilities: {
+          hasAnalytics: caps.hasAnalytics,
+          hasAdvancedAnalytics: caps.hasAdvancedAnalytics,
+          hasAgentTraining: caps.hasAgentTraining,
+          hasAutoResponse: caps.hasAutoResponse,
+          hasClientManagement: caps.hasClientManagement,
+          hasWhiteLabel: caps.hasWhiteLabel,
+        },
+      });
+    } catch (error: any) {
+      console.error("[billing/me] error:", error?.message || error);
+      return res.status(500).json({ message: "Failed to load subscription state" });
+    }
+  });
+
   // Criar subscrição
   app.post("/api/billing/subscription", requireAuth, async (req: any, res: any) => {
     try {
