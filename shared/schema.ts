@@ -33,6 +33,9 @@ export const users = pgTable("users", {
   subscriptionPlan: text("subscription_plan").default("trial"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  creditsUsedThisPeriod: integer("credits_used_this_period").default(0),
   
   // Tokens
   emailVerificationToken: text("email_verification_token"),
