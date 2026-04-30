@@ -185,41 +185,69 @@ export function registerBillingRoutes(app: any) {
       const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 
       switch (event.type) {
-        case 'invoice.payment_succeeded':
-          const invoice = event.data.object as Stripe.Invoice;
-          const subscription = (invoice as any).subscription;
-          
-          if (subscription) {
-            await BillingService.handleSuccessfulPayment(subscription, invoice.id);
-          }
-          break;
-
-        case 'invoice.payment_failed':
-          const failedInvoice = event.data.object as Stripe.Invoice;
-          const failedSubscription = (failedInvoice as any).subscription;
-          
-          if (failedSubscription) {
-            await BillingService.handlePaymentFailure(
-              failedSubscription,
-              failedInvoice.id,
-              { message: "Pagamento falhado" }
-            );
-          }
-          break;
-
         case 'checkout.session.completed': {
           const session = event.data.object as Stripe.Checkout.Session;
-          console.log("Checkout concluido:", {
-            sessionId: session.id,
-            customer: session.customer,
-            subscription: session.subscription,
-            email: session.customer_details?.email,
-          });
+          try {
+            if (session.subscription) {
+              const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+              await BillingService.syncSubscriptionToDatabase(subscription, { resetCreditsOnPlanChange: true });
+            }
+            console.log(`[webhook] checkout completed for customer ${session.customer}`);
+          } catch (error: any) {
+            console.error("[webhook] checkout.session.completed failed:", error);
+          }
+          break;
+        }
+
+        case 'customer.subscription.created': {
+          const subscription = event.data.object as Stripe.Subscription;
+          try {
+            await BillingService.syncSubscriptionToDatabase(subscription, { resetCreditsOnPlanChange: true });
+          } catch (error: any) {
+            console.error("[webhook] customer.subscription.created failed:", error);
+          }
+          break;
+        }
+
+        case 'customer.subscription.updated': {
+          const subscription = event.data.object as Stripe.Subscription;
+          try {
+            await BillingService.syncSubscriptionToDatabase(subscription);
+          } catch (error: any) {
+            console.error("[webhook] customer.subscription.updated failed:", error);
+          }
+          break;
+        }
+
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as Stripe.Subscription;
+          try {
+            await BillingService.handleSubscriptionDeleted(subscription);
+          } catch (error: any) {
+            console.error("[webhook] customer.subscription.deleted failed:", error);
+          }
+          break;
+        }
+
+        case 'invoice.payment_failed': {
+          const failedInvoice = event.data.object as Stripe.Invoice;
+          const failedSubscription = (failedInvoice as any).subscription;
+          try {
+            if (failedSubscription) {
+              await BillingService.handlePaymentFailure(
+                failedSubscription,
+                failedInvoice.id,
+                { message: "Pagamento falhado" }
+              );
+            }
+          } catch (error: any) {
+            console.error("[webhook] invoice.payment_failed failed:", error);
+          }
           break;
         }
 
         default:
-          console.log(`Evento não tratado: ${event.type}`);
+          console.log("[webhook] unhandled event:", event.type);
       }
 
       res.json({ received: true, verified: true });
