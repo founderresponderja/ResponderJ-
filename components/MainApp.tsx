@@ -34,6 +34,7 @@ import { processReplitPayment } from '../services/paymentService';
 import { ReviewData, UserSubscription } from '../types';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
+import { useSubscription } from '../hooks/useSubscription';
 
 // Lazy load heavy tab components
 const Dashboard = lazy(() => import('./Dashboard'));
@@ -117,14 +118,9 @@ const MainApp: React.FC<MainAppProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const [subscription, setSubscription] = useState<UserSubscription>(() => {
-    const saved = localStorage.getItem('responderja_subscription');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...parsed, startDate: new Date(parsed.startDate) };
-    }
-    return { planId: 'trial', creditsUsed: 0, startDate: new Date() };
-  });
+  // Subscription state vem do hook useSubscription (Fase 4.3b parte 2).
+  // Não há mais useState local nem localStorage — fonte única de verdade na BD.
+  const subscription = useSubscription();
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeModalMessage, setUpgradeModalMessage] = useState("Faz upgrade para desbloquear esta funcionalidade.");
@@ -148,10 +144,6 @@ const MainApp: React.FC<MainAppProps> = ({
   useEffect(() => {
     localStorage.setItem(`responderja_history_${selectedClientId ?? 'default'}`, JSON.stringify(history));
   }, [history, selectedClientId]);
-
-  useEffect(() => {
-    localStorage.setItem('responderja_subscription', JSON.stringify(subscription));
-  }, [subscription]);
 
   const t = translations[lang].app;
   const nav = translations[lang].nav;
@@ -195,10 +187,14 @@ const MainApp: React.FC<MainAppProps> = ({
   const { creditLimit, creditsLeft, usagePercentage } = useMemo(() => {
     const limitFromPlan = planCapabilities.maxResponses;
     const limit = limitFromPlan < 0 ? Number.MAX_SAFE_INTEGER : limitFromPlan;
+    // creditsLeft vem directamente do hook (subscription.creditsRemaining)
+    // — é o saldo real na BD, não calculado.
+    const left = subscription.creditsRemaining ?? 0;
+    const used = subscription.creditsUsedThisPeriod ?? 0;
     return {
       creditLimit: limit,
-      creditsLeft: limit - subscription.creditsUsed,
-      usagePercentage: limit === Number.MAX_SAFE_INTEGER ? 0 : Math.min((subscription.creditsUsed / limit) * 100, 100)
+      creditsLeft: left,
+      usagePercentage: limit === Number.MAX_SAFE_INTEGER ? 0 : Math.min((used / limit) * 100, 100)
     };
   }, [subscription, planCapabilities]);
 
@@ -210,7 +206,7 @@ const MainApp: React.FC<MainAppProps> = ({
       return;
     }
 
-    if (subscription.creditsUsed >= creditLimit) {
+    if (subscription.creditsRemaining <= 0 && subscription.creditsTotal !== -1) {
         setShowUpgradeModal(true);
         return;
     }
@@ -233,7 +229,6 @@ const MainApp: React.FC<MainAppProps> = ({
       };
       setCurrentReview(finishedReview);
       setHistory(prev => [finishedReview, ...prev]);
-      setSubscription(prev => ({ ...prev, creditsUsed: prev.creditsUsed + 1 }));
       if (isTrialActive && onTrialResponseUsed) {
         await onTrialResponseUsed();
       }
@@ -323,7 +318,7 @@ const MainApp: React.FC<MainAppProps> = ({
              <div className="mb-4">
                 <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase mb-1.5 px-1">
                     <span>{nav.usage}</span>
-                    <span>{subscription.creditsUsed}/{creditLimit}</span>
+                    <span>{subscription.creditsUsedThisPeriod}/{creditLimit}</span>
                 </div>
                 <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full bg-brand-500 transition-all duration-500" style={{ width: `${usagePercentage}%` }}></div>
@@ -436,7 +431,7 @@ const MainApp: React.FC<MainAppProps> = ({
                 <Dashboard
                   history={history}
                   currentPlan={subscription.planId}
-                  responsesRemaining={Math.max(0, creditLimit - subscription.creditsUsed)}
+                  responsesRemaining={Math.max(0, creditLimit - subscription.creditsUsedThisPeriod)}
                   onGenerateFromReview={handleGenerateFromReview}
                 />
               )}
