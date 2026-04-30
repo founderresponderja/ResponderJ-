@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
+import { SubscriptionProvider } from './hooks/useSubscription';
 import './index.css';
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -32,7 +33,9 @@ if (!clerkPublishableKey) {
         afterSignInUrl="/"
         afterSignUpUrl="/"
       >
-        <App />
+        <SubscriptionProvider>
+          <App />
+        </SubscriptionProvider>
       </ClerkProvider>
     </React.StrictMode>
   );
