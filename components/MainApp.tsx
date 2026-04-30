@@ -351,6 +351,35 @@ const MainApp: React.FC<MainAppProps> = ({
         </header>
 
         <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+          {/* Banner Trial sem créditos — Fase 4.3c */}
+          {subscription.isTrialing && subscription.creditsRemaining <= 0 && (
+            <div
+              role="alert"
+              className="sticky top-0 z-30 mb-6 -mx-4 md:-mx-8 px-4 md:px-8 py-3 bg-gradient-to-r from-brand-600 to-indigo-700 text-white shadow-md"
+            >
+              <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0" aria-hidden="true">🎯</span>
+                  <div className="text-sm leading-snug">
+                    <strong className="font-semibold">
+                      Já usaste todas as {subscription.creditsTotal} respostas do trial.
+                    </strong>
+                    <span className="block opacity-90">
+                      {subscription.daysUntilPeriodEnd && subscription.daysUntilPeriodEnd > 0
+                        ? `Tens ${subscription.daysUntilPeriodEnd} ${subscription.daysUntilPeriodEnd === 1 ? 'dia' : 'dias'} para experimentar o resto da app.`
+                        : 'O período de trial está prestes a terminar.'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('pricing')}
+                  className="self-start sm:self-auto bg-white text-brand-700 hover:bg-brand-50 transition-colors px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap shadow-sm"
+                >
+                  Ver planos →
+                </button>
+              </div>
+            </div>
+          )}
           {isAgencyPlan && (
             <div className="mb-4 flex items-center justify-end">
               <div className="flex items-center gap-2 text-sm">
