@@ -31,7 +31,7 @@ import { useGenerateResponse } from '../services/geminiService';
 import UpgradeModal from './UpgradeModal';
 import { PLAN_CAPABILITIES, normalizePlan } from '../shared/planCapabilities';
 import { processReplitPayment } from '../services/paymentService';
-import { ReviewData, UserSubscription } from '../types';
+import { ReviewData } from '../types';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
 import { useSubscription } from '../hooks/useSubscription';

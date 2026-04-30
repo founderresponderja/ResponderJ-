@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { Loader2 } from 'lucide-react';
 import { useAuth, useUser, useClerk } from '@clerk/clerk-react';
 import LandingPage from './components/LandingPage';
 import SofiaChat from './components/SofiaChat';

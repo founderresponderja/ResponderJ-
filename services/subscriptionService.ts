@@ -40,18 +40,6 @@ export async function createCheckoutSession(payload: { clerkUserId?: string; ema
   return res.json();
 }
 
-export async function getSubscriptionStatus(clerkUserId?: string, email?: string) {
-  const query = new URLSearchParams();
-  if (clerkUserId) query.set('clerkUserId', clerkUserId);
-  if (email) query.set('email', email);
-
-  const res = await fetch(`/api/billing/subscription-status?${query.toString()}`);
-  if (!res.ok) {
-    return { active: false };
-  }
-  return res.json();
-}
-
 export async function redirectToCheckout(url: string) {
   if (!url) throw new Error('URL de checkout em falta.');
   window.location.href = url;
