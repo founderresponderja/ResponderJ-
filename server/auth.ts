@@ -349,6 +349,12 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
         const firstName = clerkUser.firstName || "";
         const lastName = clerkUser.lastName || "";
 
+        // Trial dura 7 dias a partir do primeiro login.
+        const TRIAL_DURATION_DAYS = 7;
+        const now = new Date();
+        const trialEnd = new Date(now);
+        trialEnd.setDate(trialEnd.getDate() + TRIAL_DURATION_DAYS);
+
         user = await storage.createUser({
           email: String(email).toLowerCase(),
           password: "clerk_oauth_user",
@@ -358,7 +364,10 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
           isActive: true,
           credits: 10,
           selectedPlan: "trial",
-          subscriptionPlan: "trial"
+          subscriptionPlan: "trial",
+          currentPeriodStart: now,
+          currentPeriodEnd: trialEnd,
+          creditsUsedThisPeriod: 0,
         } as any);
       }
 
