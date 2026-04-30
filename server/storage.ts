@@ -69,7 +69,7 @@ export interface IStorage {
   createCreditTransaction(transaction: InsertCreditTransaction): Promise<CreditTransaction>;
   addCreditsToUser(userId: number | string, amount: number, description: string): Promise<void>;
   updateUserCredits(userId: number | string, credits: number): Promise<void>;
-  deductUserCreditsAtomic(userId: number | string, amount: number): Promise<boolean>;
+  deductUserCreditsAtomic(userId: number | string, amount: number): Promise<{ ok: boolean; creditsRemaining: number }>;
   getUserCreditBalance(userId: number | string): Promise<number>;
   getUserSubscription(userId: number | string): Promise<Subscription | undefined>;
   updateUserStripeInfo(userId: number | string, info: { customerId?: string, subscriptionId?: string }): Promise<void>;
@@ -414,18 +414,39 @@ export class DatabaseStorage implements IStorage {
     await db.update(users).set({ credits }).where(eq(users.id, Number(userId)));
   }
 
-  async deductUserCreditsAtomic(userId: number | string, amount: number): Promise<boolean> {
-      try {
-          const result = await db.update(users)
-            .set({ credits: sql`${users.credits} - ${amount}` })
-            .where(and(eq(users.id, Number(userId)), gte(users.credits, amount)))
-            .returning({ id: users.id });
-            
-          return result.length > 0;
-      } catch (e) {
-          console.error("Atomic credit deduction failed", e);
-          return false;
+  async deductUserCreditsAtomic(
+    userId: number | string,
+    amount: number
+  ): Promise<{ ok: boolean; creditsRemaining: number }> {
+    try {
+      const result = await db
+        .update(users)
+        .set({
+          credits: sql`${users.credits} - ${amount}`,
+          creditsUsedThisPeriod: sql`COALESCE(${users.creditsUsedThisPeriod}, 0) + ${amount}`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(users.id, Number(userId)),
+            gte(users.credits, amount)
+          )
+        )
+        .returning({ creditsRemaining: users.credits });
+
+      if (result.length === 0) {
+        const current = await this.getUserCreditBalance(userId);
+        return { ok: false, creditsRemaining: current };
       }
+
+      return {
+        ok: true,
+        creditsRemaining: result[0].creditsRemaining,
+      };
+    } catch (error) {
+      console.error("[storage.deductUserCreditsAtomic] error:", error);
+      return { ok: false, creditsRemaining: 0 };
+    }
   }
 
   async getUserCreditBalance(userId: number | string): Promise<number> {

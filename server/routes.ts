@@ -802,9 +802,29 @@ export async function registerRoutes(app: any): Promise<void> {
         }
       };
 
-      const savedResponse = await storage.createAiResponse(responseData);
-      await storage.updateUserCredits(userId, user.credits - creditCost);
+      // 1. Decrementa créditos PRIMEIRO (atómico).
+      //    Se falhar, abortar antes de criar a resposta.
+      const deductResult = await storage.deductUserCreditsAtomic(userId, creditCost);
 
+      if (!deductResult.ok) {
+        return res.status(400).json({
+          message: "Créditos insuficientes",
+          creditsRemaining: deductResult.creditsRemaining,
+        });
+      }
+
+      // 2. Só agora cria a resposta na BD.
+      let savedResponse;
+      try {
+        savedResponse = await storage.createAiResponse(responseData);
+      } catch (createError) {
+        // Refund: devolve os créditos se a criação falhar
+        await storage.addCreditsToUser(userId, creditCost, "refund_failed_response");
+        console.error("[generate-response] createAiResponse failed, credits refunded:", createError);
+        throw createError;
+      }
+
+      // 3. Regista a transação ligada à resposta.
       await storage.createCreditTransaction({
         userId,
         amount: -creditCost,
@@ -813,7 +833,11 @@ export async function registerRoutes(app: any): Promise<void> {
         relatedResponseId: savedResponse.id
       });
 
-      res.json({ ...savedResponse, tokensUsed: aiResult.tokensUsed });
+      res.json({
+        ...savedResponse,
+        tokensUsed: aiResult.tokensUsed,
+        creditsRemaining: deductResult.creditsRemaining,
+      });
     } catch (error: any) {
       console.error("Erro na geração:", {
         message: error?.message,
