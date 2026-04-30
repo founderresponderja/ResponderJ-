@@ -6,7 +6,8 @@ import LandingPage from './components/LandingPage';
 import SofiaChat from './components/SofiaChat';
 import { Language } from './utils/translations';
 import PricingPage from './components/PricingPage';
-import { createCheckoutSession, getSubscriptionStatus, redirectToCheckout } from './services/subscriptionService';
+import { createCheckoutSession, redirectToCheckout } from './services/subscriptionService';
+import { useSubscription } from './hooks/useSubscription';
 import { PlanId } from './types';
 import BlogPage, { blogArticles } from './components/BlogPage';
 
@@ -21,6 +22,8 @@ const TermsAndConditionsPage = lazy(() => import('./components/TermsAndCondition
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const InvitePage = lazy(() => import('./components/InvitePage'));
 
+const TRIAL_LIMIT = 10;
+
 type ViewState = 'landing' | 'login' | 'register' | 'app' | 'pricing' | 'about' | 'admin' | 'cookies' | 'invite' | 'privacy' | 'terms' | 'blog';
 export type Theme = 'light' | 'dark';
 
@@ -32,68 +35,19 @@ const PageLoader = () => (
   </div>
 );
 
-const TRIAL_DAYS = 7;
-const TRIAL_LIMIT = 10;
-
-type TrialState = {
-  startedAt: string | null;
-  endsAt: string | null;
-  daysRemaining: number;
-  responsesUsed: number;
-  isActive: boolean;
-  isExpired: boolean;
-};
-
-const defaultTrialState: TrialState = {
-  startedAt: null,
-  endsAt: null,
-  daysRemaining: 0,
-  responsesUsed: 0,
-  isActive: false,
-  isExpired: false,
-};
-
-function computeTrialState(metadata: Record<string, any> | null | undefined): TrialState {
-  if (!metadata) return defaultTrialState;
-
-  const startedAt = typeof metadata.trialStartedAt === 'string' ? metadata.trialStartedAt : null;
-  const endsAt = typeof metadata.trialEndsAt === 'string' ? metadata.trialEndsAt : null;
-  const responsesUsed = Number(metadata.trialResponsesUsed || 0);
-  if (!startedAt || !endsAt) return defaultTrialState;
-
-  const now = Date.now();
-  const endTime = new Date(endsAt).getTime();
-  const diffMs = endTime - now;
-  const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  const isExpired = diffMs <= 0;
-  const isActive = !isExpired;
-
-  return {
-    startedAt,
-    endsAt,
-    daysRemaining,
-    responsesUsed,
-    isActive,
-    isExpired,
-  };
-}
-
 function App() {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const subscription = useSubscription();
   const [currentView, setCurrentView] = useState<ViewState>('landing');
   const [returnView, setReturnView] = useState<ViewState>('landing');
   const [currentLang, setCurrentLang] = useState<Language>('pt');
   const [theme, setTheme] = useState<Theme>('light');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [trial, setTrial] = useState<TrialState>(defaultTrialState);
-  const [isCheckingTrial, setIsCheckingTrial] = useState(false);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -193,81 +147,27 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const run = async () => {
-      if (!isLoaded || !isSignedIn) {
-        setHasActiveSubscription(false);
-        return;
-      }
-
-      setIsCheckingSubscription(true);
-      try {
-        const status = await getSubscriptionStatus(user?.id, user?.primaryEmailAddress?.emailAddress || undefined);
-        setHasActiveSubscription(!!status.active);
-      } catch {
-        setHasActiveSubscription(false);
-      } finally {
-        setIsCheckingSubscription(false);
-      }
-    };
-
-    run();
-  }, [isLoaded, isSignedIn, user?.id, user?.primaryEmailAddress?.emailAddress]);
-
-  useEffect(() => {
-    const ensureTrial = async () => {
-      if (!isLoaded || !isSignedIn || !user) {
-        setTrial(defaultTrialState);
-        return;
-      }
-
-      setIsCheckingTrial(true);
-      try {
-        const metadata = (user.unsafeMetadata || {}) as Record<string, any>;
-        if (!metadata.trialStartedAt || !metadata.trialEndsAt) {
-          const now = new Date();
-          const endDate = new Date(now);
-          endDate.setDate(endDate.getDate() + TRIAL_DAYS);
-
-          const updated = {
-            ...metadata,
-            trialStartedAt: now.toISOString(),
-            trialEndsAt: endDate.toISOString(),
-            trialResponsesUsed: 0,
-          };
-          await user.update({ unsafeMetadata: updated });
-          setTrial(computeTrialState(updated));
-        } else {
-          setTrial(computeTrialState(metadata));
-        }
-      } catch (error) {
-        console.error('Erro ao inicializar trial:', error);
-        setTrial(defaultTrialState);
-      } finally {
-        setIsCheckingTrial(false);
-      }
-    };
-
-    ensureTrial();
-  }, [isLoaded, isSignedIn, user]);
-
-  useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const checkout = query.get('checkout');
     if (!checkout || !isSignedIn) return;
 
-    if (checkout === 'success') {
-      setHasActiveSubscription(true);
-      setCheckoutError(null);
-    } else if (checkout === 'cancelled') {
-      setCheckoutError('Pagamento cancelado. Podes tentar novamente.');
-    }
+    const handleCheckoutResult = async () => {
+      if (checkout === 'success') {
+        await subscription.refresh();
+        setCheckoutError(null);
+      } else if (checkout === 'cancelled') {
+        setCheckoutError('Pagamento cancelado. Podes tentar novamente.');
+      }
+    };
+
+    void handleCheckoutResult();
 
     query.delete('checkout');
     query.delete('session_id');
     const cleanQuery = query.toString();
     const cleanUrl = `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}`;
     window.history.replaceState({}, '', cleanUrl);
-  }, [isSignedIn]);
+  }, [isSignedIn, subscription]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -352,18 +252,12 @@ function App() {
   };
 
   const handleTrialResponseUsed = async () => {
-    if (!user) return;
+    // Após gerar resposta IA, o backend já decrementa créditos atomicamente
+    // (Fase 4.2). Aqui apenas refrescamos o estado local para refletir o saldo novo.
     try {
-      const metadata = (user.unsafeMetadata || {}) as Record<string, any>;
-      const nextUsed = Number(metadata.trialResponsesUsed || 0) + 1;
-      const updated = {
-        ...metadata,
-        trialResponsesUsed: nextUsed,
-      };
-      await user.update({ unsafeMetadata: updated });
-      setTrial((prev) => ({ ...prev, responsesUsed: nextUsed }));
+      await subscription.refresh();
     } catch (error) {
-      console.error('Erro ao atualizar uso do trial:', error);
+      console.error('Erro ao refrescar subscrição:', error);
     }
   };
 
@@ -415,9 +309,9 @@ function App() {
           )}
 
           {currentView === 'app' && isSignedIn && (
-            isCheckingSubscription || isCheckingTrial ? (
+            subscription.isLoading ? (
               <PageLoader />
-            ) : hasActiveSubscription || trial.isActive ? (
+            ) : (subscription.status === 'active' || subscription.isTrialing) ? (
               <MainApp 
                 onLogout={() => handleNavigation('landing')}
                 onNavigateToAdmin={() => handleNavigation('admin')}
@@ -427,10 +321,10 @@ function App() {
                 toggleTheme={toggleTheme}
                 onNavigateToPrivacy={() => navigateToLeaf('privacy')}
                 onNavigateToTerms={() => navigateToLeaf('terms')}
-                isTrialActive={!hasActiveSubscription && trial.isActive}
-                trialDaysRemaining={trial.daysRemaining}
-                trialResponsesUsed={trial.responsesUsed}
-                trialLimit={TRIAL_LIMIT}
+                isTrialActive={subscription.isTrialing && subscription.status !== 'active'}
+                trialDaysRemaining={subscription.daysUntilPeriodEnd ?? 0}
+                trialResponsesUsed={subscription.creditsUsedThisPeriod}
+                trialLimit={subscription.creditsTotal === -1 ? TRIAL_LIMIT : subscription.creditsTotal}
                 onTrialResponseUsed={handleTrialResponseUsed}
               />
             ) : (
@@ -440,7 +334,7 @@ function App() {
                   onSelectPlan={handleSelectPlan}
                   error={checkoutError}
                 />
-                {trial.isExpired && !hasActiveSubscription && (
+                {subscription.status === 'expired' && (
                   <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4">
                     <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
                       <h3 className="text-xl font-bold mb-2">O teu trial terminou</h3>
@@ -467,7 +361,7 @@ function App() {
           {currentView === 'cookies' && <CookieManagementPage onBack={handleLeafBack} />}
           {currentView === 'privacy' && <PrivacyPolicyPage onBack={handleLeafBack} />}
           {currentView === 'terms' && <TermsAndConditionsPage onBack={handleLeafBack} />}
-          {currentView === 'admin' && isSignedIn && hasActiveSubscription && <AdminDashboard onBack={() => handleNavigation('app')} theme={theme} />}
+          {currentView === 'admin' && isSignedIn && subscription.status === 'active' && <AdminDashboard onBack={() => handleNavigation('app')} theme={theme} />}
 
           {currentView === 'invite' && inviteToken && (
             <InvitePage
