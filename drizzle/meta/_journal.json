@@ -15,6 +15,13 @@
       "when": 1777370591833,
       "tag": "0001_hot_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777628828159,
+      "tag": "0002_mute_giant_man",
+      "breakpoints": true
     }
   ]
 }

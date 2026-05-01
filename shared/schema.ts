@@ -174,9 +174,11 @@ export const responses = pgTable("responses", {
   isSelected: boolean("is_selected").default(false),
   isPublished: boolean("is_published").default(false),
   publishedAt: timestamp("published_at"),
-  approvalStatus: text("approval_status").default("pending"), // pending, approved, edited
+  approvalStatus: text("approval_status").default("pending"), // pending, approved, edited, discarded
   originalResponseText: text("original_response_text"),
   editCount: integer("edit_count").default(0),
+  attemptsCount: integer("attempts_count").default(1),
+  approvedAt: timestamp("approved_at"),
   learningMeta: jsonb("learning_meta"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
