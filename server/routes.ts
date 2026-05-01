@@ -802,41 +802,32 @@ export async function registerRoutes(app: any): Promise<void> {
         }
       };
 
-      // 1. Decrementa créditos PRIMEIRO (atómico).
-      //    Se falhar, abortar antes de criar a resposta.
-      const deductResult = await storage.deductUserCreditsAtomic(userId, creditCost);
+      // Sub-fase 3.2: créditos só descontam no /api/responses/:id/accept.
+      // Aqui apenas geramos e gravamos a resposta como pending.
+      // A verificação inicial de créditos (linhas anteriores) garante que
+      // só geramos para quem tem créditos suficientes — evita gastar
+      // tokens Gemini desnecessariamente.
 
-      if (!deductResult.ok) {
-        return res.status(400).json({
-          message: "Créditos insuficientes",
-          creditsRemaining: deductResult.creditsRemaining,
-        });
-      }
-
-      // 2. Só agora cria a resposta na BD.
       let savedResponse;
       try {
-        savedResponse = await storage.createAiResponse(responseData);
+        savedResponse = await storage.createAiResponse({
+          ...responseData,
+          approvalStatus: "pending",
+          attemptsCount: 1,
+        });
       } catch (createError) {
-        // Refund: devolve os créditos se a criação falhar
-        await storage.addCreditsToUser(userId, creditCost, "refund_failed_response");
-        console.error("[generate-response] createAiResponse failed, credits refunded:", createError);
+        console.error("[generate-response] createAiResponse failed:", createError);
         throw createError;
       }
 
-      // 3. Regista a transação ligada à resposta.
-      await storage.createCreditTransaction({
-        userId,
-        amount: -creditCost,
-        type: "usage",
-        description: `Resposta gerada (${platform})`,
-        relatedResponseId: savedResponse.id
-      });
+      // NOTA: Não há createCreditTransaction aqui. A transação é registada
+      // no endpoint /accept quando o utilizador confirma a resposta.
 
       res.json({
         ...savedResponse,
         tokensUsed: aiResult.tokensUsed,
-        creditsRemaining: deductResult.creditsRemaining,
+        // creditsRemaining é o saldo actual do utilizador (sem decremento).
+        creditsRemaining: user.credits,
       });
     } catch (error: any) {
       console.error("Erro na geração:", {
