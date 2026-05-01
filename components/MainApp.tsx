@@ -330,7 +330,7 @@ const MainApp: React.FC<MainAppProps> = ({
                     {theme === 'light' ? <Moon size={16}/> : <Sun size={16} />}
                 </button>
                 <div className="flex gap-1 bg-slate-200/50 dark:bg-slate-800/50 p-1 rounded-lg">
-                    {['pt', 'en'].map((l) => (
+                    {(['pt', 'en', 'es'] as Language[]).map((l) => (
                         <button key={l} onClick={() => setLang(l as Language)} className={`text-[10px] font-bold px-2 py-1 rounded ${lang === l ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-400'}`}>
                             {l.toUpperCase()}
                         </button>
