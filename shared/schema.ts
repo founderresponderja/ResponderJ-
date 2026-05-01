@@ -160,6 +160,7 @@ export const responses = pgTable("responses", {
   responseText: text("response_text").notNull(),
   tone: text("tone"),
   language: text("language"),
+  originalMessage: text("original_message"),
   responseType: text("response_type"), 
   
   // Context

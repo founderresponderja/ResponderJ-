@@ -61,6 +61,7 @@ export interface IStorage {
   
   // Responses & AI
   getUserAiResponses(userId: number | string, limit?: number): Promise<Response[]>;
+  getAiResponse(id: number | string): Promise<Response | undefined>;
   createAiResponse(response: InsertResponse): Promise<Response>;
   updateAiResponse(id: number | string, response: Partial<Response>): Promise<Response>;
   
@@ -374,6 +375,11 @@ export class DatabaseStorage implements IStorage {
   // Responses & AI
   async getUserAiResponses(userId: number | string, limit: number = 100): Promise<Response[]> {
     return await db.select().from(responses).where(eq(responses.userId, Number(userId))).limit(limit).orderBy(desc(responses.createdAt));
+  }
+
+  async getAiResponse(id: number | string): Promise<Response | undefined> {
+    const [response] = await db.select().from(responses).where(eq(responses.id, Number(id))).limit(1);
+    return response;
   }
 
   async createAiResponse(response: InsertResponse): Promise<Response> {

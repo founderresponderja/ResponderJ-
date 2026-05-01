@@ -759,9 +759,9 @@ export async function registerRoutes(app: any): Promise<void> {
       const { aiResponseService } = await import("./services/ai-response-service.js");
 
       const businessContext = {
-        businessName: businessProfile?.businessName,
-        businessType: businessProfile?.businessType,
-        businessDescription: businessProfile?.description,
+        businessName: businessProfile?.name,
+        businessType: businessProfile?.type,
+        businessDescription: businessProfile?.responseGuidelines,
       };
 
       const aiResult = await aiResponseService.generateResponse({
@@ -845,6 +845,185 @@ export async function registerRoutes(app: any): Promise<void> {
           geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         },
       });
+    }
+  });
+
+  // POST /api/responses/:id/accept
+  // Marca a resposta como aprovada e desconta crédito atomicamente.
+  app.post('/api/responses/:id/accept', requireAuth, async (req: any, res: any) => {
+    try {
+      const responseId = Number(req.params.id);
+      const userId = req.user?.id || req.user?.claims?.sub;
+
+      if (!userId || !responseId) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const response = await storage.getAiResponse(responseId);
+      if (!response) {
+        return res.status(404).json({ message: "Resposta não encontrada" });
+      }
+      if (Number(response.userId) !== Number(userId)) {
+        return res.status(403).json({ message: "Não autorizado" });
+      }
+
+      if (response.approvalStatus !== 'pending' && response.approvalStatus !== 'edited') {
+        return res.status(409).json({
+          message: `Resposta já está em estado '${response.approvalStatus}'`
+        });
+      }
+
+      const creditCost = response.creditsUsed || 1;
+
+      const deductResult = await storage.deductUserCreditsAtomic(userId, creditCost);
+      if (!deductResult.ok) {
+        return res.status(400).json({
+          message: "Créditos insuficientes",
+          creditsRemaining: deductResult.creditsRemaining,
+        });
+      }
+
+      const now = new Date();
+      const updated = await storage.updateAiResponse(responseId, {
+        approvalStatus: 'approved',
+        approvedAt: now,
+      });
+
+      await storage.createCreditTransaction({
+        userId,
+        amount: -creditCost,
+        type: 'usage',
+        description: `Resposta aceite (${response.responseType || 'unknown'})`,
+        relatedResponseId: responseId,
+      });
+
+      return res.json({
+        id: updated.id,
+        approvalStatus: updated.approvalStatus,
+        approvedAt: updated.approvedAt,
+        creditsRemaining: deductResult.creditsRemaining,
+        creditsUsed: creditCost,
+      });
+    } catch (error: any) {
+      console.error('[/responses/:id/accept] error:', error);
+      return res.status(500).json({ message: "Falha ao aceitar resposta" });
+    }
+  });
+
+  // POST /api/responses/:id/discard
+  // Marca a resposta como descartada (não desconta crédito;
+  // preserva para futuro treino da IA).
+  app.post('/api/responses/:id/discard', requireAuth, async (req: any, res: any) => {
+    try {
+      const responseId = Number(req.params.id);
+      const userId = req.user?.id || req.user?.claims?.sub;
+
+      if (!userId || !responseId) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const response = await storage.getAiResponse(responseId);
+      if (!response) {
+        return res.status(404).json({ message: "Resposta não encontrada" });
+      }
+      if (Number(response.userId) !== Number(userId)) {
+        return res.status(403).json({ message: "Não autorizado" });
+      }
+
+      if (response.approvalStatus !== 'pending' && response.approvalStatus !== 'edited') {
+        return res.status(409).json({
+          message: `Resposta já está em estado '${response.approvalStatus}'`
+        });
+      }
+
+      const updated = await storage.updateAiResponse(responseId, {
+        approvalStatus: 'discarded',
+      });
+
+      return res.json({
+        id: updated.id,
+        approvalStatus: updated.approvalStatus,
+      });
+    } catch (error: any) {
+      console.error('[/responses/:id/discard] error:', error);
+      return res.status(500).json({ message: "Falha ao descartar resposta" });
+    }
+  });
+
+  // POST /api/responses/:id/regenerate
+  // Gera nova versão da resposta. Limite de 3 tentativas (1 inicial + 2 refazeres).
+  // Não desconta crédito — só substitui responseText e incrementa attemptsCount.
+  app.post('/api/responses/:id/regenerate', requireAuth, async (req: any, res: any) => {
+    try {
+      const responseId = Number(req.params.id);
+      const userId = req.user?.id || req.user?.claims?.sub;
+
+      if (!userId || !responseId) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const response = await storage.getAiResponse(responseId);
+      if (!response) {
+        return res.status(404).json({ message: "Resposta não encontrada" });
+      }
+      if (Number(response.userId) !== Number(userId)) {
+        return res.status(403).json({ message: "Não autorizado" });
+      }
+
+      if (response.approvalStatus !== 'pending') {
+        return res.status(409).json({
+          message: `Não é possível regenerar resposta em estado '${response.approvalStatus}'`
+        });
+      }
+
+      const currentAttempts = response.attemptsCount || 1;
+      if (currentAttempts >= 3) {
+        return res.status(409).json({
+          message: "Limite de 3 tentativas atingido. Aceitar, editar ou descartar.",
+          attemptsCount: currentAttempts,
+        });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.credits < 1) {
+        return res.status(400).json({ message: "Créditos insuficientes" });
+      }
+
+      const businessProfile = await storage.getBusinessProfile(userId).catch(() => null);
+      const { aiResponseService } = await import("./services/ai-response-service.js");
+
+      if (!response.originalMessage) {
+        return res.status(409).json({
+          message: "Não é possível regenerar — comentário original não foi guardado para esta resposta. Crie uma nova resposta.",
+        });
+      }
+
+      const aiResult = await aiResponseService.generateResponse({
+        comment: response.originalMessage,
+        platform: 'google',
+        tone: response.tone || 'profissional',
+        extraInstructions: '',
+        businessContext: {
+          businessName: businessProfile?.name,
+          businessType: businessProfile?.type,
+          businessDescription: businessProfile?.responseGuidelines,
+        },
+        responseType: response.responseType || 'resposta',
+      });
+
+      const updated = await storage.updateAiResponse(responseId, {
+        responseText: aiResult.response,
+        attemptsCount: currentAttempts + 1,
+      });
+
+      return res.json({
+        ...updated,
+        tokensUsed: aiResult.tokensUsed,
+        creditsRemaining: user.credits,
+      });
+    } catch (error: any) {
+      console.error('[/responses/:id/regenerate] error:', error);
+      return res.status(500).json({ message: "Falha ao regenerar resposta" });
     }
   });
 
