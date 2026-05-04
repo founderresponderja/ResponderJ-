@@ -883,11 +883,24 @@ export async function registerRoutes(app: any): Promise<void> {
         });
       }
 
-      const now = new Date();
-      const updated = await storage.updateAiResponse(responseId, {
-        approvalStatus: 'approved',
-        approvedAt: now,
-      });
+      const editedText = typeof req.body?.responseText === 'string'
+        ? req.body.responseText.trim()
+        : null;
+
+      const isEdited = !!(editedText && editedText !== response.responseText);
+
+      const updateFields: any = {
+        approvalStatus: isEdited ? 'edited' : 'approved',
+        approvedAt: new Date(),
+      };
+
+      if (isEdited) {
+        updateFields.responseText = editedText;
+        updateFields.originalResponseText = response.originalResponseText || response.responseText;
+        updateFields.editCount = (response.editCount || 0) + 1;
+      }
+
+      const updated = await storage.updateAiResponse(responseId, updateFields);
 
       await storage.createCreditTransaction({
         userId,

@@ -13,6 +13,9 @@ export interface AIResponse {
   response: string;
   sentiment: 'Positive' | 'Neutral' | 'Negative';
   keywords: string[];
+  id?: number;
+  approvalStatus?: 'pending' | 'approved' | 'edited' | 'discarded';
+  attemptsCount?: number;
 }
 
 export interface GenerationInput {

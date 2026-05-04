@@ -221,11 +221,14 @@ const MainApp: React.FC<MainAppProps> = ({
         localSeoKeywords: selectedClient.platformIds || [],
       } : undefined;
       const result = await generateResponse({ ...data, id: 'temp', createdAt: new Date() }, businessContext);
-      const finishedReview: ReviewData = { 
+      const finishedReview: ReviewData = {
         ...data, id: Date.now().toString(), createdAt: new Date(), isFavorite: false,
         generatedResponse: result.response, sentiment: result.sentiment, keywords: result.keywords,
         establishmentId: selectedClientId || undefined,
-        establishmentName: selectedClient?.name
+        establishmentName: selectedClient?.name,
+        responseId: result.id,
+        approvalStatus: result.approvalStatus || 'pending',
+        attemptsCount: result.attemptsCount || 1,
       };
       setCurrentReview(finishedReview);
       setHistory(prev => [finishedReview, ...prev]);
@@ -234,6 +237,87 @@ const MainApp: React.FC<MainAppProps> = ({
       }
     } catch (err: any) {
       setError(err.message || "Erro ao gerar resposta.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Sub-fase 3.4: Aceitar a resposta. Único momento em que
+  // o crédito é descontado. Aceita texto opcional se foi editado.
+  const handleAccept = async (responseText?: string) => {
+    if (!currentReview?.responseId) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/responses/${currentReview.responseId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(responseText ? { responseText } : {}),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Falha ao aceitar resposta');
+        return;
+      }
+      const data = await res.json();
+      // Atualiza estado local com novo status e (se editado) novo texto.
+      setCurrentReview({
+        ...currentReview,
+        approvalStatus: data.approvalStatus,
+        generatedResponse: responseText || currentReview.generatedResponse,
+      });
+      // Refresca subscription para atualizar contador de créditos no dashboard.
+      subscription.refresh();
+    } catch (e) {
+      console.error('[handleAccept] error:', e);
+      alert('Erro de rede ao aceitar resposta');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!currentReview?.responseId) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/responses/${currentReview.responseId}/discard`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Falha ao descartar resposta');
+        return;
+      }
+      // Limpa o painel para o utilizador escrever nova review.
+      setCurrentReview(null);
+    } catch (e) {
+      console.error('[handleDiscard] error:', e);
+      alert('Erro de rede ao descartar resposta');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!currentReview?.responseId) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/responses/${currentReview.responseId}/regenerate`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || 'Falha ao refazer resposta');
+        return;
+      }
+      const data = await res.json();
+      setCurrentReview({
+        ...currentReview,
+        generatedResponse: data.responseText || currentReview.generatedResponse,
+        attemptsCount: data.attemptsCount || (currentReview.attemptsCount || 1) + 1,
+      });
+    } catch (e) {
+      console.error('[handleRegenerate] error:', e);
+      alert('Erro de rede ao refazer resposta');
     } finally {
       setIsLoading(false);
     }
@@ -445,7 +529,14 @@ const MainApp: React.FC<MainAppProps> = ({
                   </div>
                   <div className="lg:sticky lg:top-8">
                     {currentReview ? (
-                      <ResponseCard review={currentReview} lang={lang} onUpdate={() => {}} onRegenerate={() => handleGenerate(currentReview)} isRegenerating={isLoading} />
+                      <ResponseCard
+                        review={currentReview}
+                        lang={lang}
+                        onAccept={handleAccept}
+                        onDiscard={handleDiscard}
+                        onRegenerate={handleRegenerate}
+                        isWorking={isLoading}
+                      />
                     ) : (
                       <div className="h-96 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400">
                         <MessageSquareText size={48} className="mb-4 opacity-20" />

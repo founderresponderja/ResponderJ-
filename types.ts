@@ -48,6 +48,9 @@ export interface ReviewData {
   createdAt: Date;
   isFavorite?: boolean;
   responseType?: string; // auto_reply, manual, etc.
+  responseId?: number;
+  approvalStatus?: 'pending' | 'approved' | 'edited' | 'discarded';
+  attemptsCount?: number;
 }
 
 export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'tiktok' | 'twitter' | 'youtube' | 'google' | 'tripadvisor' | 'booking' | 'thefork';
