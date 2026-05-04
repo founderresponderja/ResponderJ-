@@ -83,7 +83,10 @@ export const generateResponse = async (
   return {
     response: data.responseText || data.generatedResponse || "",
     sentiment: data.sentiment || "Neutral",
-    keywords: data.keywords || []
+    keywords: data.keywords || [],
+    id: data.id,
+    approvalStatus: data.approvalStatus,
+    attemptsCount: data.attemptsCount,
   };
 };
 
