@@ -249,9 +249,17 @@ const MainApp: React.FC<MainAppProps> = ({
     if (!currentReview?.responseId) return;
     setIsLoading(true);
     try {
+      const csrfToken = await getCsrfToken();
+      const clerkToken = await getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) headers['x-csrf-token'] = csrfToken;
+      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
+
       const res = await fetch(`/api/responses/${currentReview.responseId}/accept`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(responseText ? { responseText } : {}),
       });
       if (!res.ok) {
@@ -280,8 +288,17 @@ const MainApp: React.FC<MainAppProps> = ({
     if (!currentReview?.responseId) return;
     setIsLoading(true);
     try {
+      const csrfToken = await getCsrfToken();
+      const clerkToken = await getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) headers['x-csrf-token'] = csrfToken;
+      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
+
       const res = await fetch(`/api/responses/${currentReview.responseId}/discard`, {
         method: 'POST',
+        headers,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
