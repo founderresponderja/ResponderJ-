@@ -251,12 +251,33 @@ router.post("/:reviewId/unpublish", requireAuth, protectCSRF, async (req: any, r
       return res.status(409).json({ message: "Resposta não está publicada" });
     }
 
-    // TODO(prompt-4): deleteReply ainda não implementado
-    return res.status(501).json({
-      ok: false,
-      error: "unpublish_not_implemented",
-      message: "deleteReply será adicionado no Prompt 4",
-    });
+    const userExternalId = await getGoogleConnectionExternalId(establishment.id);
+    if (!userExternalId) {
+      return res.status(409).json({
+        message: "Plataforma Google não conectada para este estabelecimento",
+      });
+    }
+
+    try {
+      await GoogleReviewsService.deleteReply(
+        userExternalId,
+        review.externalId,
+        establishment.id,
+      );
+    } catch (error: any) {
+      return res.status(502).json({
+        ok: false,
+        error: "google_api_failed",
+        detail: error?.message,
+      });
+    }
+
+    await db
+      .update(responses)
+      .set({ isPublished: false, publishedAt: null })
+      .where(eq(responses.id, responseId));
+
+    return res.json({ ok: true });
   } catch (error) {
     console.error("Inbox unpublish error:", error);
     res.status(500).json({ message: "Erro ao cancelar publicação" });

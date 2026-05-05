@@ -68,6 +68,43 @@ export class GoogleReviewsService {
     return response.json();
   }
 
+  /**
+   * Remove a resposta a uma review no Google (DELETE)
+   */
+  static async deleteReply(userExternalId: string, reviewName: string, establishmentId?: number | null): Promise<void> {
+    const [connection] = await db.select().from(socialPlatformConnections).where(and(
+      eq(socialPlatformConnections.userExternalId, userExternalId),
+      eq(socialPlatformConnections.platform, "google"),
+      eq(socialPlatformConnections.establishmentId, establishmentId ?? null),
+      eq(socialPlatformConnections.status, "connected"),
+    ));
+    if (!connection?.accessToken) {
+      throw new Error("Conta Google não encontrada.");
+    }
+
+    const accessToken = await decryptSensitiveData(connection.accessToken);
+    if (!accessToken) {
+      throw new Error("Google access token inválido.");
+    }
+
+    const response = await fetch(`https://mybusiness.googleapis.com/v4/${reviewName}/reply`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (response.status === 200 || response.status === 204) {
+      return;
+    }
+    if (response.status === 404) {
+      console.log("deleteReply: reply not found, treating as already deleted");
+      return;
+    }
+    const errText = await response.text();
+    throw new Error(`Google delete reply failed (${response.status}): ${errText}`);
+  }
+
   private static async fetchLocations(accessToken: string) {
     const accountsResponse = await fetch(`${this.accountManagementUrl}/accounts`, {
       headers: { Authorization: `Bearer ${accessToken}` },
