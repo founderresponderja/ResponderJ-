@@ -170,6 +170,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     {
       name: Platform.BOOKING,
       key: 'booking',
+      comingSoon: true,
       description: "Líder em hospitalidade e reviews detalhados de hóspedes verificados.",
       url: "https://admin.booking.com/",
       color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900"
@@ -177,6 +178,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     {
       name: Platform.TRIPADVISOR,
       key: 'tripadvisor',
+      comingSoon: true,
       description: "Forte impacto na reputação turística global e rankings de viagem.",
       url: "https://www.tripadvisor.com/Owners",
       color: "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
@@ -192,6 +194,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     {
       name: Platform.FACEBOOK,
       key: 'facebook',
+      comingSoon: true,
       description: "Fundamental para comunidade e interação social direta com a marca.",
       url: "https://business.facebook.com/",
       color: "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-900"
