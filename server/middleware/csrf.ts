@@ -119,7 +119,13 @@ export const protectCSRF = (req: any, res: any, next: any) => {
     return next();
   }
   
-  const sessionId = (req as any).sessionID || 'no-session';
+  // CSRF tokens are intentionally NOT bound to express-session.
+  // The issuer in api/index.ts always uses "no-session" because
+  // authentication is handled by Clerk JWT (requireAuth), and
+  // the HMAC binds tokens to secret + timestamp + nonce. Both
+  // sides must agree, so the validator also pins to "no-session".
+  // See related fix in api/index.ts::resolveSessionIdFromRequest.
+  const sessionId = 'no-session';
   const token = req.headers['x-csrf-token'] || req.body._csrfToken || req.query._csrfToken;
   
   if (!token) {
@@ -131,28 +137,7 @@ export const protectCSRF = (req: any, res: any, next: any) => {
   }
   
   if (!validateCSRFToken(token as string, sessionId)) {
-    // [CSRF DEBUG] — temporário, remover após diagnóstico
-    try {
-      const decoded = Buffer.from(token as string, 'base64').toString();
-      const parts = decoded.split(':');
-      console.error('[CSRF_DEBUG]', JSON.stringify({
-        path: req.path,
-        method: req.method,
-        validatorSessionId: sessionId,
-        tokenPartsCount: parts.length,
-        tokenSessionId: parts[0],
-        tokenTimestamp: parts[1],
-        tokenAge_ms: parts[1] ? Date.now() - parseInt(parts[1]) : null,
-        tokenHashLen: parts[3]?.length,
-        secretSource: process.env.CSRF_SECRET ? 'CSRF_SECRET'
-                    : process.env.SESSION_SECRET ? 'SESSION_SECRET'
-                    : 'default-fallback',
-        secretLen: (process.env.CSRF_SECRET || process.env.SESSION_SECRET || 'default-csrf-secret-change-in-production').length,
-      }));
-    } catch (e) {
-      console.error('[CSRF_DEBUG] decode error:', (e as Error).message);
-    }
-
+    console.error(`CSRF: Invalid token for ${req.method} ${req.path} from IP ${req.ip}`);
     return res.status(403).json({
       error: 'Token CSRF inválido ou expirado',
       code: 'CSRF_TOKEN_INVALID',
