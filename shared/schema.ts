@@ -145,6 +145,8 @@ export const reviews = pgTable("reviews", {
   language: text("language"),
   sentiment: text("sentiment"),
   reviewDate: timestamp("review_date"),
+  externalResponseText: text("external_response_text"),
+  externalResponseAt: timestamp("external_response_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => {
   return {

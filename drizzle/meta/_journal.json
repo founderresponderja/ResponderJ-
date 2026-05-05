@@ -36,6 +36,13 @@
       "when": 1777983862309,
       "tag": "0004_magenta_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778019406147,
+      "tag": "0005_futuristic_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }
