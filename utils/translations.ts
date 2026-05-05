@@ -38,6 +38,7 @@ export const translations = {
       creditsLeft: "respostas restantes",
       menu: {
         overview: "Visão Geral",
+        inbox: "Inbox",
         generate: "Gerar Resposta IA",
         social: "Gestão de Redes",
         discovery: "Descoberta (IA)",
@@ -104,6 +105,16 @@ export const translations = {
       security: "Segurança de nível bancário com encriptação AES-256."
     },
     app: {
+      inbox: {
+        title: "Inbox",
+        newManual: "Nova resposta manual",
+        filterAllStatuses: "Todos os estados",
+        filterPending: "Pendente",
+        filterResponded: "Respondida",
+        filterAllPlatforms: "Todas as plataformas",
+        filterAllRatings: "Todas as classificações",
+        selectPrompt: "Selecciona uma review para ver o detalhe",
+      },
       welcome: "Bem-vindo ao Responder Já",
       welcomeSubtitle: "A sua central de inteligência artificial para gestão de reputação.",
       quickActions: "Ações Rápidas",
@@ -308,6 +319,7 @@ export const translations = {
       creditsLeft: "replies left",
       menu: {
         overview: "Overview",
+        inbox: "Inbox",
         generate: "AI Response Generator",
         social: "Social Media",
         discovery: "Discovery (AI)",
@@ -374,6 +386,16 @@ export const translations = {
       security: "Enterprise-grade security with AES-256 encryption."
     },
     app: {
+      inbox: {
+        title: "Inbox",
+        newManual: "New manual reply",
+        filterAllStatuses: "All statuses",
+        filterPending: "Pending",
+        filterResponded: "Responded",
+        filterAllPlatforms: "All platforms",
+        filterAllRatings: "All ratings",
+        selectPrompt: "Select a review to see details",
+      },
       welcome: "Welcome to Responder Já",
       welcomeSubtitle: "Your AI command center for reputation management.",
       quickActions: "Quick Actions",
@@ -578,6 +600,7 @@ export const translations = {
       creditsLeft: "respuestas restantes",
       menu: {
         overview: "Visión General",
+        inbox: "Inbox",
         generate: "Generador IA",
         social: "Gestión Redes",
         discovery: "Descubrimiento (IA)",
@@ -644,6 +667,16 @@ export const translations = {
       security: "Protegido por encriptación SSL empresarial."
     },
     app: {
+      inbox: {
+        title: "Inbox",
+        newManual: "Nueva respuesta manual",
+        filterAllStatuses: "Todos los estados",
+        filterPending: "Pendiente",
+        filterResponded: "Respondida",
+        filterAllPlatforms: "Todas las plataformas",
+        filterAllRatings: "Todas las puntuaciones",
+        selectPrompt: "Selecciona una reseña para ver el detalle",
+      },
       welcome: "Bienvenido a Responder Já",
       welcomeSubtitle: "Tu centro de comando de IA para la gestión de reputación.",
       quickActions: "Acciones Rápidas",

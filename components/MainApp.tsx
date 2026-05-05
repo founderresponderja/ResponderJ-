@@ -2,15 +2,15 @@
 import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import { useClerk, useAuth } from '@clerk/clerk-react';
 import { 
-  MessageSquareText, 
-  LayoutDashboard, 
-  List, 
-  LogOut, 
-  Sun, 
-  Moon, 
-  CreditCard, 
-  Activity, 
-  Store, 
+  MessageSquareText,
+  LayoutDashboard,
+  List,
+  LogOut,
+  Sun,
+  Moon,
+  CreditCard,
+  Activity,
+  Store,
   Bot,
   Coins,
   Crown,
@@ -20,9 +20,11 @@ import {
   Users,
   Share2,
   Building2,
-  Lock
+  Lock,
+  Inbox as InboxIcon,
 } from 'lucide-react';
 
+import InboxPage from './Inbox';
 import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
 import AssistantTip from './AssistantTip';
@@ -101,7 +103,7 @@ const MainApp: React.FC<MainAppProps> = ({
   const { signOut } = useClerk();
   const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
   const [agencyClients, setAgencyClients] = useState<AgencyClient[]>([]);
@@ -415,7 +417,9 @@ const MainApp: React.FC<MainAppProps> = ({
 
         <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-hide">
           <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
-          <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
+          <NavButton tab="inbox" icon={InboxIcon} label={nav.menu.inbox} />
+          {/* TODO: remove after Inbox proves stable */}
+          {/* <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} /> */}
           <NavButton tab="social-manager" icon={Share2} label={nav.menu.social} />
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
           {isAgencyPlan && <NavButton tab="crm" icon={Users} label={nav.menu.crm} />}
@@ -546,6 +550,10 @@ const MainApp: React.FC<MainAppProps> = ({
                     ))}
                   </div>
                 </div>
+              )}
+
+              {activeTab === 'inbox' && (
+                <InboxPage lang={lang} />
               )}
 
               {activeTab === 'generate' && (
