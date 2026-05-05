@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import process from 'process';
 import { Buffer } from 'buffer';
 import { domainManager } from '../config/domains.js';
+import { protectCSRF } from './csrf.js';
 
 // Rate limiting store
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -444,7 +445,7 @@ export const applySecurity = (req: any, res: any, next: any) => {
       sanitizeInput(req, res, () => {
         sqlInjectionProtection(req, res, () => {
           // Aplicar CSRF com exceções mínimas
-          csrfProtection(req, res, next);
+          protectCSRF(req, res, next);
         });
       });
     });
