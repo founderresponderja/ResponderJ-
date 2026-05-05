@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
-import { useClerk } from '@clerk/clerk-react';
+import { useClerk, useAuth } from '@clerk/clerk-react';
 import { 
   MessageSquareText, 
   LayoutDashboard, 
@@ -27,7 +27,7 @@ import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
 import AssistantTip from './AssistantTip';
 import { Logo } from './Logo';
-import { useGenerateResponse } from '../services/geminiService';
+import { useGenerateResponse, getCsrfToken } from '../services/geminiService';
 import UpgradeModal from './UpgradeModal';
 import { PLAN_CAPABILITIES, normalizePlan } from '../shared/planCapabilities';
 import { processReplitPayment } from '../services/paymentService';
@@ -99,6 +99,7 @@ const MainApp: React.FC<MainAppProps> = ({
   onTrialResponseUsed
 }) => {
   const { signOut } = useClerk();
+  const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
   const [activeTab, setActiveTab] = useState<'overview' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
@@ -301,8 +302,17 @@ const MainApp: React.FC<MainAppProps> = ({
     if (!currentReview?.responseId) return;
     setIsLoading(true);
     try {
+      const csrfToken = await getCsrfToken();
+      const clerkToken = await getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) headers['x-csrf-token'] = csrfToken;
+      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
+
       const res = await fetch(`/api/responses/${currentReview.responseId}/regenerate`, {
         method: 'POST',
+        headers,
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

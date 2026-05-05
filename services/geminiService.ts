@@ -29,7 +29,7 @@ export interface GenerationInput {
 }
 
 // Helper to get CSRF token
-async function getCsrfToken() {
+export async function getCsrfToken() {
   try {
     const res = await fetch('/api/csrf-token');
     if (!res.ok) return null;
