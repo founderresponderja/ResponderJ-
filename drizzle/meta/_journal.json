@@ -29,6 +29,13 @@
       "when": 1777631318231,
       "tag": "0003_steady_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777983862309,
+      "tag": "0004_magenta_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

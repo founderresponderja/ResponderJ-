@@ -526,6 +526,22 @@ export const socialPlatformConnections = pgTable("social_platform_connections", 
   };
 });
 
+export const oauthStates = pgTable("oauth_states", {
+  id: serial("id").primaryKey(),
+  state: text("state").notNull(),
+  userExternalId: text("user_external_id").notNull(),
+  platform: text("platform").notNull(),
+  establishmentId: integer("establishment_id"),
+  meta: jsonb("meta"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => {
+  return {
+    stateIdx: uniqueIndex("oauth_states_state_unique").on(table.state),
+    expiresIdx: index("oauth_states_expires_idx").on(table.expiresAt),
+  };
+});
+
 export const corporatePosts = pgTable("corporate_posts", {
   id: text("id").primaryKey(),
   content: text("content"),
