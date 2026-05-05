@@ -3,6 +3,7 @@ import { Platform } from '../types';
 import { ExternalLink, CircleCheckBig, RefreshCw, MessageSquareText } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useAuth, useUser } from '@clerk/clerk-react';
+import { getCsrfToken } from '../services/geminiService';
 
 interface PlatformListProps {
   lang: Language;
@@ -62,9 +63,17 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     if (!clerkUserId) return;
     setLoadingPlatform(platformKey);
     try {
+      const csrfToken = await getCsrfToken();
+      const clerkToken = await getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) headers['x-csrf-token'] = csrfToken;
+      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
+
       const response = await fetch(`/api/platforms/connect/${platformKey}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ clerkUserId, establishmentId, planId }),
       });
       if (response.status === 402) {
@@ -88,9 +97,17 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     if (!clerkUserId) return;
     setLoadingPlatform(platformKey);
     try {
+      const csrfToken = await getCsrfToken();
+      const clerkToken = await getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) headers['x-csrf-token'] = csrfToken;
+      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
+
       await fetch(`/api/platforms/disconnect/${platformKey}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ clerkUserId, establishmentId, planId }),
       });
       await loadStatus();
