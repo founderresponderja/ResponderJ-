@@ -57,8 +57,8 @@ async function countConnectedPlatforms(clerkUserId: string, establishmentId?: nu
 }
 
 async function exchangeGoogleCodeForTokens(code: string) {
-  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
     throw new Error("Google OAuth credentials are not configured.");
   }
@@ -90,7 +90,7 @@ async function exchangeGoogleCodeForTokens(code: string) {
 }
 
 function buildGoogleOAuthUrl(state: string) {
-  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_OAUTH_CLIENT_ID || "";
+  const clientId = process.env.GOOGLE_CLIENT_ID || "";
   if (!clientId) {
     throw new Error("Google OAuth credentials are not configured.");
   }
