@@ -48,7 +48,8 @@ import { registerContentRoutes } from "./routes/content.js";
 import { registerCorporateSocialRoutes } from "./routes/corporate-social.js";
 import { registerCriticalSystemsRoutes } from "./routes/critical-systems.js";
 import reviewsRouter from "./routes/reviews.js";
-import reviewsAiRouter from "./routes/reviews-ai.js"; 
+import reviewsAiRouter from "./routes/reviews-ai.js";
+import inboxRouter from "./routes/inbox.js";
 import qualityFeedbackRouter from "./routes/quality-feedback.js";
 import errorRoutes from "./routes/errors.js";
 import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
@@ -1228,7 +1229,8 @@ export async function registerRoutes(app: any): Promise<void> {
     app.use("/api/ai-training", aiTrainingRoutes);
 
     app.use("/api/reviews", reviewsRouter);
-    app.use("/api/reviews-ai", reviewsAiRouter); 
+    app.use("/api/reviews-ai", reviewsAiRouter);
+    app.use("/api/inbox", inboxRouter);
     app.use("/api/quality-feedback", qualityFeedbackRouter); // Register quality feedback route
     app.use("/api/errors", errorRoutes);
 
