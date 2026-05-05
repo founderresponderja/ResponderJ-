@@ -85,15 +85,15 @@ async function runStartupMigrations() {
 // `server/middleware/csrf.ts::generateCSRFToken`, so the Express-mounted
 // validator (when it does bootstrap) accepts tokens issued here.
 
-function resolveSessionIdFromRequest(req: Request): string {
-  try {
-    const cookieHeader = (req.headers && (req.headers.cookie as string)) || "";
-    if (!cookieHeader) return "no-session";
-    const match = cookieHeader.match(/connect\.sid=([^;]+)/);
-    return match?.[1] || "no-session";
-  } catch {
-    return "no-session";
-  }
+function resolveSessionIdFromRequest(_req: Request): string {
+  // CSRF tokens are intentionally NOT bound to express-session in
+  // production. express-session is only mounted in the dev stack
+  // (server/index.ts) and req.session is never used by the app.
+  // Authentication is handled by Clerk JWT (requireAuth); CSRF only
+  // needs to bind tokens to the secret + timestamp + random nonce.
+  // Binding to a non-existent session would fail validation when
+  // stale connect.sid cookies leak into production requests.
+  return "no-session";
 }
 
 function resolveCsrfSecret(): string {
