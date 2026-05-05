@@ -9,10 +9,11 @@ import {
   InsertEmailSequence, EmailSequence, InsertInvoice, Invoice, InsertInvoiceItem, InvoiceItem,
   InsertInvoiceSettings, InvoiceSettings, InsertReferral, Referral, InsertReferralReward, ReferralReward,
   creditPackages, InsertCreditPackage, CreditPackage,
-  invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback
+  invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback,
+  oauthStates, OAuthState, InsertOAuthState
 } from "../shared/schema.js";
 import { db, pool } from "./db.js";
-import { eq, ilike, or, and, desc, sql, gte } from "drizzle-orm";
+import { eq, ilike, or, and, desc, sql, gte, lt } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -150,6 +151,12 @@ export interface IStorage {
   // Quality Feedback
   createQualityFeedback(feedback: InsertQualityFeedback): Promise<QualityFeedback>;
   getQualityFeedback(userId?: number | string, since?: Date): Promise<QualityFeedback[]>;
+
+  // OAuth State methods
+  createOAuthState(state: InsertOAuthState): Promise<OAuthState>;
+  getOAuthState(state: string): Promise<OAuthState | undefined>;
+  deleteOAuthState(state: string): Promise<void>;
+  cleanupExpiredOAuthStates(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -822,11 +829,38 @@ export class DatabaseStorage implements IStorage {
     const conditions = [];
     if (userId) conditions.push(eq(qualityFeedback.userId, Number(userId)));
     if (since) conditions.push(gte(qualityFeedback.createdAt, since));
-    
+
     return await db.select()
       .from(qualityFeedback)
       .where(and(...conditions))
       .orderBy(desc(qualityFeedback.createdAt));
+  }
+
+  // OAuth State methods
+  async createOAuthState(state: InsertOAuthState): Promise<OAuthState> {
+    const [row] = await db.insert(oauthStates).values(state).returning();
+    return row;
+  }
+
+  async getOAuthState(stateValue: string): Promise<OAuthState | undefined> {
+    const [row] = await db
+      .select()
+      .from(oauthStates)
+      .where(eq(oauthStates.state, stateValue))
+      .limit(1);
+    return row;
+  }
+
+  async deleteOAuthState(stateValue: string): Promise<void> {
+    await db.delete(oauthStates).where(eq(oauthStates.state, stateValue));
+  }
+
+  async cleanupExpiredOAuthStates(): Promise<number> {
+    const result = await db
+      .delete(oauthStates)
+      .where(lt(oauthStates.expiresAt, new Date()))
+      .returning({ id: oauthStates.id });
+    return result.length;
   }
 }
 

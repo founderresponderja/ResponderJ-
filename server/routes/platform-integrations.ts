@@ -5,10 +5,9 @@ import { db } from "../db.js";
 import { socialPlatformConnections } from "../../shared/schema.js";
 import { encryptSensitiveData } from "../encryption.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
+import { storage } from "../storage.js";
 
 const router = Router();
-const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-const oauthStateStore = new Map<string, { clerkUserId: string; platform: string; establishmentId?: number; createdAt: number }>();
 
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:3000";
 const GOOGLE_CALLBACK_URL = "https://responderja.pt/api/platforms/callback/google";
@@ -23,13 +22,6 @@ const PLAN_PLATFORM_LIMITS: Record<string, number> = {
   pro: 5,
   agency: Number.POSITIVE_INFINITY,
 };
-
-function cleanupOauthState() {
-  const now = Date.now();
-  for (const [state, value] of oauthStateStore.entries()) {
-    if (now - value.createdAt > OAUTH_STATE_TTL_MS) oauthStateStore.delete(state);
-  }
-}
 
 function normalizePlanId(planId: string | undefined) {
   return String(planId || "free").toLowerCase();
@@ -203,7 +195,6 @@ router.get("/status", async (req, res) => {
 });
 
 router.post("/connect/:platform", async (req, res) => {
-  cleanupOauthState();
   const platform = String(req.params.platform || "").toLowerCase();
   const clerkUserId = resolveExternalUserId(req);
   const establishmentId = req.body?.establishmentId ? Number(req.body.establishmentId) : undefined;
@@ -232,7 +223,21 @@ router.post("/connect/:platform", async (req, res) => {
 
   if (platform === "google" || platform === "facebook") {
     const state = crypto.randomBytes(16).toString("hex");
-    oauthStateStore.set(state, { clerkUserId, platform, establishmentId, createdAt: Date.now() });
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    storage.cleanupExpiredOAuthStates().catch((e) => {
+      console.warn("[oauth] cleanupExpiredOAuthStates failed:", e);
+    });
+
+    await storage.createOAuthState({
+      state,
+      userExternalId: clerkUserId,
+      platform,
+      establishmentId: establishmentId ?? null,
+      meta: {},
+      expiresAt,
+    });
+
     const oauthUrl = platform === "google" ? buildGoogleOAuthUrl(state) : buildFacebookOAuthUrl(state);
     return res.json({ oauthUrl });
   }
@@ -261,12 +266,15 @@ router.get("/callback/:platform", async (req, res) => {
     return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=error`);
   }
 
-  const stateEntry = oauthStateStore.get(state);
-  if (!stateEntry || stateEntry.platform !== platform || !code) {
+  const stateEntry = await storage.getOAuthState(state);
+  if (!stateEntry || stateEntry.platform !== platform || stateEntry.expiresAt < new Date() || !code) {
+    if (stateEntry) {
+      await storage.deleteOAuthState(state).catch(() => {});
+    }
     return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=invalid_state`);
   }
 
-  oauthStateStore.delete(state);
+  await storage.deleteOAuthState(state);
 
   let accessToken = "";
   let refreshToken = "";
@@ -299,7 +307,7 @@ router.get("/callback/:platform", async (req, res) => {
   }
 
   await upsertConnection({
-    clerkUserId: stateEntry.clerkUserId,
+    clerkUserId: stateEntry.userExternalId,
     establishmentId: stateEntry.establishmentId,
     platform,
     accessToken,

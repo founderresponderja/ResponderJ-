@@ -687,5 +687,7 @@ export type InsertQualityFeedback = typeof qualityFeedback.$inferInsert;
 
 export type SocialPlatformConnection = typeof socialPlatformConnections.$inferSelect;
 export type InsertSocialPlatformConnection = typeof socialPlatformConnections.$inferInsert;
+export type OAuthState = typeof oauthStates.$inferSelect;
+export type InsertOAuthState = typeof oauthStates.$inferInsert;
 export type ResponseLearningPattern = typeof responseLearningPatterns.$inferSelect;
 export type InsertResponseLearningPattern = typeof responseLearningPatterns.$inferInsert;
