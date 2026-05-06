@@ -12,6 +12,32 @@ interface InboxFilters {
   rating?: number;
 }
 
+function stars(n: number | null): string {
+  const k = Math.max(0, Math.min(5, n ?? 0));
+  return '★'.repeat(k) + '☆'.repeat(5 - k);
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  google: 'Google',
+  tripadvisor: 'TripAdvisor',
+  booking: 'Booking.com',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+};
+
+function platformLabel(p: string): string {
+  return PLATFORM_LABELS[p] ?? p;
+}
+
+function formatDate(s: string, lang: Language): string {
+  const locale = lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'pt-PT';
+  try {
+    return new Date(s).toLocaleDateString(locale);
+  } catch {
+    return s;
+  }
+}
+
 const Inbox: React.FC<InboxProps> = ({ lang }) => {
   const t = translations[lang].app.inbox;
   const [filters, setFilters] = useState<InboxFilters>({});
