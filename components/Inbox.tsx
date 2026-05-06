@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Inbox as InboxIcon, Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Inbox as InboxIcon, Plus, AlertCircle } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
+import { useAuth } from '@clerk/clerk-react';
 
 interface InboxProps {
   lang: Language;
@@ -10,6 +11,37 @@ interface InboxFilters {
   status?: 'pending' | 'responded';
   platform?: string;
   rating?: number;
+}
+
+const PAGE_SIZE = 25;
+
+interface InboxItem {
+  id: number;
+  platform: string;
+  external_id: string | null;
+  author_name: string | null;
+  rating: number | null;
+  review_text: string | null;
+  language: string | null;
+  sentiment: string | null;
+  review_date: string | null;
+  external_response_text: string | null;
+  external_response_at: string | null;
+  created_at: string;
+  response_id: number | null;
+  response_text: string | null;
+  is_published: boolean | null;
+  published_at: string | null;
+  approval_status: string | null;
+  response_tone: string | null;
+  response_language: string | null;
+}
+
+interface InboxResponse {
+  items: InboxItem[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 function stars(n: number | null): string {
@@ -43,6 +75,12 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
   const [filters, setFilters] = useState<InboxFilters>({});
   const [page, setPage] = useState(1);
   const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
+
+  const { getToken } = useAuth();
+  const [items, setItems] = useState<InboxItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col h-full gap-6">
