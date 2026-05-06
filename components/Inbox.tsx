@@ -194,21 +194,69 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
             </select>
           </div>
 
-          {/* Skeleton list */}
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 animate-pulse"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded-full w-16" />
-                  <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded-full w-10" />
+          {/* Lista de reviews */}
+          <div className="space-y-3 flex-1 overflow-y-auto">
+            {loading && items.length === 0 && (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 animate-pulse"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded-full w-16" />
+                    <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded-full w-10" />
+                  </div>
+                  <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded w-3/4 mb-2" />
+                  <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded w-full mb-1" />
+                  <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded w-2/3" />
                 </div>
-                <div className="h-3 bg-gray-100 dark:bg-slate-700 rounded w-3/4 mb-2" />
-                <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded w-full mb-1" />
-                <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded w-2/3" />
+              ))
+            )}
+
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-center">
+                <AlertCircle size={32} className="mx-auto mb-2 text-red-500" />
+                <p className="text-sm text-red-700 dark:text-red-400 mb-3">{t.errorLoading}</p>
+                <button
+                  onClick={fetchInbox}
+                  className="text-sm font-medium text-red-700 dark:text-red-400 hover:underline"
+                >
+                  {t.retry}
+                </button>
               </div>
+            )}
+
+            {!loading && !error && items.length === 0 && (
+              <div className="text-center py-12 text-slate-400">
+                <InboxIcon size={48} className="mx-auto mb-3 opacity-20" />
+                <p className="text-sm">{t.empty}</p>
+              </div>
+            )}
+
+            {!error && items.length > 0 && items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setSelectedReviewId(item.id)}
+                className={`w-full text-left bg-white dark:bg-slate-900 border rounded-xl p-4 transition-colors ${
+                  selectedReviewId === item.id
+                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5 text-xs text-slate-500">
+                  <span className="text-amber-500">{stars(item.rating)}</span>
+                  <span className="font-medium">{platformLabel(item.platform)}</span>
+                </div>
+                <div className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate mb-1">
+                  {item.author_name ?? 'Anónimo'}
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
+                  {item.review_text ?? ''}
+                </p>
+                <div className="text-xs text-slate-400">
+                  {formatDate(item.review_date ?? item.created_at, lang)}
+                </div>
+              </button>
             ))}
           </div>
         </div>
