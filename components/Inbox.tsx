@@ -248,7 +248,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                   <span className="font-medium">{platformLabel(item.platform)}</span>
                 </div>
                 <div className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate mb-1">
-                  {item.author_name ?? 'Anónimo'}
+                  {item.author_name ?? t.anonymous}
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
                   {item.review_text ?? ''}
