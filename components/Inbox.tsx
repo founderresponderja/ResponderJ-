@@ -82,6 +82,46 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchInbox = useCallback(async () => {
+    setLoading(true);
+    try {
+      const url = new URL('/api/inbox', window.location.origin);
+      url.searchParams.set('page', String(page));
+      url.searchParams.set('pageSize', String(PAGE_SIZE));
+      if (filters.status) url.searchParams.set('status', filters.status);
+      if (filters.platform) url.searchParams.set('platform', filters.platform);
+      if (filters.rating) url.searchParams.set('rating', String(filters.rating));
+
+      const token = await getToken();
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${token ?? ''}` },
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data: InboxResponse = await res.json();
+      setItems(data.items);
+      setTotal(data.total);
+      setError(null);
+    } catch (e) {
+      console.error('fetchInbox failed:', e);
+      setError(t.errorLoading);
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, filters.status, filters.platform, filters.rating, getToken, t.errorLoading]);
+
+  useEffect(() => {
+    fetchInbox();
+  }, [fetchInbox]);
+
+  // Reset page quando filtros mudam
+  useEffect(() => {
+    setPage(1);
+  }, [filters.status, filters.platform, filters.rating]);
+
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Header */}
