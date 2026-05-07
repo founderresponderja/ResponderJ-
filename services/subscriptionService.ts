@@ -1,22 +1,8 @@
 import { loadStripe } from '@stripe/stripe-js';
 import { PlanId } from '../types.js';
+import { getCsrfToken } from '../utils/api';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-
-// Obtém um token CSRF fresco antes de qualquer POST protegido. Mantemos
-// esta implementação local (não partilhada com geminiService.ts) para
-// evitar importações cruzadas entre services.
-async function getCsrfToken(): Promise<string | null> {
-  try {
-    const res = await fetch('/api/csrf-token');
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.csrfToken || null;
-  } catch (e) {
-    console.warn('[checkout] could not fetch CSRF token', e);
-    return null;
-  }
-}
 
 export async function createCheckoutSession(payload: { clerkUserId?: string; email?: string; planId: PlanId }) {
   const csrfToken = await getCsrfToken();

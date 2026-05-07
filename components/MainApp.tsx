@@ -29,7 +29,8 @@ import ReviewForm from './ReviewForm';
 import ResponseCard from './ResponseCard';
 import AssistantTip from './AssistantTip';
 import { Logo } from './Logo';
-import { useGenerateResponse, getCsrfToken } from '../services/geminiService';
+import { useGenerateResponse } from '../services/geminiService';
+import { useResponseActions } from '../hooks/useResponseActions';
 import UpgradeModal from './UpgradeModal';
 import { PLAN_CAPABILITIES, normalizePlan } from '../shared/planCapabilities';
 import { processReplitPayment } from '../services/paymentService';
@@ -124,6 +125,10 @@ const MainApp: React.FC<MainAppProps> = ({
   // Subscription state vem do hook useSubscription (Fase 4.3b parte 2).
   // Não há mais useState local nem localStorage — fonte única de verdade na BD.
   const subscription = useSubscription();
+
+  const { accept, discard, regenerate, isWorking: isActionWorking } = useResponseActions({
+    onSuccess: () => subscription.refresh(),
+  });
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeModalMessage, setUpgradeModalMessage] = useState("Faz upgrade para desbloquear esta funcionalidade.");
@@ -245,110 +250,35 @@ const MainApp: React.FC<MainAppProps> = ({
     }
   };
 
-  // Sub-fase 3.4: Aceitar a resposta. Único momento em que
-  // o crédito é descontado. Aceita texto opcional se foi editado.
   const handleAccept = async (responseText?: string) => {
     if (!currentReview?.responseId) return;
-    setIsLoading(true);
-    try {
-      const csrfToken = await getCsrfToken();
-      const clerkToken = await getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (csrfToken) headers['x-csrf-token'] = csrfToken;
-      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
-
-      const res = await fetch(`/api/responses/${currentReview.responseId}/accept`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(responseText ? { responseText } : {}),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Falha ao aceitar resposta');
-        return;
-      }
-      const data = await res.json();
-      // Atualiza estado local com novo status e (se editado) novo texto.
+    const data = await accept(currentReview.responseId, responseText);
+    if (data) {
       setCurrentReview({
         ...currentReview,
         approvalStatus: data.approvalStatus,
         generatedResponse: responseText || currentReview.generatedResponse,
       });
-      // Refresca subscription para atualizar contador de créditos no dashboard.
-      subscription.refresh();
-    } catch (e) {
-      console.error('[handleAccept] error:', e);
-      alert('Erro de rede ao aceitar resposta');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDiscard = async () => {
     if (!currentReview?.responseId) return;
-    setIsLoading(true);
-    try {
-      const csrfToken = await getCsrfToken();
-      const clerkToken = await getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (csrfToken) headers['x-csrf-token'] = csrfToken;
-      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
-
-      const res = await fetch(`/api/responses/${currentReview.responseId}/discard`, {
-        method: 'POST',
-        headers,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Falha ao descartar resposta');
-        return;
-      }
-      // Limpa o painel para o utilizador escrever nova review.
+    const data = await discard(currentReview.responseId);
+    if (data) {
       setCurrentReview(null);
-    } catch (e) {
-      console.error('[handleDiscard] error:', e);
-      alert('Erro de rede ao descartar resposta');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleRegenerate = async () => {
     if (!currentReview?.responseId) return;
-    setIsLoading(true);
-    try {
-      const csrfToken = await getCsrfToken();
-      const clerkToken = await getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (csrfToken) headers['x-csrf-token'] = csrfToken;
-      if (clerkToken) headers['Authorization'] = `Bearer ${clerkToken}`;
-
-      const res = await fetch(`/api/responses/${currentReview.responseId}/regenerate`, {
-        method: 'POST',
-        headers,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.message || 'Falha ao refazer resposta');
-        return;
-      }
-      const data = await res.json();
+    const data = await regenerate(currentReview.responseId);
+    if (data) {
       setCurrentReview({
         ...currentReview,
         generatedResponse: data.responseText || currentReview.generatedResponse,
         attemptsCount: data.attemptsCount || (currentReview.attemptsCount || 1) + 1,
       });
-    } catch (e) {
-      console.error('[handleRegenerate] error:', e);
-      alert('Erro de rede ao refazer resposta');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -419,7 +349,7 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
           <NavButton tab="inbox" icon={InboxIcon} label={nav.menu.inbox} />
           {/* TODO: remove after Inbox proves stable */}
-          {/* <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} /> */}
+          <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
           <NavButton tab="social-manager" icon={Share2} label={nav.menu.social} />
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
           {isAgencyPlan && <NavButton tab="crm" icon={Users} label={nav.menu.crm} />}
@@ -570,7 +500,7 @@ const MainApp: React.FC<MainAppProps> = ({
                         onAccept={handleAccept}
                         onDiscard={handleDiscard}
                         onRegenerate={handleRegenerate}
-                        isWorking={isLoading}
+                        isWorking={isLoading || isActionWorking}
                       />
                     ) : (
                       <div className="h-96 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-400">

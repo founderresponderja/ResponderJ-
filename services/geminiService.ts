@@ -1,6 +1,8 @@
 
 import { ReviewData } from "../types.js";
 import { useAuth } from "@clerk/clerk-react";
+import { getCsrfToken } from "../utils/api";
+export { getCsrfToken };
 
 export interface BusinessContext {
   businessName?: string;
@@ -26,19 +28,6 @@ export interface GenerationInput {
   tone: string;
   language: string;
   extraInstructions?: string;
-}
-
-// Helper to get CSRF token
-export async function getCsrfToken() {
-  try {
-    const res = await fetch('/api/csrf-token');
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.csrfToken;
-  } catch (e) {
-    console.warn("Could not fetch CSRF token", e);
-    return null;
-  }
 }
 
 export const generateResponse = async (
