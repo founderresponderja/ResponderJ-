@@ -308,7 +308,7 @@ function App() {
           )}
 
           {currentView === 'app' && isSignedIn && (
-            subscription.isLoading ? (
+            subscription.isInitialLoading ? (
               <PageLoader />
             ) : (subscription.status === 'active' || subscription.isTrialing) ? (
               <MainApp 

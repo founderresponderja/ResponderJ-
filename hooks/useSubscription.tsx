@@ -28,6 +28,7 @@ export interface SubscriptionState {
 
 export interface SubscriptionContextValue extends SubscriptionState {
   isLoading: boolean;
+  isInitialLoading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
   hasFeature: (feature: keyof SubscriptionState["capabilities"]) => boolean;
@@ -65,6 +66,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const [state, setState] = useState<SubscriptionState>(DEFAULT_STATE);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchSubscription = useCallback(async () => {
@@ -93,6 +95,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
       setIsLoading(false);
+      setHasInitiallyLoaded(true);
     }
   }, [isSignedIn, getToken]);
 
@@ -132,6 +135,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const value: SubscriptionContextValue = {
     ...state,
     isLoading,
+    isInitialLoading: !hasInitiallyLoaded,
     error,
     refresh: fetchSubscription,
     hasFeature,
