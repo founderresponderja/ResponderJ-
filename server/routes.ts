@@ -57,7 +57,7 @@ import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 
 import { db } from "./db.js";
 import { users, establishments, reviews, responses, socialPlatformConnections } from "../shared/schema.js";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 
 import Stripe from "stripe";
 import passport from "passport";
@@ -785,8 +785,51 @@ export async function registerRoutes(app: any): Promise<void> {
         return res.status(400).json({ message: "Créditos insuficientes" });
       }
 
+      // Opcional reviewId — quando vem da Inbox, linkar a response
+      // à review correspondente. Ownership via establishments.userId
+      // (reviews não têm userId directo).
+      const reviewIdRaw = req.body.reviewId;
+      let reviewIdInt: number | undefined;
+      if (reviewIdRaw != null) {
+        reviewIdInt = Number(reviewIdRaw);
+        if (!Number.isInteger(reviewIdInt) || reviewIdInt <= 0) {
+          return res.status(400).json({ message: "reviewId inválido" });
+        }
+        const [establishment] = await db
+          .select({ id: establishments.id })
+          .from(establishments)
+          .where(eq(establishments.userId, userId))
+          .limit(1);
+        if (!establishment) {
+          return res.status(404).json({ message: "Estabelecimento não encontrado" });
+        }
+        const [review] = await db
+          .select({ id: reviews.id })
+          .from(reviews)
+          .where(and(eq(reviews.id, reviewIdInt), eq(reviews.establishmentId, establishment.id)))
+          .limit(1);
+        if (!review) {
+          return res.status(404).json({ message: "Review não encontrada" });
+        }
+        const [existing] = await db
+          .select({ id: responses.id })
+          .from(responses)
+          .where(and(
+            eq(responses.reviewId, reviewIdInt),
+            ne(responses.approvalStatus, 'discarded'),
+          ))
+          .limit(1);
+        if (existing) {
+          return res.status(409).json({
+            message: "Esta review já tem uma resposta activa",
+            responseId: existing.id,
+          });
+        }
+      }
+
       const responseData = {
         userId,
+        ...(reviewIdInt !== undefined ? { reviewId: reviewIdInt } : {}),
         businessProfileId,
         platform,
         originalMessage,

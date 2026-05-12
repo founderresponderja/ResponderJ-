@@ -33,7 +33,8 @@ export interface GenerationInput {
 export const generateResponse = async (
   review: GenerationInput | ReviewData,
   context?: BusinessContext,
-  clerkToken?: string | null
+  clerkToken?: string | null,
+  reviewId?: number,
 ): Promise<AIResponse> => {
   const csrfToken = await getCsrfToken();
   const headers: Record<string, string> = {
@@ -57,7 +58,8 @@ export const generateResponse = async (
       tone: review.tone,
       extraInstructions: 'extraInstructions' in review ? review.extraInstructions : undefined,
       businessContext: context,
-      customerName: 'customerName' in review ? review.customerName : 'Cliente'
+      customerName: 'customerName' in review ? review.customerName : 'Cliente',
+      ...(reviewId !== undefined ? { reviewId } : {}),
     })
   });
 
@@ -82,9 +84,13 @@ export const generateResponse = async (
 export const useGenerateResponse = () => {
   const { getToken } = useAuth();
 
-  return async (review: GenerationInput | ReviewData, context?: BusinessContext) => {
+  return async (
+    review: GenerationInput | ReviewData,
+    context?: BusinessContext,
+    reviewId?: number,
+  ) => {
     const token = await getToken();
-    return generateResponse(review, context, token);
+    return generateResponse(review, context, token, reviewId);
   };
 };
 

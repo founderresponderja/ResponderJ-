@@ -194,7 +194,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
     setIsGenerating(true);
     try {
       const reviewData = inboxItemToReviewData(selectedItem, t.anonymous);
-      await generate(reviewData);
+      await generate(reviewData, undefined, selectedItem.id);
       await fetchInbox();
     } catch (e) {
       console.error('handleGenerateForReview failed:', e);
