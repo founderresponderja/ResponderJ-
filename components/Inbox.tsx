@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink, Send } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useAuth } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
+import ResponseCard from './ResponseCard';
+import { useResponseActions } from '../hooks/useResponseActions';
 
 interface InboxProps {
   lang: Language;
@@ -146,6 +148,13 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
       setLoading(false);
     }
   }, [page, filters.status, filters.platform, filters.rating, getToken, t.errorLoading]);
+
+  const {
+    accept,
+    discard,
+    regenerate,
+    isWorking: isActionWorking,
+  } = useResponseActions({ onSuccess: fetchInbox });
 
   useEffect(() => {
     fetchInbox();
@@ -368,9 +377,41 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                   </div>
                 )}
 
-                {/* Branch C — Gerada mas não publicada (TODO no Prompt 4b.4) */}
+                {/* Branch C — Resposta gerada, ainda não publicada */}
                 {!selectedItem.is_published && !selectedItem.external_response_text && selectedItem.response_id !== null && (
-                  <div className="text-xs text-slate-400">(Branch C — ResponseCard via adapter, TODO no 4b.4)</div>
+                  <div className="space-y-3">
+                    <ResponseCard
+                      review={inboxItemToReviewData(selectedItem, t.anonymous)}
+                      lang={lang}
+                      onAccept={async (text) => {
+                        if (selectedItem.response_id == null) return;
+                        await accept(selectedItem.response_id, text);
+                      }}
+                      onDiscard={async () => {
+                        if (selectedItem.response_id == null) return;
+                        await discard(selectedItem.response_id);
+                      }}
+                      onRegenerate={async () => {
+                        if (selectedItem.response_id == null) return;
+                        await regenerate(selectedItem.response_id);
+                      }}
+                      isWorking={isActionWorking}
+                    />
+
+                    {/* Botão Publicar — só visível quando aprovada e não publicada */}
+                    {selectedItem.approval_status === 'approved' && (
+                      <button
+                        onClick={() => {
+                          // TODO 4b.4.1: chamar POST /api/inbox/:id/publish
+                          console.log('TODO: publish to Google', selectedItem.id);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        <Send size={16} />
+                        {t.publishToGoogle}
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Branch D — Sem resposta nenhuma (TODO no Prompt 4b.5) */}
