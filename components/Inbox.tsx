@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useAuth } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
@@ -325,10 +325,59 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                 </p>
               </div>
 
-              {/* Branches A/B/C/D virão nos próximos prompts (4b.3, 4b.4, 4b.5).
-                  Por agora, placeholder para sabermos onde encaixar: */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400">
-                (Resposta — TODO nos próximos prompts)
+              {/* Separador */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+
+                {/* Branch A — Publicada via Responder Já */}
+                {selectedItem.is_published && (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle size={16} className="text-green-600 dark:text-green-400" />
+                      <span className="text-sm font-semibold text-green-800 dark:text-green-200">
+                        {t.statusPublished}
+                      </span>
+                      {selectedItem.published_at && (
+                        <span className="text-xs text-green-700 dark:text-green-300 ml-auto">
+                          {formatDate(selectedItem.published_at, lang)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-green-900 dark:text-green-100 whitespace-pre-wrap leading-relaxed">
+                      {selectedItem.response_text ?? ''}
+                    </p>
+                  </div>
+                )}
+
+                {/* Branch B — Respondida externamente (fora do Responder Já) */}
+                {!selectedItem.is_published && selectedItem.external_response_text && (
+                  <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ExternalLink size={16} className="text-slate-500 dark:text-slate-400" />
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {t.statusExternal}
+                      </span>
+                      {selectedItem.external_response_at && (
+                        <span className="text-xs text-slate-500 dark:text-slate-400 ml-auto">
+                          {formatDate(selectedItem.external_response_at, lang)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                      {selectedItem.external_response_text}
+                    </p>
+                  </div>
+                )}
+
+                {/* Branch C — Gerada mas não publicada (TODO no Prompt 4b.4) */}
+                {!selectedItem.is_published && !selectedItem.external_response_text && selectedItem.response_id !== null && (
+                  <div className="text-xs text-slate-400">(Branch C — ResponseCard via adapter, TODO no 4b.4)</div>
+                )}
+
+                {/* Branch D — Sem resposta nenhuma (TODO no Prompt 4b.5) */}
+                {!selectedItem.is_published && !selectedItem.external_response_text && selectedItem.response_id === null && (
+                  <div className="text-xs text-slate-400">(Branch D — Botão "Responder com IA", TODO no 4b.5)</div>
+                )}
+
               </div>
             </div>
           )}
