@@ -165,7 +165,7 @@ router.post("/:reviewId/publish", requireAuth, protectCSRF, async (req: any, res
       ))
       .limit(1);
     if (!response) return res.status(404).json({ message: "Resposta não encontrada" });
-    if (response.approvalStatus !== "approved") {
+    if (response.approvalStatus !== "approved" && response.approvalStatus !== "edited") {
       return res.status(400).json({ message: "Resposta ainda não aprovada" });
     }
     if (response.isPublished) {
