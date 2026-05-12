@@ -349,7 +349,7 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
           <NavButton tab="inbox" icon={InboxIcon} label={nav.menu.inbox} />
           {/* TODO: remove after Inbox proves stable */}
-          <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} />
+          {/* <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} /> */}
           <NavButton tab="social-manager" icon={Share2} label={nav.menu.social} />
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
           {isAgencyPlan && <NavButton tab="crm" icon={Users} label={nav.menu.crm} />}
