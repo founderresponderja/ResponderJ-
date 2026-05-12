@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
+import { buildAuthHeaders } from '../utils/api';
 
 interface InboxProps {
   lang: Language;
@@ -156,6 +157,34 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
     isWorking: isActionWorking,
   } = useResponseActions({ onSuccess: fetchInbox });
 
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
+
+  const handlePublish = async () => {
+    if (!selectedItem || !selectedItem.response_id) return;
+    setIsPublishing(true);
+    try {
+      const headers = await buildAuthHeaders({ getToken });
+      const res = await fetch(`/api/inbox/${selectedItem.id}/publish`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ responseId: selectedItem.response_id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.message || t.publishFailed);
+        return;
+      }
+      await fetchInbox();
+    } catch (e) {
+      console.error('handlePublish failed:', e);
+      alert(t.publishFailed);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   useEffect(() => {
     fetchInbox();
   }, [fetchInbox]);
@@ -164,8 +193,6 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
   useEffect(() => {
     setPage(1);
   }, [filters.status, filters.platform, filters.rating]);
-
-  const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
 
   return (
     <div className="flex flex-col h-full gap-6">
@@ -402,11 +429,9 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                     {(selectedItem.approval_status === 'approved' ||
                       selectedItem.approval_status === 'edited') && (
                       <button
-                        onClick={() => {
-                          // TODO 4b.4.1: chamar POST /api/inbox/:id/publish
-                          console.log('TODO: publish to Google', selectedItem.id);
-                        }}
-                        className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        onClick={handlePublish}
+                        disabled={isPublishing}
+                        className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                       >
                         <Send size={16} />
                         {t.publishToGoogle}
