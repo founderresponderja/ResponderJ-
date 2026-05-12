@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink, Send } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useAuth } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
 import { buildAuthHeaders } from '../utils/api';
+import { useGenerateResponse } from '../services/geminiService';
 
 interface InboxProps {
   lang: Language;
@@ -159,6 +160,9 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
 
   const [isPublishing, setIsPublishing] = useState(false);
 
+  const generate = useGenerateResponse();
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
 
   const handlePublish = async () => {
@@ -182,6 +186,22 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
       alert(t.publishFailed);
     } finally {
       setIsPublishing(false);
+    }
+  };
+
+  const handleGenerateForReview = async () => {
+    if (!selectedItem) return;
+    setIsGenerating(true);
+    try {
+      const reviewData = inboxItemToReviewData(selectedItem, t.anonymous);
+      await generate(reviewData);
+      await fetchInbox();
+    } catch (e) {
+      console.error('handleGenerateForReview failed:', e);
+      const msg = e instanceof Error ? e.message : t.generateFailed;
+      alert(msg || t.generateFailed);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -440,9 +460,21 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                   </div>
                 )}
 
-                {/* Branch D — Sem resposta nenhuma (TODO no Prompt 4b.5) */}
+                {/* Branch D — Sem resposta. CTA para gerar com IA. */}
                 {!selectedItem.is_published && !selectedItem.external_response_text && selectedItem.response_id === null && (
-                  <div className="text-xs text-slate-400">(Branch D — Botão "Responder com IA", TODO no 4b.5)</div>
+                  <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                      {t.noResponseYet}
+                    </p>
+                    <button
+                      onClick={handleGenerateForReview}
+                      disabled={isGenerating}
+                      className="flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      <Sparkles size={16} />
+                      {isGenerating ? t.generatingResponse : t.respondWithAI}
+                    </button>
+                  </div>
                 )}
 
               </div>
