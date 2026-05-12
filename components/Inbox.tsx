@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Inbox as InboxIcon, Plus, AlertCircle } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useAuth } from '@clerk/clerk-react';
+import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 
 interface InboxProps {
   lang: Language;
@@ -70,6 +71,39 @@ function formatDate(s: string, lang: Language): string {
   }
 }
 
+// F18: Platform/Tone/Language mapping from backend strings — add real validation when sync extracts these systematically
+function inboxItemToReviewData(
+  item: InboxItem,
+  anonymousLabel: string,
+): ReviewData {
+  return {
+    id: String(item.id),
+    establishmentId: undefined,
+    platform: (item.platform as unknown as Platform) ?? Platform.GOOGLE,
+    customerName: item.author_name ?? anonymousLabel,
+    rating: item.rating ?? 0,
+    reviewText: item.review_text ?? '',
+    tone: (item.response_tone as unknown as Tone) ?? Tone.PROFESSIONAL,
+    language: mapLanguage(item.response_language),
+    generatedResponse: item.response_text ?? undefined,
+    sentiment: (item.sentiment as 'Positive' | 'Neutral' | 'Negative' | undefined) ?? undefined,
+    keywords: [],
+    createdAt: new Date(item.created_at),
+    responseId: item.response_id ?? undefined,
+    approvalStatus: (item.approval_status as 'pending' | 'approved' | 'edited' | 'discarded' | undefined) ?? undefined,
+    attemptsCount: 1,
+  };
+}
+
+function mapLanguage(lang: string | null): LanguageEnum {
+  if (!lang) return LanguageEnum.PT;
+  const lower = lang.toLowerCase();
+  if (lower.includes('en')) return LanguageEnum.EN;
+  if (lower.includes('es')) return LanguageEnum.ES;
+  if (lower.includes('fr')) return LanguageEnum.FR;
+  return LanguageEnum.PT;
+}
+
 const Inbox: React.FC<InboxProps> = ({ lang }) => {
   const t = translations[lang].app.inbox;
   const [filters, setFilters] = useState<InboxFilters>({});
@@ -121,6 +155,8 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
   useEffect(() => {
     setPage(1);
   }, [filters.status, filters.platform, filters.rating]);
+
+  const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
 
   return (
     <div className="flex flex-col h-full gap-6">
@@ -262,17 +298,38 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
         </div>
 
         {/* Right column: detail */}
-        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-400">
-          {selectedReviewId === null ? (
-            <div className="text-center">
-              <InboxIcon size={48} className="mx-auto mb-4 opacity-20" />
-              <p className="font-medium">{t.selectPrompt}</p>
+        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-y-auto">
+          {!selectedItem ? (
+            <div className="h-full flex items-center justify-center text-slate-400">
+              <div className="text-center">
+                <InboxIcon size={48} className="mx-auto mb-4 opacity-20" />
+                <p className="font-medium">{t.selectPrompt}</p>
+              </div>
             </div>
           ) : (
-            <div className="text-center">
-              <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">
-                Review #{selectedReviewId}
-              </p>
+            <div className="p-6 space-y-4">
+              {/* Cabeçalho do review */}
+              <div>
+                <div className="flex items-center justify-between text-sm text-slate-500 mb-2">
+                  <span className="text-amber-500 text-base">{stars(selectedItem.rating)}</span>
+                  <span className="font-medium">{platformLabel(selectedItem.platform)}</span>
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">
+                  {selectedItem.author_name ?? t.anonymous}
+                </h2>
+                <p className="text-xs text-slate-400 mb-3">
+                  {formatDate(selectedItem.review_date ?? selectedItem.created_at, lang)}
+                </p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {selectedItem.review_text ?? ''}
+                </p>
+              </div>
+
+              {/* Branches A/B/C/D virão nos próximos prompts (4b.3, 4b.4, 4b.5).
+                  Por agora, placeholder para sabermos onde encaixar: */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+                (Resposta — TODO nos próximos prompts)
+              </div>
             </div>
           )}
         </div>
