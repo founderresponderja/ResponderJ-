@@ -399,7 +399,8 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                     />
 
                     {/* Botão Publicar — só visível quando aprovada e não publicada */}
-                    {selectedItem.approval_status === 'approved' && (
+                    {(selectedItem.approval_status === 'approved' ||
+                      selectedItem.approval_status === 'edited') && (
                       <button
                         onClick={() => {
                           // TODO 4b.4.1: chamar POST /api/inbox/:id/publish
