@@ -158,12 +158,20 @@ router.get("/status", async (req, res) => {
   const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
   if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
 
+  // When establishmentId is not provided, match by clerkUserId alone so
+  // single-establishment users see their connections regardless of which
+  // establishment_id was captured at OAuth time. When provided, scope to it
+  // (preserves multi-establishment pattern).
+  const scopedFilter = establishmentId !== null
+    ? eq(socialPlatformConnections.establishmentId, establishmentId)
+    : undefined;
+
   await db.update(socialPlatformConnections).set({
     status: "disconnected",
     updatedAt: new Date(),
   }).where(and(
     eq(socialPlatformConnections.userExternalId, clerkUserId),
-    eq(socialPlatformConnections.establishmentId, establishmentId),
+    ...(scopedFilter ? [scopedFilter] : []),
     inArray(socialPlatformConnections.platform, ["thefork", "airbnb"]),
     eq(socialPlatformConnections.status, "connected"),
   ));
@@ -171,7 +179,7 @@ router.get("/status", async (req, res) => {
   const rows = await db.select().from(socialPlatformConnections)
     .where(and(
       eq(socialPlatformConnections.userExternalId, clerkUserId),
-      eq(socialPlatformConnections.establishmentId, establishmentId),
+      ...(scopedFilter ? [scopedFilter] : []),
     ));
 
   const map: Record<string, any> = {};
