@@ -1,5 +1,6 @@
 
 import { Router } from "express";
+import crypto from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { establishments, responses, reviews, socialPlatformConnections } from "../../shared/schema.js";
@@ -122,6 +123,104 @@ router.post("/sync", requireAuth, protectCSRF, async (req: any, res) => {
   } catch (error: any) {
     console.error("Inbox sync error:", error);
     res.status(500).json({ message: "Erro ao sincronizar", detail: error?.message });
+  }
+});
+
+// POST /api/inbox/manual — registar review manualmente (sem sync)
+router.post("/manual", requireAuth, protectCSRF, async (req: any, res) => {
+  try {
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const {
+      platform,
+      authorName,
+      rating,
+      reviewText,
+      reviewDate,
+      externalResponseText,
+      externalResponseAt,
+    } = req.body ?? {};
+
+    const allowedPlatforms = ["google", "booking", "tripadvisor", "facebook", "instagram"];
+    if (!platform || typeof platform !== "string" || !allowedPlatforms.includes(platform)) {
+      return res.status(400).json({ message: "Plataforma inválida" });
+    }
+
+    if (!reviewText || typeof reviewText !== "string" || !reviewText.trim()) {
+      return res.status(400).json({ message: "Texto da review é obrigatório" });
+    }
+    if (reviewText.length > 5000) {
+      return res.status(400).json({ message: "Texto da review excede 5000 caracteres" });
+    }
+
+    const ratingNum = Number(rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ message: "Classificação deve ser um inteiro entre 1 e 5" });
+    }
+
+    // External response: ambos os campos andam juntos
+    const hasExternalReply =
+      typeof externalResponseText === "string" && externalResponseText.trim().length > 0;
+    if (hasExternalReply && externalResponseText.length > 5000) {
+      return res.status(400).json({ message: "Texto da resposta externa excede 5000 caracteres" });
+    }
+
+    // Resolver establishment via userId (padrão do ficheiro)
+    const [establishment] = await db
+      .select({ id: establishments.id })
+      .from(establishments)
+      .where(eq(establishments.userId, userId))
+      .limit(1);
+    if (!establishment) {
+      return res.status(404).json({ message: "Estabelecimento não encontrado" });
+    }
+
+    // Datas: aceitar ISO string OU "YYYY-MM-DD"; se for só data, fixar meio-dia local
+    const parseDateInput = (raw: unknown): Date | null => {
+      if (typeof raw !== "string" || !raw.trim()) return null;
+      // YYYY-MM-DD → meio-dia local (evita drift de fuso para dia anterior)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return new Date(raw + "T12:00:00");
+      }
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    const now = new Date();
+    const reviewDateParsed = reviewDate ? parseDateInput(reviewDate) : now;
+    if (reviewDate && !reviewDateParsed) {
+      return res.status(400).json({ message: "Data da review inválida" });
+    }
+
+    const externalResponseAtParsed = hasExternalReply
+      ? (externalResponseAt ? parseDateInput(externalResponseAt) : now)
+      : null;
+    if (hasExternalReply && externalResponseAt && !externalResponseAtParsed) {
+      return res.status(400).json({ message: "Data da resposta externa inválida" });
+    }
+
+    const externalId = `manual:${crypto.randomUUID()}`;
+
+    const [created] = await db
+      .insert(reviews)
+      .values({
+        establishmentId: establishment.id,
+        platform,
+        externalId,
+        authorName: typeof authorName === "string" && authorName.trim() ? authorName.trim() : null,
+        rating: ratingNum,
+        reviewText: reviewText.trim(),
+        reviewDate: reviewDateParsed,
+        externalResponseText: hasExternalReply ? externalResponseText.trim() : null,
+        externalResponseAt: externalResponseAtParsed,
+      })
+      .returning();
+
+    res.json({ ok: true, review: created });
+  } catch (error: any) {
+    console.error("Inbox manual create error:", error);
+    res.status(500).json({ message: "Erro ao criar review manual", detail: error?.message });
   }
 });
 
