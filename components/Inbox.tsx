@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink, Send, Sparkles, X, Star } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, AlertCircle, AlertTriangle, CheckCircle, ExternalLink, Send, Sparkles, X, Star } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
@@ -10,6 +10,7 @@ import { useGenerateResponse } from '../services/geminiService';
 
 interface InboxProps {
   lang: Language;
+  establishmentId?: number | null;
 }
 
 interface InboxFilters {
@@ -108,13 +109,15 @@ function mapLanguage(lang: string | null): LanguageEnum {
   return LanguageEnum.PT;
 }
 
-const Inbox: React.FC<InboxProps> = ({ lang }) => {
+const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
   const t = translations[lang].app.inbox;
   const [filters, setFilters] = useState<InboxFilters>({});
   const [page, setPage] = useState(1);
   const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
 
   const { getToken } = useAuth();
+  const { user } = useUser();
+  const clerkUserId = user?.id;
   const [items, setItems] = useState<InboxItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -283,6 +286,74 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [isManualOpen, closeManualDrawer]);
 
+  // Expired platforms banner state
+  const [expiredPlatforms, setExpiredPlatforms] = useState<string[]>([]);
+  const [reconnectingPlatform, setReconnectingPlatform] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clerkUserId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const url = `/api/platforms/status?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`;
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+          console.error('[F8] /api/platforms/status returned', res.status);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        const expired: string[] = [];
+        for (const [platform, info] of Object.entries(data || {})) {
+          if ((info as any)?.status === 'expired') expired.push(platform);
+        }
+        setExpiredPlatforms(expired);
+      } catch (err) {
+        console.error('[F8] fetch platforms/status failed:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clerkUserId, establishmentId]);
+
+  const handleReconnect = useCallback(
+    async (platform: string) => {
+      setReconnectingPlatform(platform);
+      try {
+        const headers = await buildAuthHeaders({ getToken });
+        const res = await fetch(`/api/platforms/connect/${platform}`, {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify({ clerkUserId, establishmentId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.oauthUrl) {
+          window.location.href = data.oauthUrl;
+          return;
+        }
+        console.error('[F8] reconnect failed:', data);
+        setReconnectingPlatform(null);
+      } catch (err) {
+        console.error('[F8] reconnect error:', err);
+        setReconnectingPlatform(null);
+      }
+    },
+    [getToken, clerkUserId, establishmentId],
+  );
+
+  const platformLabel = (p: string): string => {
+    const labels: Record<string, string> = {
+      google: 'Google',
+      booking: 'Booking.com',
+      tripadvisor: 'TripAdvisor',
+      facebook: 'Facebook',
+      instagram: 'Instagram',
+    };
+    return labels[p] ?? p;
+  };
+
   const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
 
   const handlePublish = async () => {
@@ -336,6 +407,37 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
 
   return (
     <div className="flex flex-col h-full gap-6">
+      {/* Expired platforms banner */}
+      {expiredPlatforms.length > 0 && (
+        <div className="space-y-2">
+          {expiredPlatforms.map((p) => (
+            <div
+              key={p}
+              role="alert"
+              className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+            >
+              <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex-1">
+                <p className="font-medium text-sm">{t.expiredBannerTitle}</p>
+                <p className="text-sm mt-1">
+                  {t.expiredBannerBody.replace('{platform}', platformLabel(p))}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleReconnect(p)}
+                disabled={reconnectingPlatform === p}
+                className="flex-shrink-0 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {reconnectingPlatform === p
+                  ? '...'
+                  : t.reconnectCta.replace('{platform}', platformLabel(p))}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

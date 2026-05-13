@@ -483,7 +483,7 @@ const MainApp: React.FC<MainAppProps> = ({
               )}
 
               {activeTab === 'inbox' && (
-                <InboxPage lang={lang} />
+                <InboxPage lang={lang} establishmentId={selectedClientId} />
               )}
 
               {activeTab === 'generate' && (
