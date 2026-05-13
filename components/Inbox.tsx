@@ -196,22 +196,22 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
   const validateManualForm = useCallback((): string | null => {
     const allowed = ['google', 'booking', 'tripadvisor', 'facebook', 'instagram'];
     if (!manualPlatform || !allowed.includes(manualPlatform)) {
-      return 'Escolhe uma plataforma';
+      return t.errPlatform;
     }
     if (!manualReviewText.trim()) {
-      return 'Texto da review é obrigatório';
+      return t.errReviewText;
     }
     if (manualReviewText.length > 5000) {
-      return 'Texto da review excede 5000 caracteres';
+      return t.errReviewLong;
     }
     if (!Number.isInteger(manualRating) || manualRating < 1 || manualRating > 5) {
-      return 'Escolhe uma classificação de 1 a 5 estrelas';
+      return t.errRating;
     }
     if (manualExternalText.trim().length > 5000) {
-      return 'Texto da resposta externa excede 5000 caracteres';
+      return t.errExtLong;
     }
     return null;
-  }, [manualPlatform, manualReviewText, manualRating, manualExternalText]);
+  }, [manualPlatform, manualReviewText, manualRating, manualExternalText, t]);
 
   const handleManualSubmit = useCallback(
     async (e?: React.FormEvent) => {
@@ -244,7 +244,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setManualError(json?.message || 'Erro ao criar review manual');
+          setManualError(json?.message || t.errCreateFail);
           return;
         }
         const created = json?.review;
@@ -253,7 +253,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
         if (created?.id) setSelectedReviewId(created.id);
       } catch (err: any) {
         console.error('Manual submit error:', err);
-        setManualError(err?.message || 'Erro inesperado');
+        setManualError(err?.message || t.errUnexpected);
       } finally {
         setIsSubmittingManual(false);
       }
@@ -270,6 +270,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
       manualExternalDate,
       closeManualDrawer,
       fetchInbox,
+      t,
     ],
   );
 
@@ -614,7 +615,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
           {/* Backdrop */}
           <button
             type="button"
-            aria-label="Fechar"
+            aria-label={t.manualClose}
             className="fixed inset-0 bg-black/50 transition-opacity"
             onClick={closeManualDrawer}
           />
@@ -632,12 +633,12 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
             {/* Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between bg-white border-b border-slate-200 px-6 py-4">
               <h2 id="manual-drawer-title" className="text-lg font-semibold text-slate-900">
-                Nova resposta manual
+                {t.newManual}
               </h2>
               <button
                 type="button"
                 onClick={closeManualDrawer}
-                aria-label="Fechar"
+                aria-label={t.manualClose}
                 className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -649,7 +650,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
               {/* Plataforma */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Plataforma <span className="text-red-500">*</span>
+                  {t.manualPlatform} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={manualPlatform}
@@ -657,7 +658,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   required
                 >
-                  <option value="">— escolhe —</option>
+                  <option value="">{t.manualPlatformPick}</option>
                   <option value="google">Google</option>
                   <option value="booking">Booking.com</option>
                   <option value="tripadvisor">TripAdvisor</option>
@@ -669,13 +670,13 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
               {/* Nome cliente */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Nome do cliente <span className="text-slate-400 font-normal">(opcional)</span>
+                  {t.manualAuthorName} <span className="text-slate-400 font-normal">{t.manualOptional}</span>
                 </label>
                 <input
                   type="text"
                   value={manualAuthorName}
                   onChange={(e) => setManualAuthorName(e.target.value)}
-                  placeholder="Anónimo"
+                  placeholder={t.anonymous}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   maxLength={200}
                 />
@@ -684,7 +685,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
               {/* Rating */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Classificação <span className="text-red-500">*</span>
+                  {t.manualRating} <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
@@ -692,7 +693,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                       key={n}
                       type="button"
                       onClick={() => setManualRating(n)}
-                      aria-label={`${n} estrelas`}
+                      aria-label={t.manualRatingStars.replace('{n}', String(n))}
                       className="p-1 rounded hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
                     >
                       <Star
@@ -711,7 +712,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
               {/* Texto review */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Texto da review <span className="text-red-500">*</span>
+                  {t.manualReviewText} <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={manualReviewText}
@@ -727,7 +728,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
               {/* Data review */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Data da review
+                  {t.manualReviewDate}
                 </label>
                 <input
                   type="date"
@@ -740,16 +741,16 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
               {/* Separator + bloco resposta externa */}
               <div className="pt-4 border-t border-slate-200">
                 <p className="text-sm font-medium text-slate-700 mb-1">
-                  Se já respondeste a este cliente
+                  {t.manualExternalTitle}
                 </p>
                 <p className="text-xs text-slate-500 mb-3">
-                  Deixa em branco se ainda não respondeste. Preenche para arquivar uma resposta já dada externamente.
+                  {t.manualExternalHelp}
                 </p>
 
                 {/* Texto resposta externa */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Texto da resposta dada
+                    {t.manualExternalText}
                   </label>
                   <textarea
                     value={manualExternalText}
@@ -766,7 +767,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                 {/* Data resposta externa */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Data da resposta
+                    {t.manualExternalDate}
                   </label>
                   <input
                     type="date"
@@ -793,14 +794,14 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
                   disabled={isSubmittingManual}
                   className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Cancelar
+                  {t.manualCancel}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingManual}
                   className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
                 >
-                  {isSubmittingManual ? 'A registar...' : 'Registar review'}
+                  {isSubmittingManual ? t.manualSubmitting : t.manualSubmit}
                 </button>
               </div>
             </form>
