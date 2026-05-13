@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink, Send, Sparkles } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, AlertCircle, CheckCircle, ExternalLink, Send, Sparkles, X, Star } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 import { useAuth } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
@@ -163,6 +163,125 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
   const generate = useGenerateResponse();
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Manual review drawer state
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [manualPlatform, setManualPlatform] = useState<string>('');
+  const [manualAuthorName, setManualAuthorName] = useState('');
+  const [manualRating, setManualRating] = useState<number>(0);
+  const [manualReviewText, setManualReviewText] = useState('');
+  const [manualReviewDate, setManualReviewDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [manualExternalText, setManualExternalText] = useState('');
+  const [manualExternalDate, setManualExternalDate] = useState('');
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  const resetManualForm = useCallback(() => {
+    setManualPlatform('');
+    setManualAuthorName('');
+    setManualRating(0);
+    setManualReviewText('');
+    setManualReviewDate(new Date().toISOString().slice(0, 10));
+    setManualExternalText('');
+    setManualExternalDate('');
+    setManualError(null);
+  }, []);
+
+  const closeManualDrawer = useCallback(() => {
+    setIsManualOpen(false);
+    resetManualForm();
+  }, [resetManualForm]);
+
+  const validateManualForm = useCallback((): string | null => {
+    const allowed = ['google', 'booking', 'tripadvisor', 'facebook', 'instagram'];
+    if (!manualPlatform || !allowed.includes(manualPlatform)) {
+      return 'Escolhe uma plataforma';
+    }
+    if (!manualReviewText.trim()) {
+      return 'Texto da review é obrigatório';
+    }
+    if (manualReviewText.length > 5000) {
+      return 'Texto da review excede 5000 caracteres';
+    }
+    if (!Number.isInteger(manualRating) || manualRating < 1 || manualRating > 5) {
+      return 'Escolhe uma classificação de 1 a 5 estrelas';
+    }
+    if (manualExternalText.trim().length > 5000) {
+      return 'Texto da resposta externa excede 5000 caracteres';
+    }
+    return null;
+  }, [manualPlatform, manualReviewText, manualRating, manualExternalText]);
+
+  const handleManualSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      const err = validateManualForm();
+      if (err) {
+        setManualError(err);
+        return;
+      }
+      setManualError(null);
+      setIsSubmittingManual(true);
+      try {
+        const headers = await buildAuthHeaders({ getToken });
+        const body: Record<string, unknown> = {
+          platform: manualPlatform,
+          rating: manualRating,
+          reviewText: manualReviewText,
+          reviewDate: manualReviewDate,
+        };
+        if (manualAuthorName.trim()) body.authorName = manualAuthorName.trim();
+        if (manualExternalText.trim()) {
+          body.externalResponseText = manualExternalText.trim();
+          if (manualExternalDate) body.externalResponseAt = manualExternalDate;
+        }
+        const res = await fetch('/api/inbox/manual', {
+          method: 'POST',
+          headers,
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setManualError(json?.message || 'Erro ao criar review manual');
+          return;
+        }
+        const created = json?.review;
+        closeManualDrawer();
+        await fetchInbox();
+        if (created?.id) setSelectedReviewId(created.id);
+      } catch (err: any) {
+        console.error('Manual submit error:', err);
+        setManualError(err?.message || 'Erro inesperado');
+      } finally {
+        setIsSubmittingManual(false);
+      }
+    },
+    [
+      validateManualForm,
+      getToken,
+      manualPlatform,
+      manualRating,
+      manualReviewText,
+      manualReviewDate,
+      manualAuthorName,
+      manualExternalText,
+      manualExternalDate,
+      closeManualDrawer,
+      fetchInbox,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isManualOpen) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') closeManualDrawer();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isManualOpen, closeManualDrawer]);
+
   const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
 
   const handlePublish = async () => {
@@ -223,7 +342,7 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
           <h1 className="text-2xl font-bold">{t.title}</h1>
         </div>
         <button
-          onClick={() => console.log('TODO: modal manual')}
+          onClick={() => setIsManualOpen(true)}
           className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors"
         >
           <Plus size={16} />
@@ -483,6 +602,211 @@ const Inbox: React.FC<InboxProps> = ({ lang }) => {
         </div>
 
       </div>
+
+      {/* === Drawer: Nova resposta manual === */}
+      {isManualOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-end"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="manual-drawer-title"
+        >
+          {/* Backdrop */}
+          <button
+            type="button"
+            aria-label="Fechar"
+            className="fixed inset-0 bg-black/50 transition-opacity"
+            onClick={closeManualDrawer}
+          />
+
+          {/* Drawer panel */}
+          <div
+            className={[
+              'relative z-10 w-full mx-auto bg-white shadow-2xl',
+              'max-w-2xl rounded-t-2xl',
+              'max-h-[90vh] overflow-y-auto',
+              'transform transition-transform duration-300 ease-out',
+              'translate-y-0',
+            ].join(' ')}
+          >
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-white border-b border-slate-200 px-6 py-4">
+              <h2 id="manual-drawer-title" className="text-lg font-semibold text-slate-900">
+                Nova resposta manual
+              </h2>
+              <button
+                type="button"
+                onClick={closeManualDrawer}
+                aria-label="Fechar"
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleManualSubmit} className="px-6 py-5 space-y-5">
+              {/* Plataforma */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Plataforma <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={manualPlatform}
+                  onChange={(e) => setManualPlatform(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  required
+                >
+                  <option value="">— escolhe —</option>
+                  <option value="google">Google</option>
+                  <option value="booking">Booking.com</option>
+                  <option value="tripadvisor">TripAdvisor</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="instagram">Instagram</option>
+                </select>
+              </div>
+
+              {/* Nome cliente */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Nome do cliente <span className="text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={manualAuthorName}
+                  onChange={(e) => setManualAuthorName(e.target.value)}
+                  placeholder="Anónimo"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  maxLength={200}
+                />
+              </div>
+
+              {/* Rating */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Classificação <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setManualRating(n)}
+                      aria-label={`${n} estrelas`}
+                      className="p-1 rounded hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    >
+                      <Star
+                        className={[
+                          'h-6 w-6',
+                          manualRating >= n
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-slate-300',
+                        ].join(' ')}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Texto review */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Texto da review <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={manualReviewText}
+                  onChange={(e) => setManualReviewText(e.target.value)}
+                  rows={4}
+                  maxLength={5000}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  required
+                />
+                <p className="text-xs text-slate-400 mt-1">{manualReviewText.length} / 5000</p>
+              </div>
+
+              {/* Data review */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Data da review
+                </label>
+                <input
+                  type="date"
+                  value={manualReviewDate}
+                  onChange={(e) => setManualReviewDate(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+
+              {/* Separator + bloco resposta externa */}
+              <div className="pt-4 border-t border-slate-200">
+                <p className="text-sm font-medium text-slate-700 mb-1">
+                  Se já respondeste a este cliente
+                </p>
+                <p className="text-xs text-slate-500 mb-3">
+                  Deixa em branco se ainda não respondeste. Preenche para arquivar uma resposta já dada externamente.
+                </p>
+
+                {/* Texto resposta externa */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Texto da resposta dada
+                  </label>
+                  <textarea
+                    value={manualExternalText}
+                    onChange={(e) => setManualExternalText(e.target.value)}
+                    rows={3}
+                    maxLength={5000}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                  {manualExternalText.length > 0 && (
+                    <p className="text-xs text-slate-400 mt-1">{manualExternalText.length} / 5000</p>
+                  )}
+                </div>
+
+                {/* Data resposta externa */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Data da resposta
+                  </label>
+                  <input
+                    type="date"
+                    value={manualExternalDate}
+                    onChange={(e) => setManualExternalDate(e.target.value)}
+                    disabled={!manualExternalText.trim()}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-slate-50 disabled:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Erro inline */}
+              {manualError && (
+                <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  {manualError}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeManualDrawer}
+                  disabled={isSubmittingManual}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingManual}
+                  className="inline-flex items-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                >
+                  {isSubmittingManual ? 'A registar...' : 'Registar review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
