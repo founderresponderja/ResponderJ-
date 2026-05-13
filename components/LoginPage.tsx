@@ -48,7 +48,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onBack, onRegiste
             <SignIn
               routing="virtual"
               signUpUrl="/register"
-              afterSignInUrl="/"
+              fallbackRedirectUrl="/"
               appearance={{
                 elements: {
                   card: 'shadow-none border-0 bg-transparent',

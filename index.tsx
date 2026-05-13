@@ -30,8 +30,8 @@ if (!clerkPublishableKey) {
         publishableKey={clerkPublishableKey}
         signInUrl="/login"
         signUpUrl="/register"
-        afterSignInUrl="/"
-        afterSignUpUrl="/"
+        signInFallbackRedirectUrl="/"
+        signUpFallbackRedirectUrl="/"
       >
         <SubscriptionProvider>
           <App />
