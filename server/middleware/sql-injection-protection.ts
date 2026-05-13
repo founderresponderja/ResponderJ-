@@ -258,7 +258,7 @@ export const protectDatabaseQueries = (req: any, res: any, next: any) => {
     
     // Verificar headers críticos (com verificação menos restritiva)
     // Cookie header é excluído para evitar falsos positivos com tokens/JWT do Clerk e Stripe.
-    const criticalHeaders = ['authorization', 'x-forwarded-for'];
+    const criticalHeaders = ['x-forwarded-for'];
     for (const header of criticalHeaders) {
       const value = req.get(header);
       if (value && containsSQLInjection(value, true)) {
