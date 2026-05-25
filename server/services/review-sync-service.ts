@@ -6,7 +6,7 @@ import { GoogleReviewsService } from "./google-reviews-service.js";
 type PlatformName = "google" | "tripadvisor" | "booking" | "facebook";
 
 export const reviewSyncService = {
-  async syncAllConnectedPlatforms() {
+  async syncAllConnectedPlatforms(): Promise<{ total: number }> {
     const rows = await db.select().from(socialPlatformConnections).where(eq(socialPlatformConnections.status, "connected"));
     const grouped: Record<PlatformName, typeof rows> = {
       google: [],
@@ -20,14 +20,17 @@ export const reviewSyncService = {
       if (grouped[platform]) grouped[platform].push(row);
     }
 
-    await this.syncGoogle(grouped.google);
+    const googleCount = await this.syncGoogle(grouped.google);
     await this.syncTripAdvisor(grouped.tripadvisor);
     await this.syncBooking(grouped.booking);
     await this.syncFacebook(grouped.facebook);
+    return { total: googleCount };
   },
 
-  async syncGoogle(connections: any[]) {
+  async syncGoogle(connections: any[]): Promise<number> {
+    let totalInserted = 0;
     for (const connection of connections) {
+      let inserted = 0;
       try {
         const googleReviews = await GoogleReviewsService.fetchReviews(
           connection.userExternalId,
@@ -62,12 +65,13 @@ export const reviewSyncService = {
             sentiment: null,
             reviewDate: review.createTime ? new Date(review.createTime) : new Date(),
           });
+          inserted++;
         }
 
         await this.markSynced(connection.id, {
           provider: "google",
           ok: true,
-          imported: googleReviews.length,
+          imported: inserted,
         });
       } catch (error: any) {
         await this.markSynced(connection.id, {
@@ -76,7 +80,9 @@ export const reviewSyncService = {
           error: error?.message || "sync_failed",
         });
       }
+      totalInserted += inserted;
     }
+    return totalInserted;
   },
 
   async syncTripAdvisor(connections: any[]) {

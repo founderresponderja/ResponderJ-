@@ -11,8 +11,9 @@ export default async function handler(req: Request, res: Response) {
   }
 
   try {
-    await reviewSyncService.syncAllConnectedPlatforms();
-    return res.json({ ok: true, syncedAt: new Date().toISOString() });
+    const result = await reviewSyncService.syncAllConnectedPlatforms();
+    console.log(`[cron] sync-reviews completed: ${result.total} new reviews`);
+    return res.json({ ok: true, imported: result.total });
   } catch (error: any) {
     return res.status(500).json({ ok: false, error: error?.message || "Sync failed" });
   }
