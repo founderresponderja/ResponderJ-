@@ -6,7 +6,7 @@ import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
 import { buildAuthHeaders } from '../utils/api';
-import { notifyError } from '../utils/notify';
+import { notifyError, toast } from '../utils/notify';
 import { useGenerateResponse } from '../services/geminiService';
 
 interface InboxProps {
@@ -163,6 +163,11 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
   } = useResponseActions({ onSuccess: fetchInbox });
 
   const [isPublishing, setIsPublishing] = useState(false);
+  const [pendingPublish, setPendingPublish] = useState<{
+    reviewId: number;
+    responseId: number;
+    timeoutId: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   const generate = useGenerateResponse();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -357,15 +362,15 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
 
   const selectedItem = items.find((it) => it.id === selectedReviewId) ?? null;
 
-  const handlePublish = async () => {
-    if (!selectedItem || !selectedItem.response_id) return;
+  const executePublish = useCallback(async (reviewId: number, responseId: number) => {
+    setPendingPublish(null);
     setIsPublishing(true);
     try {
       const headers = await buildAuthHeaders({ getToken });
-      const res = await fetch(`/api/inbox/${selectedItem.id}/publish`, {
+      const res = await fetch(`/api/inbox/${reviewId}/publish`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ responseId: selectedItem.response_id }),
+        body: JSON.stringify({ responseId }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -374,12 +379,42 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
       }
       await fetchInbox();
     } catch (e) {
-      console.error('handlePublish failed:', e);
+      console.error('executePublish failed:', e);
       notifyError(t.publishFailed);
     } finally {
       setIsPublishing(false);
     }
-  };
+  }, [getToken, fetchInbox, t]);
+
+  const handlePublish = useCallback(() => {
+    if (!selectedItem || !selectedItem.response_id) return;
+
+    if (pendingPublish) {
+      clearTimeout(pendingPublish.timeoutId);
+      toast.dismiss();
+    }
+
+    const reviewId = selectedItem.id;
+    const responseId = selectedItem.response_id;
+
+    const timeoutId = setTimeout(() => {
+      executePublish(reviewId, responseId);
+    }, 30_000);
+
+    setPendingPublish({ reviewId, responseId, timeoutId });
+
+    toast(t.publishPending, {
+      duration: 30_000,
+      action: {
+        label: t.publishUndo,
+        onClick: () => {
+          clearTimeout(timeoutId);
+          setPendingPublish(null);
+          toast.dismiss();
+        },
+      },
+    });
+  }, [selectedItem, pendingPublish, executePublish, t]);
 
   const handleGenerateForReview = async () => {
     if (!selectedItem) return;
@@ -673,7 +708,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
                       selectedItem.approval_status === 'edited') && (
                       <button
                         onClick={handlePublish}
-                        disabled={isPublishing}
+                        disabled={isPublishing || pendingPublish?.reviewId === selectedItem.id}
                         className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                       >
                         <Send size={16} />
