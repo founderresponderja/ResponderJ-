@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Toaster } from 'sonner';
 import { useAuth, useUser, useClerk } from '@clerk/clerk-react';
 import LandingPage from './components/LandingPage';
 import SofiaChat from './components/SofiaChat';
@@ -374,6 +375,7 @@ function App() {
       </Suspense>
 
       <SofiaChat lang={currentLang} />
+      <Toaster position="top-right" richColors closeButton />
     </div>
   );
 }

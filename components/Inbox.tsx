@@ -6,6 +6,7 @@ import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
 import { buildAuthHeaders } from '../utils/api';
+import { notifyError } from '../utils/notify';
 import { useGenerateResponse } from '../services/geminiService';
 
 interface InboxProps {
@@ -368,13 +369,13 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.message || t.publishFailed);
+        notifyError(err.message || t.publishFailed);
         return;
       }
       await fetchInbox();
     } catch (e) {
       console.error('handlePublish failed:', e);
-      alert(t.publishFailed);
+      notifyError(t.publishFailed);
     } finally {
       setIsPublishing(false);
     }
@@ -390,7 +391,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
     } catch (e) {
       console.error('handleGenerateForReview failed:', e);
       const msg = e instanceof Error ? e.message : t.generateFailed;
-      alert(msg || t.generateFailed);
+      notifyError(msg || t.generateFailed);
     } finally {
       setIsGenerating(false);
     }

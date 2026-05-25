@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { buildAuthHeaders } from '../utils/api';
+import { notifyError } from '../utils/notify';
 
 interface UseResponseActionsOptions {
   onSuccess?: () => void | Promise<void>;
@@ -39,7 +40,7 @@ export function useResponseActions(
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.message || `Falha ao ${labels[action]}`);
+        notifyError(err.message || `Falha ao ${labels[action]}`);
         return null;
       }
       const data = await res.json();
@@ -47,7 +48,7 @@ export function useResponseActions(
       return data;
     } catch (e) {
       console.error(`[useResponseActions.${action}] error:`, e);
-      alert(`Erro de rede ao ${labels[action]}`);
+      notifyError(`Erro de rede ao ${labels[action]}`);
       return null;
     } finally {
       setIsWorking(false);

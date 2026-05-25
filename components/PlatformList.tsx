@@ -4,6 +4,13 @@ import { ExternalLink, CircleCheckBig, RefreshCw, MessageSquareText } from 'luci
 import { translations, Language } from '../utils/translations';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { getCsrfToken } from '../services/geminiService';
+import { notifyError, notifySuccess } from '../utils/notify';
+
+type PlatformConnection = {
+  connected: boolean;
+  status: string;
+  lastSyncAt?: string;
+};
 
 interface PlatformListProps {
   lang: Language;
@@ -15,7 +22,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   const t = translations[lang].app;
   const { getToken } = useAuth();
   const { user } = useUser();
-  const [connections, setConnections] = React.useState<Record<string, { connected: boolean; status: string; lastSyncAt?: string }>>({});
+  const [connections, setConnections] = React.useState<Record<string, PlatformConnection>>({});
   const [loadingPlatform, setLoadingPlatform] = React.useState<string | null>(null);
   const [pendingItems, setPendingItems] = React.useState<any[]>([]);
   const [syncingGoogle, setSyncingGoogle] = React.useState(false);
@@ -23,7 +30,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   const clerkUserId = user?.id;
 
   const hasAnyConnection = React.useMemo(
-    () => Object.values(connections).some((c) => c?.connected),
+    () => (Object.values(connections) as PlatformConnection[]).some((c) => c?.connected),
     [connections]
   );
 
@@ -79,7 +86,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       if (response.status === 402) {
         const payload = await response.json().catch(() => ({}));
         const allowed = payload?.allowed === "unlimited" ? "ilimitado" : payload?.allowed ?? 1;
-        window.alert(`Atingiste o limite de plataformas do teu plano (${allowed}). Faz upgrade para continuares.`);
+        notifyError(`Atingiste o limite de plataformas do teu plano (${allowed}). Faz upgrade para continuares.`);
         return;
       }
       const data = await response.json();
@@ -119,7 +126,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   const handleSyncGoogle = async () => {
     if (!clerkUserId) return;
     if (!connections.google?.connected) {
-      window.alert('Conecta o Google My Business para sincronizar avaliações reais');
+      notifyError('Conecta o Google My Business para sincronizar avaliações reais');
       return;
     }
     setSyncingGoogle(true);
@@ -127,11 +134,11 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       const response = await fetch(`/api/platforms/sync/google?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({}));
-        window.alert(errorPayload?.error || 'Falha ao sincronizar Google.');
+        notifyError(errorPayload?.error || 'Falha ao sincronizar Google.');
         return;
       }
       await loadPending();
-      window.alert('Sincronização Google concluída.');
+      notifySuccess('Sincronização Google concluída.');
     } finally {
       setSyncingGoogle(false);
     }
@@ -158,7 +165,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        window.alert(payload?.message || 'Falha ao gerar resposta IA.');
+        notifyError(payload?.message || 'Falha ao gerar resposta IA.');
         return;
       }
       await loadPending();
