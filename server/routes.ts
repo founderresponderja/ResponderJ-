@@ -1,7 +1,7 @@
 
 import type { Express } from "express";
 import { storage } from "./storage.js";
-import { setupAuth, requireAuth, requireFeature, requireSuperAdmin } from "./auth.js";
+import { setupAuth, requireAuth, requireFeature } from "./auth.js";
 import { 
   applySecurity, 
   authRateLimit, 
@@ -60,7 +60,6 @@ import { users, establishments, reviews, responses, socialPlatformConnections } 
 import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 
 import Stripe from "stripe";
-import passport from "passport";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import process from "process";
@@ -84,179 +83,6 @@ export async function setupAuthRoutes(app: any): Promise<void> {
   
   // Auth middleware
   setupAuth(app);
-
-  // Simple test endpoint without auth middleware
-  app.get('/api/test', (req: any, res: any) => {
-    res.json({
-      message: "Test endpoint works",
-      sessionId: req.sessionID,
-      isAuthenticated: req.isAuthenticated(),
-      hasUser: !!req.user,
-      user: req.user
-    });
-  });
-
-  // ✅ ENDPOINT DE CORREÇÃO CRÉDITOS ADMINISTRADORES
-  app.get('/api/admin/fix-admin-credits', requireAuth, requireSuperAdmin, async (req: any, res: any) => {
-    try {
-      const adminEmails = ['founder.responderja@gmail.com', 'lfpedrosa@gmail.com'];
-      const results = [];
-      
-      const adminPromises = adminEmails.map(async (email) => {
-        const user = await storage.getUserByEmail(email);
-        if (user) {
-          await storage.updateUser(user.id, { 
-            credits: 0,
-            selectedPlan: 'admin',
-            subscriptionPlan: 'admin'
-          });
-          return { email, status: 'FIXED - 0 créditos' };
-        }
-        return { email, status: 'Não encontrado' };
-      });
-      
-      const adminResults = await Promise.allSettled(adminPromises);
-      results.push(...adminResults
-        .filter(result => result.status === 'fulfilled')
-        .map(result => (result as any).value)
-      );
-      
-      res.json({ success: true, message: 'Admin credits fixed', results });
-    } catch (error) {
-      res.json({ success: false, error: (error as Error).message });
-    }
-  });
-
-  // ✅ ENDPOINT DE RESET PASSWORD ADMIN
-  app.get('/api/admin/reset-admin-password', requireAuth, requireSuperAdmin, async (req: any, res: any) => {
-    try {
-      const user = await storage.getUserByEmail('lfpedrosa@gmail.com');
-      if (user) {
-        const hashedPassword = await bcrypt.hash('Teste123#', 12);
-        await storage.updateUser(user.id, { password: hashedPassword });
-        res.json({ success: true, message: 'Admin password reset to Teste123#' });
-      } else {
-        res.json({ success: false, message: 'Admin user not found' });
-      }
-    } catch (error) {
-      res.json({ success: false, error: (error as Error).message });
-    }
-  });
-
-  // ✅ ENDPOINT DE VERIFICAÇÃO DE UTILIZADORES DE TESTE
-  app.get('/api/admin/verify-test-users', async (req: any, res: any) => {
-    try {
-      const testEmails = [
-        'founder.responderja@gmail.com',
-        'lfpedrosa@gmail.com', 
-        'trial@amplia.com',
-        'starter@amplia.com',
-        'pro@amplia.com',
-        'agencia@amplia.com'
-      ];
-
-      const userStatuses = [];
-
-      for (const email of testEmails) {
-        try {
-          const user = await storage.getUserByEmail(email);
-          if (user) {
-            userStatuses.push({
-              email: user.email,
-              plan: user.selectedPlan || user.subscriptionPlan,
-              credits: user.credits,
-              isAdmin: user.isAdmin || false,
-              isSuperAdmin: user.isSuperAdmin || false,
-              isAgencyOwner: (user as any).isAgencyOwner || false,
-              isTrialActive: (user as any).isTrialActive || false,
-              emailVerified: (user as any).emailVerified || false,
-              status: 'EXISTS'
-            });
-          } else {
-            userStatuses.push({
-              email: email,
-              status: 'NOT_FOUND'
-            });
-          }
-        } catch (error) {
-          userStatuses.push({
-            email: email,
-            status: 'ERROR',
-            error: (error as Error).message
-          });
-        }
-      }
-
-      res.json({
-        success: true,
-        message: "User verification completed",
-        users: userStatuses
-      });
-
-    } catch (error) {
-      console.error("❌ Error verifying test users:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error verifying test users",
-        error: (error as Error).message
-      });
-    }
-  });
-
-  app.post('/api/login', async (req: any, res: any) => {
-    try {
-      const { email, password } = req.body;
-      const [user] = await db.select().from(users).where(eq(users.email, email));
-      
-      if (!user) {
-        return res.status(401).json({ message: "Credenciais inválidas" });
-      }
-      
-      const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) {
-        return res.status(401).json({ message: "Credenciais inválidas" });
-      }
-      
-      req.login(user, (err: any) => {
-        if (err) return res.status(500).json({ message: "Erro interno" });
-        
-        res.json({ 
-          message: "Login realizado com sucesso",
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            isAdmin: user.isAdmin,
-            isSuperAdmin: user.isSuperAdmin,
-            selectedPlan: user.selectedPlan
-          }
-        });
-      });
-    } catch (error) {
-      console.error('❌ Erro no login:', error);
-      res.status(500).json({ message: "Erro interno" });
-    }
-  });
-
-  app.post('/api/auth/login', (req: any, res: any, next: any) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return res.status(500).json({ message: "Erro interno do servidor" });
-      if (!user) return res.status(401).json({ message: info?.message || "Email ou password incorretos" });
-
-      req.login(user, (loginErr: any) => {
-        if (loginErr) return res.status(500).json({ message: "Erro interno do servidor" });
-        res.json({ user });
-      });
-    })(req, res, next);
-  });
-
-  app.get('/api/session-status', (req: any, res: any) => {
-    res.json({
-      isAuthenticated: req.isAuthenticated(),
-      user: req.user || null,
-      sessionId: req.sessionID
-    });
-  });
 
   app.get('/login', (req: any, res: any) => res.redirect(302, '/auth'));
   app.get('/register', (req: any, res: any) => res.redirect(302, '/auth'));
@@ -323,26 +149,6 @@ export async function registerRoutes(app: any): Promise<void> {
     const adminContentRoutes = (await import("./routes/admin/content.js")).default;
     app.use("/api/admin/content", requireAuth, requireAdmin, adminContentRoutes);
   } catch (e) { console.warn("Admin content routes not found"); }
-
-  app.post('/api/debug/fix-user-roles', requireAuth, requireSuperAdmin, async (req: any, res: any) => {
-    try {
-      const fixes = [
-        { email: 'trial@amplia.com', plan: 'trial' },
-        { email: 'starter@amplia.com', plan: 'starter' },
-      ];
-      const results = [];
-      for (const fix of fixes) {
-        const user = await storage.getUserByEmail(fix.email);
-        if (user) {
-          await storage.updateUser(user.id, { selectedPlan: fix.plan, subscriptionPlan: fix.plan });
-          results.push(`✅ Updated ${fix.email}`);
-        }
-      }
-      res.json({ message: "User roles update completed", results });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fix user roles" });
-    }
-  });
 
   // Invitation Routes
   app.get('/api/invitations/:token', async (req: any, res: any) => {
