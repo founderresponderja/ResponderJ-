@@ -25,6 +25,9 @@ export interface IStorage {
   // User methods
   getUser(id: string | number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByClerkId(clerkUserId: string): Promise<User | undefined>;
+  setUserClerkId(userId: number, clerkUserId: string): Promise<User>;
+  ensureEstablishmentForUser(userId: number): Promise<Establishment>;
   getUserById(id: string | number): Promise<User | undefined>;
   getUserByStripeCustomerId(customerId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -178,6 +181,33 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async getUserByClerkId(clerkUserId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.clerkUserId, clerkUserId));
+    return user;
+  }
+
+  async setUserClerkId(userId: number, clerkUserId: string): Promise<User> {
+    const [user] = await db.update(users)
+      .set({ clerkUserId, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  // Returns the user's first establishment, creating one when none exists, so that
+  // platform connections and reviews always have an establishment to belong to (RJ-1.1).
+  async ensureEstablishmentForUser(userId: number): Promise<Establishment> {
+    const existing = await this.getBusinessProfile(userId);
+    if (existing) return existing;
+    const user = await this.getUser(userId);
+    const [created] = await db.insert(establishments).values({
+      userId,
+      name: user?.companyName?.trim() || "O meu negócio",
+      brandTone: "profissional",
+    }).returning();
+    return created;
   }
 
   async getUserById(id: string | number): Promise<User | undefined> {

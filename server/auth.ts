@@ -109,63 +109,71 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
     try {
       const payload = await verifyToken(clerkToken, { secretKey: clerkSecretKey });
       const claims = payload as Record<string, any>;
-      if (typeof claims.sub === "string" && claims.sub) {
-        req.clerkUserId = claims.sub;
-      }
-      let email =
-        claims.email ||
-        claims.email_address ||
-        claims.primary_email_address ||
-        claims?.unsafe_metadata?.email;
-
-      if (!email && claims.sub && clerkClient) {
-        const clerkUser = await clerkClient.users.getUser(claims.sub as string);
-        email = clerkUser.primaryEmailAddress?.emailAddress;
-      }
-
-      if (!email) {
+      const clerkUserId = typeof claims.sub === "string" ? claims.sub : "";
+      if (!clerkUserId) {
         return false;
       }
+      req.clerkUserId = clerkUserId;
 
-      let user = await storage.getUserByEmail(String(email).toLowerCase());
+      // 1. Fast path: the Clerk id is already linked to a user row (RJ-1.1).
+      let user = await storage.getUserByClerkId(clerkUserId);
+
       if (!user) {
-        if (!clerkClient || !claims.sub) {
+        // 2. First login after RJ-1.1 (or a brand new user): resolve the email from Clerk.
+        //    Only a VERIFIED primary email may be used to link to an existing row,
+        //    otherwise anyone could claim an account by adding an unverified address.
+        if (!clerkClient) {
+          return false;
+        }
+        const clerkUser = await clerkClient.users.getUser(clerkUserId);
+        const primary = clerkUser.primaryEmailAddress;
+        const email = primary?.emailAddress?.toLowerCase();
+        if (!email || primary?.verification?.status !== "verified") {
+          console.warn(`[auth] Clerk user ${clerkUserId} has no verified primary email; refusing.`);
           return false;
         }
 
-        const clerkUser = await clerkClient.users.getUser(claims.sub as string);
-        const firstName = clerkUser.firstName || "";
-        const lastName = clerkUser.lastName || "";
+        const existing = await storage.getUserByEmail(email);
+        if (existing) {
+          if (existing.clerkUserId && existing.clerkUserId !== clerkUserId) {
+            // The row is already linked to a different Clerk account. Never merge accounts.
+            console.warn(`[auth] Email ${email} is linked to another Clerk id; refusing ${clerkUserId}.`);
+            return false;
+          }
+          user = existing.clerkUserId ? existing : await storage.setUserClerkId(existing.id, clerkUserId);
+        } else {
+          // Trial dura 7 dias a partir do primeiro login.
+          const TRIAL_DURATION_DAYS = 7;
+          const now = new Date();
+          const trialEnd = new Date(now);
+          trialEnd.setDate(trialEnd.getDate() + TRIAL_DURATION_DAYS);
 
-        // Trial dura 7 dias a partir do primeiro login.
-        const TRIAL_DURATION_DAYS = 7;
-        const now = new Date();
-        const trialEnd = new Date(now);
-        trialEnd.setDate(trialEnd.getDate() + TRIAL_DURATION_DAYS);
-
-        user = await storage.createUser({
-          email: String(email).toLowerCase(),
-          password: "clerk_oauth_user",
-          firstName,
-          lastName,
-          role: "user",
-          isActive: true,
-          credits: 10,
-          selectedPlan: "trial",
-          subscriptionPlan: "trial",
-          currentPeriodStart: now,
-          currentPeriodEnd: trialEnd,
-          creditsUsedThisPeriod: 0,
-        } as any);
+          user = await storage.createUser({
+            clerkUserId,
+            email,
+            password: "clerk_oauth_user",
+            firstName: clerkUser.firstName || "",
+            lastName: clerkUser.lastName || "",
+            role: "user",
+            isActive: true,
+            credits: 10,
+            selectedPlan: "trial",
+            subscriptionPlan: "trial",
+            currentPeriodStart: now,
+            currentPeriodEnd: trialEnd,
+            creditsUsedThisPeriod: 0,
+          } as any);
+        }
       }
 
-      if (!user.isActive) {
+      if (!user || !user.isActive) {
         return false;
       }
 
       req.user = user;
       return true;
     } catch (error) {
+      console.error("[auth] requireAuth failed:", (error as Error)?.message);
       return false;
     }
   };
