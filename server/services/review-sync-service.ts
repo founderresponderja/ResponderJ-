@@ -8,6 +8,19 @@ type PlatformName = "google" | "tripadvisor" | "booking" | "facebook";
 export const reviewSyncService = {
   async syncAllConnectedPlatforms(): Promise<{ total: number }> {
     const rows = await db.select().from(socialPlatformConnections).where(eq(socialPlatformConnections.status, "connected"));
+    return this.syncConnections(rows);
+  },
+
+  // Sync only the connections owned by one user (used by the Inbox "Sincronizar" button).
+  async syncForUser(userId: number): Promise<{ total: number }> {
+    const rows = await db.select().from(socialPlatformConnections).where(and(
+      eq(socialPlatformConnections.userId, userId),
+      eq(socialPlatformConnections.status, "connected"),
+    ));
+    return this.syncConnections(rows);
+  },
+
+  async syncConnections(rows: any[]): Promise<{ total: number }> {
     const grouped: Record<PlatformName, typeof rows> = {
       google: [],
       tripadvisor: [],
@@ -31,11 +44,13 @@ export const reviewSyncService = {
     let totalInserted = 0;
     for (const connection of connections) {
       let inserted = 0;
+      if (!connection.establishmentId) {
+        // Without an establishment the reviews would never reach the inbox (RJ-1.1).
+        console.warn(`[sync] connection ${connection.id} has no establishment_id; skipped`);
+        continue;
+      }
       try {
-        const googleReviews = await GoogleReviewsService.fetchReviews(
-          connection.userExternalId,
-          connection.establishmentId ?? null,
-        );
+        const googleReviews = await GoogleReviewsService.fetchReviewsForConnection(connection.id);
         for (const review of googleReviews) {
           const reviewExternalId = String(review.reviewId || review.name || "");
           if (!reviewExternalId) continue;
@@ -43,7 +58,7 @@ export const reviewSyncService = {
           const [existing] = await db.select().from(reviews).where(and(
             eq(reviews.platform, "google"),
             eq(reviews.externalId, reviewExternalId),
-            eq(reviews.establishmentId, connection.establishmentId ?? null),
+            eq(reviews.establishmentId, connection.establishmentId),
           ));
           if (existing) continue;
 
@@ -55,7 +70,7 @@ export const reviewSyncService = {
             FIVE: 5,
           };
           await db.insert(reviews).values({
-            establishmentId: connection.establishmentId ?? null,
+            establishmentId: connection.establishmentId,
             platform: "google",
             externalId: reviewExternalId,
             authorName: review.reviewer?.displayName || "Cliente Google",

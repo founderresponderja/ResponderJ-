@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { and, eq, inArray, ne } from "drizzle-orm";
 import { db } from "../db.js";
-import { socialPlatformConnections } from "../../shared/schema.js";
+import { establishments, socialPlatformConnections } from "../../shared/schema.js";
 import { encryptSensitiveData } from "../encryption.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
 import { storage } from "../storage.js";
@@ -44,13 +44,36 @@ function resolveUserPlanId(req: any) {
   return normalizePlanId(req.user?.subscriptionPlan || req.user?.selectedPlan || "free");
 }
 
-async function countConnectedPlatforms(clerkUserId: string, establishmentId?: number | null) {
+async function countConnectedPlatforms(userId: number, establishmentId: number) {
   const rows = await db.select().from(socialPlatformConnections).where(and(
-    eq(socialPlatformConnections.userExternalId, clerkUserId),
-    eq(socialPlatformConnections.establishmentId, establishmentId ?? null),
+    eq(socialPlatformConnections.userId, userId),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
     eq(socialPlatformConnections.status, "connected"),
   ));
   return rows.length;
+}
+
+function resolveUserId(req: any): number | null {
+  const id = Number(req.user?.id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+// Every connection belongs to a real establishment of the authenticated user (RJ-1.1).
+// - If the client names an establishment (agency mode), it must belong to this user.
+// - Otherwise use the user's first establishment, creating one if needed.
+// Returns null when the requested establishment is not the user's.
+async function resolveEstablishmentId(req: any, userId: number): Promise<number | null> {
+  const raw = req.body?.establishmentId ?? req.query?.establishmentId;
+  const requested = raw !== undefined && raw !== null && raw !== "" ? Number(raw) : null;
+  if (requested !== null && Number.isFinite(requested)) {
+    const [owned] = await db.select({ id: establishments.id }).from(establishments).where(and(
+      eq(establishments.id, requested),
+      eq(establishments.userId, userId),
+    ));
+    return owned ? owned.id : null;
+  }
+  const establishment = await storage.ensureEstablishmentForUser(userId);
+  return establishment.id;
 }
 
 async function exchangeGoogleCodeForTokens(code: string) {
@@ -116,8 +139,9 @@ function buildFacebookOAuthUrl(state: string) {
 }
 
 async function upsertConnection(input: {
+  userId: number;
   clerkUserId: string;
-  establishmentId?: number;
+  establishmentId: number;
   platform: string;
   accessToken?: string;
   refreshToken?: string;
@@ -126,9 +150,9 @@ async function upsertConnection(input: {
   meta?: Record<string, any>;
 }) {
   const [existing] = await db.select().from(socialPlatformConnections).where(and(
-    eq(socialPlatformConnections.userExternalId, input.clerkUserId),
+    eq(socialPlatformConnections.userId, input.userId),
     eq(socialPlatformConnections.platform, input.platform),
-    eq(socialPlatformConnections.establishmentId, input.establishmentId ?? null),
+    eq(socialPlatformConnections.establishmentId, input.establishmentId),
   ));
 
   const encryptedAccessToken = input.accessToken ? await encryptSensitiveData(input.accessToken) : null;
@@ -147,8 +171,9 @@ async function upsertConnection(input: {
   }
 
   await db.insert(socialPlatformConnections).values({
+    userId: input.userId,
     userExternalId: input.clerkUserId,
-    establishmentId: input.establishmentId ?? null,
+    establishmentId: input.establishmentId,
     platform: input.platform,
     status: input.status || "connected",
     accessToken: encryptedAccessToken,
@@ -159,32 +184,25 @@ async function upsertConnection(input: {
 }
 
 router.get("/status", requireAuth, async (req, res) => {
-  const clerkUserId = resolveExternalUserId(req);
-  const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
-  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
-
-  // When establishmentId is not provided, match by clerkUserId alone so
-  // single-establishment users see their connections regardless of which
-  // establishment_id was captured at OAuth time. When provided, scope to it
-  // (preserves multi-establishment pattern).
-  const scopedFilter = establishmentId !== null
-    ? eq(socialPlatformConnections.establishmentId, establishmentId)
-    : undefined;
+  const userId = resolveUserId(req);
+  if (!userId) return res.status(401).json({ error: "Autenticação necessária." });
+  const establishmentId = await resolveEstablishmentId(req, userId);
+  if (establishmentId === null) return res.status(403).json({ error: "Estabelecimento inválido." });
 
   await db.update(socialPlatformConnections).set({
     status: "disconnected",
     updatedAt: new Date(),
   }).where(and(
-    eq(socialPlatformConnections.userExternalId, clerkUserId),
-    ...(scopedFilter ? [scopedFilter] : []),
+    eq(socialPlatformConnections.userId, userId),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
     inArray(socialPlatformConnections.platform, ["thefork", "airbnb"]),
     eq(socialPlatformConnections.status, "connected"),
   ));
 
   const rows = await db.select().from(socialPlatformConnections)
     .where(and(
-      eq(socialPlatformConnections.userExternalId, clerkUserId),
-      ...(scopedFilter ? [scopedFilter] : []),
+      eq(socialPlatformConnections.userId, userId),
+      eq(socialPlatformConnections.establishmentId, establishmentId),
     ));
 
   const map: Record<string, any> = {};
@@ -192,6 +210,8 @@ router.get("/status", requireAuth, async (req, res) => {
     if (["thefork", "airbnb"].includes(row.platform)) {
       continue;
     }
+    // Prefer a connected row if duplicates exist for the same platform.
+    if (map[row.platform]?.connected && row.status !== "connected") continue;
     map[row.platform] = {
       connected: row.status === "connected",
       status: row.status,
@@ -210,18 +230,20 @@ router.get("/status", requireAuth, async (req, res) => {
 router.post("/connect/:platform", requireAuth, async (req, res) => {
   const platform = String(req.params.platform || "").toLowerCase();
   const clerkUserId = resolveExternalUserId(req);
-  const establishmentId = req.body?.establishmentId ? Number(req.body.establishmentId) : undefined;
+  const userId = resolveUserId(req);
+  if (!clerkUserId || !userId) return res.status(401).json({ error: "Autenticação necessária." });
+  const establishmentId = await resolveEstablishmentId(req, userId);
+  if (establishmentId === null) return res.status(403).json({ error: "Estabelecimento inválido." });
   const planId = resolveUserPlanId(req);
-  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
 
   const [alreadyConnected] = await db.select().from(socialPlatformConnections).where(and(
-    eq(socialPlatformConnections.userExternalId, clerkUserId),
+    eq(socialPlatformConnections.userId, userId),
     eq(socialPlatformConnections.platform, platform),
-    eq(socialPlatformConnections.establishmentId, establishmentId ?? null),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
     ne(socialPlatformConnections.status, "disconnected"),
   ));
   if (!alreadyConnected) {
-    const currentCount = await countConnectedPlatforms(clerkUserId, establishmentId ?? null);
+    const currentCount = await countConnectedPlatforms(userId, establishmentId);
     const planLimit = getPlanLimit(planId);
     if (currentCount >= planLimit) {
       return res.status(402).json({
@@ -245,8 +267,9 @@ router.post("/connect/:platform", requireAuth, async (req, res) => {
     await storage.createOAuthState({
       state,
       userExternalId: clerkUserId,
+      userId,
       platform,
-      establishmentId: establishmentId ?? null,
+      establishmentId,
       meta: {},
       expiresAt,
     });
@@ -257,6 +280,7 @@ router.post("/connect/:platform", requireAuth, async (req, res) => {
 
   if (platform === "tripadvisor" || platform === "booking") {
     await upsertConnection({
+      userId,
       clerkUserId,
       establishmentId,
       platform,
@@ -280,7 +304,14 @@ router.get("/callback/:platform", async (req, res) => {
   }
 
   const stateEntry = await storage.getOAuthState(state);
-  if (!stateEntry || stateEntry.platform !== platform || stateEntry.expiresAt < new Date() || !code) {
+  if (
+    !stateEntry ||
+    stateEntry.platform !== platform ||
+    stateEntry.expiresAt < new Date() ||
+    !code ||
+    !stateEntry.userId ||
+    !stateEntry.establishmentId
+  ) {
     if (stateEntry) {
       await storage.deleteOAuthState(state).catch(() => {});
     }
@@ -320,6 +351,7 @@ router.get("/callback/:platform", async (req, res) => {
   }
 
   await upsertConnection({
+    userId: stateEntry.userId,
     clerkUserId: stateEntry.userExternalId,
     establishmentId: stateEntry.establishmentId,
     platform,
@@ -334,12 +366,13 @@ router.get("/callback/:platform", async (req, res) => {
 });
 
 router.get("/sync/google", requireAuth, async (req, res) => {
-  const clerkUserId = resolveExternalUserId(req);
-  const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
-  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
+  const userId = resolveUserId(req);
+  if (!userId) return res.status(401).json({ error: "Autenticação necessária." });
+  const establishmentId = await resolveEstablishmentId(req, userId);
+  if (establishmentId === null) return res.status(403).json({ error: "Estabelecimento inválido." });
 
   const rows = await db.select().from(socialPlatformConnections).where(and(
-    eq(socialPlatformConnections.userExternalId, clerkUserId),
+    eq(socialPlatformConnections.userId, userId),
     eq(socialPlatformConnections.platform, "google"),
     eq(socialPlatformConnections.status, "connected"),
     eq(socialPlatformConnections.establishmentId, establishmentId),
@@ -349,27 +382,26 @@ router.get("/sync/google", requireAuth, async (req, res) => {
     return res.status(404).json({ error: "Nenhuma ligação Google ativa encontrada." });
   }
 
-  await reviewSyncService.syncGoogle(rows);
-  return res.json({ ok: true, syncedConnections: rows.length, syncedAt: new Date().toISOString() });
+  const imported = await reviewSyncService.syncGoogle(rows);
+  return res.json({ ok: true, syncedConnections: rows.length, imported, syncedAt: new Date().toISOString() });
 });
 
 router.post("/disconnect/:platform", requireAuth, async (req, res) => {
   const platform = String(req.params.platform || "").toLowerCase();
-  const clerkUserId = resolveExternalUserId(req);
-  const establishmentId = req.body?.establishmentId ? Number(req.body.establishmentId) : null;
-  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
+  const userId = resolveUserId(req);
+  if (!userId) return res.status(401).json({ error: "Autenticação necessária." });
+  const establishmentId = await resolveEstablishmentId(req, userId);
+  if (establishmentId === null) return res.status(403).json({ error: "Estabelecimento inválido." });
 
-  const [existing] = await db.select().from(socialPlatformConnections).where(and(
-    eq(socialPlatformConnections.userExternalId, clerkUserId),
-    eq(socialPlatformConnections.platform, platform),
-    eq(socialPlatformConnections.establishmentId, establishmentId),
-  ));
-  if (!existing) return res.json({ disconnected: true });
-
+  // Disconnect every active row for this platform (there may be legacy duplicates).
   await db.update(socialPlatformConnections).set({
     status: "disconnected",
     updatedAt: new Date(),
-  }).where(eq(socialPlatformConnections.id, existing.id));
+  }).where(and(
+    eq(socialPlatformConnections.userId, userId),
+    eq(socialPlatformConnections.platform, platform),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
+  ));
 
   return res.json({ disconnected: true });
 });

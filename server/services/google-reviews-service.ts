@@ -120,6 +120,8 @@ export class GoogleReviewsService {
    * Obtém reviews de uma conta conectada
    */
   static async fetchReviews(userExternalId: string, establishmentId?: number | null) {
+    // NOTE: legacy entry point (only used by the dead /api/reviews route). It cannot match
+    // connections whose establishment_id is NULL, because "= NULL" is never true in SQL.
     const [connection] = await db.select().from(socialPlatformConnections).where(and(
       eq(socialPlatformConnections.userExternalId, userExternalId),
       eq(socialPlatformConnections.platform, "google"),
@@ -127,10 +129,16 @@ export class GoogleReviewsService {
       eq(socialPlatformConnections.status, "connected"),
     ));
     if (!connection) return [];
+    return this.fetchReviewsForConnection(connection.id);
+  }
 
+  /**
+   * Obtém reviews de uma ligação Google concreta (pelo id da linha em social_platform_connections).
+   */
+  static async fetchReviewsForConnection(connectionId: number) {
     let accessToken: string;
     try {
-      accessToken = await this.getValidAccessToken(connection.id);
+      accessToken = await this.getValidAccessToken(connectionId);
     } catch (err) {
       console.error("[F8] fetchReviews token refresh failed:", err);
       return [];

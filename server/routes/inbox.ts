@@ -118,8 +118,8 @@ router.post("/sync", requireAuth, protectCSRF, async (req: any, res) => {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    await reviewSyncService.syncAllConnectedPlatforms();
-    res.json({ ok: true });
+    const result = await reviewSyncService.syncForUser(userId);
+    res.json({ ok: true, imported: result.total });
   } catch (error: any) {
     console.error("Inbox sync error:", error);
     res.status(500).json({ message: "Erro ao sincronizar", detail: error?.message });
