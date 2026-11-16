@@ -6,6 +6,7 @@ import { socialPlatformConnections } from "../../shared/schema.js";
 import { encryptSensitiveData } from "../encryption.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
 import { storage } from "../storage.js";
+import { requireAuth } from "../auth.js";
 
 const router = Router();
 
@@ -32,11 +33,15 @@ function getPlanLimit(planId: string | undefined) {
   return PLAN_PLATFORM_LIMITS[normalized] ?? PLAN_PLATFORM_LIMITS.free;
 }
 
+// Identity comes only from the verified Clerk token (set by requireAuth).
+// Never trust a clerkUserId sent in the request body or query string.
 function resolveExternalUserId(req: any) {
-  const fromBody = String(req.body?.clerkUserId || "").trim();
-  const fromQuery = String(req.query?.clerkUserId || "").trim();
-  const fromAuth = String(req.user?.id || "").trim();
-  return fromBody || fromQuery || fromAuth;
+  return String(req.clerkUserId || "").trim();
+}
+
+// Plan comes from the authenticated user record, never from the client.
+function resolveUserPlanId(req: any) {
+  return normalizePlanId(req.user?.subscriptionPlan || req.user?.selectedPlan || "free");
 }
 
 async function countConnectedPlatforms(clerkUserId: string, establishmentId?: number | null) {
@@ -153,10 +158,10 @@ async function upsertConnection(input: {
   });
 }
 
-router.get("/status", async (req, res) => {
+router.get("/status", requireAuth, async (req, res) => {
   const clerkUserId = resolveExternalUserId(req);
   const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
-  if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
+  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
 
   // When establishmentId is not provided, match by clerkUserId alone so
   // single-establishment users see their connections regardless of which
@@ -202,12 +207,12 @@ router.get("/status", async (req, res) => {
   });
 });
 
-router.post("/connect/:platform", async (req, res) => {
+router.post("/connect/:platform", requireAuth, async (req, res) => {
   const platform = String(req.params.platform || "").toLowerCase();
   const clerkUserId = resolveExternalUserId(req);
   const establishmentId = req.body?.establishmentId ? Number(req.body.establishmentId) : undefined;
-  const planId = normalizePlanId(String(req.body?.planId || req.query?.planId || "free"));
-  if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
+  const planId = resolveUserPlanId(req);
+  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
 
   const [alreadyConnected] = await db.select().from(socialPlatformConnections).where(and(
     eq(socialPlatformConnections.userExternalId, clerkUserId),
@@ -328,10 +333,10 @@ router.get("/callback/:platform", async (req, res) => {
   return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=connected`);
 });
 
-router.get("/sync/google", async (req, res) => {
+router.get("/sync/google", requireAuth, async (req, res) => {
   const clerkUserId = resolveExternalUserId(req);
   const establishmentId = req.query.establishmentId ? Number(req.query.establishmentId) : null;
-  if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
+  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
 
   const rows = await db.select().from(socialPlatformConnections).where(and(
     eq(socialPlatformConnections.userExternalId, clerkUserId),
@@ -348,11 +353,11 @@ router.get("/sync/google", async (req, res) => {
   return res.json({ ok: true, syncedConnections: rows.length, syncedAt: new Date().toISOString() });
 });
 
-router.post("/disconnect/:platform", async (req, res) => {
+router.post("/disconnect/:platform", requireAuth, async (req, res) => {
   const platform = String(req.params.platform || "").toLowerCase();
   const clerkUserId = resolveExternalUserId(req);
   const establishmentId = req.body?.establishmentId ? Number(req.body.establishmentId) : null;
-  if (!clerkUserId) return res.status(400).json({ error: "clerkUserId obrigatório." });
+  if (!clerkUserId) return res.status(401).json({ error: "Autenticação necessária." });
 
   const [existing] = await db.select().from(socialPlatformConnections).where(and(
     eq(socialPlatformConnections.userExternalId, clerkUserId),
@@ -371,8 +376,11 @@ router.post("/disconnect/:platform", async (req, res) => {
 
 router.post("/sync-now", async (req, res) => {
   const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return res.status(503).json({ error: "Sync not configured." });
+  }
   const providedSecret = String(req.body?.secret || "");
-  if (cronSecret && providedSecret !== cronSecret) {
+  if (providedSecret !== cronSecret) {
     return res.status(401).json({ error: "Unauthorized." });
   }
 

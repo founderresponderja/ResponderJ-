@@ -6,7 +6,10 @@ export default async function handler(req: Request, res: Response) {
   const authHeader = String(req.headers.authorization || "");
   const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
 
-  if (cronSecret && bearerToken !== cronSecret) {
+  if (!cronSecret) {
+    return res.status(503).json({ error: "Cron not configured." });
+  }
+  if (bearerToken !== cronSecret) {
     return res.status(401).json({ error: "Unauthorized cron call." });
   }
 

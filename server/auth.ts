@@ -109,6 +109,9 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
     try {
       const payload = await verifyToken(clerkToken, { secretKey: clerkSecretKey });
       const claims = payload as Record<string, any>;
+      if (typeof claims.sub === "string" && claims.sub) {
+        req.clerkUserId = claims.sub;
+      }
       let email =
         claims.email ||
         claims.email_address ||

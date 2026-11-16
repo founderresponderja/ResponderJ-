@@ -171,14 +171,9 @@ router.get("/pending", requireAuth, async (req: any, res) => {
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
     // Gate on having at least one real platform connection. We key platform connections
-    // by the Clerk external id (header provided by the frontend) so that pending responses
+    // by the Clerk external id (from the verified token) so that pending responses
     // never show pre-existing mock data when the user has no platform linked.
-    const clerkUserId = String(
-      req.headers["x-clerk-user-id"] ||
-      req.query?.clerkUserId ||
-      req.user?.clerkUserId ||
-      ""
-    ).trim();
+    const clerkUserId = String(req.clerkUserId || "").trim();
 
     if (clerkUserId) {
       const [connected] = await db.select({ id: socialPlatformConnections.id })

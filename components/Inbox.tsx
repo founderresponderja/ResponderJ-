@@ -301,8 +301,9 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
     let cancelled = false;
     (async () => {
       try {
-        const url = `/api/platforms/status?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`;
-        const res = await fetch(url, { credentials: 'include' });
+        const url = `/api/platforms/status?establishmentId=${establishmentId ?? ''}`;
+        const headers = await buildAuthHeaders({ getToken });
+        const res = await fetch(url, { headers, credentials: 'include' });
         if (!res.ok) {
           console.error('[F8] /api/platforms/status returned', res.status);
           return;
@@ -321,7 +322,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
     return () => {
       cancelled = true;
     };
-  }, [clerkUserId, establishmentId]);
+  }, [clerkUserId, establishmentId, getToken]);
 
   const handleReconnect = useCallback(
     async (platform: string) => {
@@ -332,7 +333,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
           method: 'POST',
           headers,
           credentials: 'include',
-          body: JSON.stringify({ clerkUserId, establishmentId }),
+          body: JSON.stringify({ establishmentId }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data?.oauthUrl) {

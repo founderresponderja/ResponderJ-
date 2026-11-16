@@ -5,6 +5,7 @@ import { translations, Language } from '../utils/translations';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { getCsrfToken } from '../services/geminiService';
 import { notifyError, notifySuccess } from '../utils/notify';
+import { buildAuthHeaders } from '../utils/api';
 
 type PlatformConnection = {
   connected: boolean;
@@ -36,11 +37,12 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
 
   const loadStatus = React.useCallback(async () => {
     if (!clerkUserId) return;
-    const response = await fetch(`/api/platforms/status?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
+    const headers = await buildAuthHeaders({ getToken });
+    const response = await fetch(`/api/platforms/status?establishmentId=${establishmentId ?? ''}`, { headers });
     if (!response.ok) return;
     const data = await response.json();
     setConnections(data);
-  }, [clerkUserId, establishmentId]);
+  }, [clerkUserId, establishmentId, getToken]);
 
   React.useEffect(() => {
     loadStatus();
@@ -51,16 +53,15 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       setPendingItems([]);
       return;
     }
-    const response = await fetch('/api/reviews-ai/pending', {
-      headers: { 'x-clerk-user-id': clerkUserId },
-    });
+    const headers = await buildAuthHeaders({ getToken });
+    const response = await fetch('/api/reviews-ai/pending', { headers });
     if (!response.ok) {
       setPendingItems([]);
       return;
     }
     const data = await response.json();
     setPendingItems(Array.isArray(data?.items) ? data.items : []);
-  }, [clerkUserId]);
+  }, [clerkUserId, getToken]);
 
   React.useEffect(() => {
     loadPending();
@@ -81,7 +82,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       const response = await fetch(`/api/platforms/connect/${platformKey}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ clerkUserId, establishmentId, planId }),
+        body: JSON.stringify({ establishmentId }),
       });
       if (response.status === 402) {
         const payload = await response.json().catch(() => ({}));
@@ -115,7 +116,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       await fetch(`/api/platforms/disconnect/${platformKey}`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ clerkUserId, establishmentId, planId }),
+        body: JSON.stringify({ establishmentId }),
       });
       await loadStatus();
     } finally {
@@ -131,7 +132,8 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     }
     setSyncingGoogle(true);
     try {
-      const response = await fetch(`/api/platforms/sync/google?clerkUserId=${encodeURIComponent(clerkUserId)}&establishmentId=${establishmentId ?? ''}`);
+      const headers = await buildAuthHeaders({ getToken });
+      const response = await fetch(`/api/platforms/sync/google?establishmentId=${establishmentId ?? ''}`, { headers });
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => ({}));
         notifyError(errorPayload?.error || 'Falha ao sincronizar Google.');
