@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { PLANS, normalizePlan } from "../../shared/plans.js";
 import crypto from "crypto";
 import { and, eq, inArray, ne } from "drizzle-orm";
 import { db } from "../db.js";
@@ -15,22 +16,17 @@ const GOOGLE_CALLBACK_URL = "https://responderja.pt/api/platforms/callback/googl
 const FACEBOOK_CALLBACK_URL = `${APP_BASE_URL}/api/platforms/callback/facebook`;
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-const PLAN_PLATFORM_LIMITS: Record<string, number> = {
-  free: 1,
-  trial: 1,
-  starter: 2,
-  regular: 2,
-  pro: 5,
-  agency: Number.POSITIVE_INFINITY,
-};
+// RJ-2.1: limites de plataformas vêm de shared/plans.ts.
+const PLAN_PLATFORM_LIMITS: Record<string, number> = Object.fromEntries(
+  Object.values(PLANS).map((p) => [p.key, p.maxPlatforms === -1 ? Number.POSITIVE_INFINITY : p.maxPlatforms]),
+);
 
 function normalizePlanId(planId: string | undefined) {
   return String(planId || "free").toLowerCase();
 }
 
 function getPlanLimit(planId: string | undefined) {
-  const normalized = normalizePlanId(planId);
-  return PLAN_PLATFORM_LIMITS[normalized] ?? PLAN_PLATFORM_LIMITS.free;
+  return PLAN_PLATFORM_LIMITS[normalizePlan(planId)] ?? PLAN_PLATFORM_LIMITS.trial;
 }
 
 // Identity comes only from the verified Clerk token (set by requireAuth).

@@ -10,6 +10,7 @@ import { createCheckoutSession, redirectToCheckout } from './services/subscripti
 import { useSubscription } from './hooks/useSubscription';
 import { PlanId } from './types';
 import { getViewAs, stopViewAs } from './utils/viewAs';
+import { PLANS } from './shared/plans';
 import BlogPage, { blogArticles } from './components/BlogPage';
 
 // Lazy loading components for performance
@@ -23,7 +24,7 @@ const TermsAndConditionsPage = lazy(() => import('./components/TermsAndCondition
 const Backoffice = lazy(() => import('./components/Backoffice'));
 const InvitePage = lazy(() => import('./components/InvitePage'));
 
-const TRIAL_LIMIT = 10;
+const TRIAL_LIMIT = PLANS.trial.monthlyResponses;
 
 type ViewState = 'landing' | 'login' | 'register' | 'app' | 'pricing' | 'about' | 'admin' | 'cookies' | 'invite' | 'privacy' | 'terms' | 'blog';
 export type Theme = 'light' | 'dark';

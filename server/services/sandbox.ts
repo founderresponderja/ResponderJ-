@@ -44,7 +44,7 @@ export const SANDBOXES: SandboxDef[] = [
     establishments: [{ name: "Padaria Aurora", type: "bakery", platforms: ["google"] }],
   },
   {
-    key: "starter", label: "Starter", description: "Plano Starter ativo: 50 respostas, 1 plataforma.",
+    key: "starter", label: "Starter", description: "Plano Starter ativo: 50 respostas, 1 estabelecimento, até 2 plataformas.",
     plan: "starter", credits: 38, creditsUsed: 12, periodDays: 20,
     establishments: [{ name: "Restaurante O Farol", type: "restaurant", platforms: ["google"] }],
   },
@@ -57,7 +57,7 @@ export const SANDBOXES: SandboxDef[] = [
     ],
   },
   {
-    key: "agencia", label: "Agência (dono)", description: "Plano Agência: 3 clientes geridos e uma equipa com 1 membro.",
+    key: "agencia", label: "Agência (dono)", description: "Plano Agência: 500 respostas, 3 de 5 clientes geridos, equipa com 1 membro.",
     plan: "agency", credits: 500, creditsUsed: 85, periodDays: 20,
     establishments: [
       { name: "Clínica Sorriso (cliente)", type: "clinic", platforms: ["google"] },
