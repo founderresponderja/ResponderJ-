@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Activity, BarChart3, Bot, Bug, Crown, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, UserCog, Users, X } from 'lucide-react';
+import { Activity, BarChart3, Bot, Bug, Crown, HeartPulse, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, UserCog, Users, X } from 'lucide-react';
 import { startViewAs } from '../utils/viewAs';
 import { IncidentsTab, IncidentStatsTab } from './BackofficeIncidents';
 
 type Role = 'super_admin' | 'operator' | 'customer';
-type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit' | 'operators' | 'incidents' | 'incident-stats';
+type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit' | 'operators' | 'incidents' | 'incident-stats' | 'health';
 
 interface Me { id: number; email: string; name: string; role: Role }
 interface Overview {
@@ -63,6 +63,7 @@ const ACTION_LABEL: Record<string, string> = {
   transfer_cancel: 'Cancelou a transferência',
   cron_sync: 'Agendamento diário de sincronização',
   incident_resolved: 'Deu um erro reportado como resolvido',
+  app_error_resolved: 'Marcou um erro técnico como visto',
   account_export: 'Cliente descarregou os seus dados',
   account_deleted: 'Cliente apagou a conta',
 };
@@ -116,6 +117,7 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
     { id: 'ai', label: 'Uso da IA', icon: <Bot className="h-4 w-4" /> },
     { id: 'sync', label: 'Sincronizações', icon: <RefreshCw className="h-4 w-4" /> },
     { id: 'incidents', label: 'Erros', icon: <Bug className="h-4 w-4" /> },
+    { id: 'health', label: 'Saúde técnica', icon: <HeartPulse className="h-4 w-4" /> },
     { id: 'audit', label: 'Registo de ações', icon: <Activity className="h-4 w-4" /> },
     ...(me?.role === 'super_admin' ? [
       { id: 'incident-stats' as Tab, label: 'Indicadores de erros', icon: <BarChart3 className="h-4 w-4" /> },
@@ -160,6 +162,7 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
         {tab === 'ai' && <AiTab api={api} />}
         {tab === 'sync' && <SyncTab api={api} />}
         {tab === 'incidents' && <IncidentsTab api={api} />}
+        {tab === 'health' && <HealthTab api={api} />}
         {tab === 'incident-stats' && me?.role === 'super_admin' && <IncidentStatsTab api={api} />}
         {tab === 'audit' && <AuditTab api={api} />}
         {tab === 'operators' && me?.role === 'super_admin' && <OperatorsTab api={api} meId={me.id} />}
@@ -723,6 +726,56 @@ const AuditTab = ({ api }: { api: Api }) => {
           {data.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">Ainda sem ações registadas.</td></tr>}
         </tbody>
       </table>
+    </div>
+  );
+};
+
+// RJ-8.2: erros técnicos agrupados (respostas 500 da API, exceções e erros JavaScript do navegador).
+interface AppErrorRow {
+  id: number; source: string; kind: string; message: string; path: string | null; count: number;
+  first_seen: string; last_seen: string; resolved_at: string | null; sample: any; last_user_email: string | null;
+}
+const HealthTab = ({ api }: { api: Api }) => {
+  const [showResolved, setShowResolved] = useState(false);
+  const { data, error, reload } = useLoad(() => api<AppErrorRow[]>(`/app-errors${showResolved ? '?resolved=1' : ''}`), [showResolved]);
+  const [open, setOpen] = useState<number | null>(null);
+  const resolve = async (id: number) => { await api(`/app-errors/${id}/resolve`, {}); reload(); };
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-600 dark:text-slate-300">
+        Erros iguais são agrupados (os números e ids nos caminhos não contam). "Marcar como visto" esconde o erro até voltar a acontecer.
+      </p>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} /> Mostrar também os vistos</label>
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      <div className={`${card} overflow-x-auto`}>
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase text-slate-500">
+            <tr><th className="p-3">Origem</th><th className="p-3">Erro</th><th className="p-3">Vezes</th><th className="p-3">Última</th><th className="p-3"></th></tr>
+          </thead>
+          <tbody>
+            {(data || []).map((e) => (
+              <React.Fragment key={e.id}>
+                <tr className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="p-3 text-xs">{e.source === 'server' ? 'Servidor' : 'Navegador'}<div className="text-slate-500">{e.kind}</div></td>
+                  <td className="p-3">
+                    <button onClick={() => setOpen(open === e.id ? null : e.id)} className="text-left">
+                      <div className="font-medium">{e.message}</div>
+                      <div className="text-xs text-slate-500">{e.path || '—'}{e.last_user_email ? ` · ${e.last_user_email}` : ''}</div>
+                    </button>
+                  </td>
+                  <td className="p-3 font-mono">{e.count}</td>
+                  <td className="p-3 text-xs">{fmtDate(e.last_seen, true)}<div className="text-slate-500">desde {fmtDate(e.first_seen)}</div></td>
+                  <td className="p-3">{!e.resolved_at && <button onClick={() => resolve(e.id)} className={`${btn} border`}>Marcar como visto</button>}</td>
+                </tr>
+                {open === e.id && (
+                  <tr><td colSpan={5} className="bg-slate-50 p-3 dark:bg-slate-800"><pre className="whitespace-pre-wrap text-xs">{JSON.stringify(e.sample, null, 2)}</pre></td></tr>
+                )}
+              </React.Fragment>
+            ))}
+            {data && data.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-slate-500">Sem erros técnicos por ver.</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

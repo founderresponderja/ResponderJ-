@@ -16,6 +16,25 @@ router.use(requireAuth, requireOperator);
 import operatorsRouter from "./backoffice-operators.js";
 router.use("/operators", operatorsRouter);
 
+// RJ-8.2: erros técnicos agrupados (servidor e navegador).
+router.get("/app-errors", async (req: any, res) => {
+  const showResolved = req.query.resolved === "1";
+  const { rows } = await db.execute(sql`
+    SELECT e.id, e.source, e.kind, e.message, e.path, e.count, e.first_seen, e.last_seen, e.resolved_at, e.sample,
+           u.email AS last_user_email
+    FROM app_errors e LEFT JOIN users u ON u.id = e.last_user_id
+    WHERE ${showResolved ? sql`true` : sql`e.resolved_at IS NULL`}
+    ORDER BY e.last_seen DESC
+    LIMIT 200`);
+  res.json(rows);
+});
+
+router.post("/app-errors/:id/resolve", async (req: any, res) => {
+  await db.execute(sql`UPDATE app_errors SET resolved_at = now() WHERE id = ${Number(req.params.id)}`);
+  await recordAdminAction(req, "app_error_resolved", { details: { id: Number(req.params.id) } });
+  res.json({ ok: true });
+});
+
 // Inbox de erros e indicadores (RJ-5.6, ver backoffice-incidents.ts).
 import incidentsRouter from "./backoffice-incidents.js";
 router.use("/incidents", incidentsRouter);
