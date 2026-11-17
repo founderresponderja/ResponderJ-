@@ -20,6 +20,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Theme } from '../App';
 import { translations, Language } from '../utils/translations';
+import { useAuth } from '@clerk/clerk-react';
+import { buildAuthHeaders } from '../utils/api';
+import { notifyError } from '../utils/notify';
 
 interface BillingPageProps {
   theme?: Theme;
@@ -31,6 +34,8 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
   const [error, setError] = useState<string | null>(null);
   const [billingInfo, setBillingInfo] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [redirecting, setRedirecting] = useState(false);
+  const { getToken } = useAuth();
 
   const t = translations[lang].app.billing;
 
@@ -41,7 +46,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
   const fetchBillingInfo = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/billing/info');
+      const res = await fetch('/api/billing/info', { headers: await buildAuthHeaders({ getToken }) });
       
       if (!res.ok) {
         if (res.status === 401) {
@@ -67,9 +72,24 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
     }
   };
 
+  // RJ-3.2: sem subscrição -> checkout do Stripe; com subscrição -> portal do Stripe
+  // (mudar de plano, cancelar, atualizar o cartão). Antes só mostrava um alerta.
+  const openStripe = async (path: string, body: unknown) => {
+      setRedirecting(true);
+      try {
+          const res = await fetch(path, { method: 'POST', headers: await buildAuthHeaders({ getToken }), body: JSON.stringify(body) });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data?.url) throw new Error(data?.error || data?.message || 'Não foi possível abrir o Stripe.');
+          window.location.href = data.url;
+      } catch (e: any) {
+          notifyError(e?.message || 'Não foi possível abrir o Stripe.');
+          setRedirecting(false);
+      }
+  };
+  const handleManage = () => openStripe('/api/billing/portal', {});
   const handleUpgrade = async (planId: string) => {
-      // Logic to trigger Stripe Checkout
-      alert(`Iniciar upgrade para plano: ${planId} (Integração Stripe pronta no backend)`);
+      if (billingInfo?.subscription) return handleManage();
+      return openStripe('/api/billing/create-checkout-session', { planId });
   };
 
   // Helper functions
@@ -153,7 +173,9 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
                                     <CardTitle className="text-lg">{t.plan} {currentPlanName}</CardTitle>
                                     <p className="text-sm text-slate-600 dark:text-slate-400">
                                         {subscription ? `${subscription.plan.price}€${translations[lang].pricing.month}` : 'Sem custos'} 
-                                        {subscription && ` • Renovação: ${new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-PT")}`}
+                                        {subscription && (subscription.cancelAtPeriodEnd
+                                            ? ` • Cancelada: termina a ${new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-PT")}`
+                                            : ` • Renovação: ${new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-PT")}`)}
                                     </p>
                                 </div>
                             </div>
@@ -181,7 +203,21 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
                                 <p className="text-sm text-slate-600 dark:text-slate-400">{t.users}</p>
                             </div>
                         </div>
+                        {subscription?.status === 'past_due' && (
+                            <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                O último pagamento falhou. O plano continua ativo enquanto o Stripe volta a tentar; atualize o cartão para evitar a interrupção.
+                            </div>
+                        )}
                         <div className="flex gap-3 mt-6">
+                            {subscription && (
+                                <button
+                                    onClick={handleManage}
+                                    disabled={redirecting}
+                                    className="border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                                >
+                                    Gerir subscrição e pagamento
+                                </button>
+                            )}
                             <button 
                                 onClick={() => setActiveTab('subscription')}
                                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -257,7 +293,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ theme, lang }) => {
                             </ul>
                             <button 
                                 onClick={() => handleUpgrade(plan.id)}
-                                disabled={currentPlanName === plan.name}
+                                disabled={currentPlanName === plan.name || redirecting}
                                 className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
                                     currentPlanName === plan.name
                                         ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 cursor-not-allowed'

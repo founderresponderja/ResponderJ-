@@ -40,6 +40,9 @@ export const users = pgTable("users", {
   subscriptionPlan: text("subscription_plan").default("trial"),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  // RJ-3.2: estado da subscrição no Stripe e cancelamento agendado para o fim do período.
+  subscriptionStatus: text("subscription_status"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   currentPeriodStart: timestamp("current_period_start"),
   currentPeriodEnd: timestamp("current_period_end"),
   creditsUsedThisPeriod: integer("credits_used_this_period").default(0),

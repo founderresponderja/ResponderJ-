@@ -1,7 +1,8 @@
 import Stripe from "stripe";
 import { PLANS } from "../../shared/plans.js";
 import { storage } from "../storage.js";
-import { resolvePaidPlan, computeSubscriptionSync, subscriptionDeletedUpdate } from "./billing-logic.js";
+import { resolvePaidPlan, computeSubscriptionSync, subscriptionDeletedUpdate, subscriptionAccess } from "./billing-logic.js";
+import { sendMail } from "./mailer.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
   apiVersion: "2025-07-30.basil" as any,
@@ -193,6 +194,25 @@ export class BillingService {
       console.warn(`[billing.sync] plan ${planId} resolved from checkout metadata (price ${priceId} not configured)`);
     }
 
+    // RJ-3.2: estado da subscrição. Cancelada / não paga -> perde o plano (se for a atual);
+    // primeiro pagamento por confirmar -> ainda não dá o plano.
+    const access = subscriptionAccess(subscription.status);
+    const statusFields = {
+      subscriptionStatus: subscription.status,
+      cancelAtPeriodEnd: Boolean((subscription as any).cancel_at_period_end),
+    };
+    if (access === "revoke") {
+      if (!user.stripeSubscriptionId || user.stripeSubscriptionId === subscription.id) {
+        await storage.updateUser(user.id, { ...subscriptionDeletedUpdate(), ...statusFields } as any);
+        return { updated: true, userId: user.id, reason: `revoked_${subscription.status}` };
+      }
+      return { updated: false, userId: user.id, reason: "old_subscription" };
+    }
+    if (access === "pending") {
+      await storage.updateUser(user.id, { stripeCustomerId: user.stripeCustomerId || customerId, ...statusFields } as any);
+      return { updated: false, userId: user.id, reason: "payment_pending" };
+    }
+
     const subAny = subscription as any;
     const result = computeSubscriptionSync(
       user,
@@ -205,12 +225,19 @@ export class BillingService {
       planId,
       options,
     );
-    if (result.skip) return { updated: false, userId: user.id, planId, reason: "unchanged" };
+    if (result.skip) {
+      // Mesmo plano e período, mas o estado pode ter mudado (ex.: cancelamento agendado, pagamento em atraso).
+      if ((user as any).subscriptionStatus !== statusFields.subscriptionStatus || Boolean((user as any).cancelAtPeriodEnd) !== statusFields.cancelAtPeriodEnd) {
+        await storage.updateUser(user.id, statusFields as any);
+        return { updated: true, userId: user.id, planId, reason: "status_changed" };
+      }
+      return { updated: false, userId: user.id, planId, reason: "unchanged" };
+    }
 
     if (result.planChanged) {
       console.log(`[billing.sync] plan changed for user ${user.id}: ${user.subscriptionPlan} -> ${planId}`);
     }
-    await storage.updateUser(user.id, result.update);
+    await storage.updateUser(user.id, { ...result.update, ...statusFields } as any);
     return { updated: true, userId: user.id, planId };
   }
 
@@ -234,59 +261,39 @@ export class BillingService {
       return;
     }
     // RJ-6.3: erros de base de dados são lançados para o Stripe repetir (antes eram engolidos).
-    await storage.updateUser(user.id, subscriptionDeletedUpdate());
+    await storage.updateUser(user.id, { ...subscriptionDeletedUpdate(), subscriptionStatus: "canceled", cancelAtPeriodEnd: false } as any);
     console.log(`[billing.subscription_deleted] user ${user.id} reverted to trial`);
   }
 
-  static async handleSuccessfulPayment(subscriptionId: string | any, invoiceId: string) {
-    try {
-      const subId = typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id;
-      const subscription = await stripe.subscriptions.retrieve(subId);
-      const customerId = subscription.customer as string;
-      
-      // Find user by customer ID
-      const user = await storage.getUserByStripeCustomerId(customerId);
-      if (!user) {
-        console.error("Utilizador não encontrado para customer:", customerId);
-        return;
-      }
-
-      // Add credits based on plan
-      const plan = this.PAYMENT_PLANS[user.subscriptionPlan as keyof typeof this.PAYMENT_PLANS];
-      if (plan) {
-        await storage.addCreditsToUser(user.id, plan.credits, "subscription_renewal");
-      }
-
-      console.log(`Pagamento bem-sucedido para utilizador ${user.id}, ${plan?.credits} créditos adicionados`);
-    } catch (error) {
-      console.error("Erro ao processar pagamento bem-sucedido:", error);
+  /**
+   * RJ-3.2: pagamento de renovação falhou. Antes só escrevia no registo e engolia erros.
+   * Agora: guarda o estado (past_due) e avisa o cliente por email, com o caminho para
+   * atualizar o cartão. O plano mantém-se enquanto o Stripe volta a tentar (período de graça);
+   * se as tentativas acabarem, chega customer.subscription.updated/deleted e o plano sai.
+   * Erros de base de dados são lançados para o Stripe repetir o aviso.
+   */
+  static async handlePaymentFailure(subscriptionId: string | any, invoiceId: string, _error: any) {
+    const subId = typeof subscriptionId === "string" ? subscriptionId : subscriptionId.id;
+    const subscription = await stripe.subscriptions.retrieve(subId);
+    const customerId = typeof subscription.customer === "string" ? subscription.customer : (subscription.customer as any)?.id;
+    const user = customerId ? await storage.getUserByStripeCustomerId(customerId) : undefined;
+    if (!user) {
+      console.warn("[billing.payment_failed] user not found for customer:", customerId);
+      return;
     }
-  }
-
-  static async handlePaymentFailure(subscriptionId: string | any, invoiceId: string, error: any) {
-    try {
-      const subId = typeof subscriptionId === 'string' ? subscriptionId : subscriptionId.id;
-      const subscription = await stripe.subscriptions.retrieve(subId);
-      const customerId = subscription.customer as string;
-      
-      // Find user by customer ID
-      const user = await storage.getUserByStripeCustomerId(customerId);
-      if (!user) {
-        console.error("Utilizador não encontrado para customer:", customerId);
-        return;
-      }
-
-      // Notify user about failed payment
-      // Email notification would be sent here
-      console.log(`Falha no pagamento para utilizador ${user.id}:`, error.message);
-      
-      // If subscription is past due, could temporarily suspend account
-      if (subscription.status === 'past_due') {
-        // Could update user status or limit functionality
-        console.log(`Subscrição em atraso para utilizador ${user.id}`);
-      }
-    } catch (error) {
-      console.error("Erro ao processar falha de pagamento:", error);
+    await storage.updateUser(user.id, { subscriptionStatus: subscription.status } as any);
+    if (user.email) {
+      const base = process.env.APP_BASE_URL || "https://www.responderja.pt";
+      const sent = await sendMail({
+        to: user.email,
+        subject: "O pagamento da sua subscrição falhou",
+        text:
+          `Olá${user.firstName ? ` ${user.firstName}` : ""},\n\n` +
+          `Não conseguimos cobrar a renovação da sua subscrição da Responder Já (fatura ${invoiceId}).\n\n` +
+          `O seu plano continua ativo enquanto voltamos a tentar nos próximos dias. Para evitar a interrupção, ` +
+          `atualize o cartão em ${base} → Planos → "Gerir subscrição e pagamento".\n\nEquipa Responder Já`,
+      });
+      if (!sent.ok) console.warn("[billing.payment_failed] email failed:", sent.error);
     }
   }
 

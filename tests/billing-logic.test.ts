@@ -214,3 +214,17 @@ describe("aceitar uma resposta", () => {
     assert.equal(acceptCost(1.5), 1);
   });
 });
+
+import { subscriptionAccess } from "../server/services/billing-logic.ts";
+
+describe("estado da subscrição no Stripe (RJ-3.2)", () => {
+  test("ativa e em teste: plano ativo", () => {
+    assert.equal(subscriptionAccess("active"), "active");
+    assert.equal(subscriptionAccess("trialing"), "active");
+  });
+  test("pagamento em atraso: período de graça", () => assert.equal(subscriptionAccess("past_due"), "grace"));
+  test("primeiro pagamento por confirmar: ainda não dá o plano", () => assert.equal(subscriptionAccess("incomplete"), "pending"));
+  test("cancelada, não paga, expirada ou em pausa: perde o plano", () => {
+    for (const s of ["canceled", "unpaid", "incomplete_expired", "paused"]) assert.equal(subscriptionAccess(s), "revoke");
+  });
+});

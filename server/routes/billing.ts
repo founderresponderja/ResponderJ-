@@ -134,6 +134,9 @@ export function registerBillingRoutes(app: any) {
         platformsConnected,
         platformsLimit,
         stripeCustomerId: user.stripeCustomerId || null,
+        // RJ-3.2: estado no Stripe e cancelamento agendado.
+        subscriptionStatus: user.subscriptionStatus || null,
+        cancelAtPeriodEnd: Boolean(user.cancelAtPeriodEnd),
         stripeSubscriptionId: user.stripeSubscriptionId || null,
         capabilities: {
           hasAnalytics: caps.hasAnalytics,
@@ -318,6 +321,27 @@ export function registerBillingRoutes(app: any) {
     } catch (error: any) {
       console.error("[webhook] unexpected error:", error);
       res.status(500).json({ error: "Webhook processing error" });
+    }
+  });
+
+  // RJ-3.2: portal do cliente do Stripe (cancelar, mudar de plano, atualizar o cartão, ver faturas).
+  // Bloqueado para sandboxes e para membros de equipa (só o dono paga), ver server/auth.ts.
+  app.post("/api/billing/portal", requireAuth, async (req: any, res: any) => {
+    try {
+      if (!STRIPE_SECRET_KEY) return res.status(500).json({ error: "Stripe não está configurado." });
+      const user = await storage.getUser(req.user?.id);
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ error: "Ainda não tem subscrição. Escolha um plano primeiro." });
+      }
+      const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const session = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${baseUrl}/?portal=return`,
+      });
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("[stripe] portal error:", error?.message);
+      res.status(500).json({ error: "Não foi possível abrir a gestão da subscrição.", detail: error?.message });
     }
   });
 
