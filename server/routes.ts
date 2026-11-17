@@ -52,6 +52,7 @@ import qualityFeedbackRouter from "./routes/quality-feedback.js";
 import errorRoutes from "./routes/errors.js";
 import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
 import platformIntegrationsRoutes from "./routes/platform-integrations.js";
+import accountRoutes from "./routes/account.js";
 
 import { db } from "./db.js";
 import { users, establishments, reviews, responses, socialPlatformConnections, agencyMembers, agencies } from "../shared/schema.js";
@@ -93,6 +94,8 @@ export async function registerRoutes(app: any): Promise<void> {
   // SOFIA AI CHAT ROUTE
   app.use("/api/ai", sofiaChatRoutes);
   app.use("/api/platforms", platformIntegrationsRoutes);
+  // RJ-7.1: exportação e apagamento dos dados pessoais (RGPD).
+  app.use("/api/account", accountRoutes);
   
   app.use((req: any, res: any, next: any) => {
     if (req.path === '/api/suggestions' && req.method === 'POST') return next();
