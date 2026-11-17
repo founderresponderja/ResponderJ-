@@ -153,6 +153,8 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
       }
       const blocked = await applyViewAs(req);
       if (blocked) return res.status(blocked.status).json({ message: blocked.message, code: blocked.code });
+      const memberBlocked = await applyAgencyMembership(req);
+      if (memberBlocked) return res.status(memberBlocked.status).json({ message: memberBlocked.message, code: memberBlocked.code });
       next();
     })
     .catch(() => res.status(401).json({ message: "Sessão expirada ou inválida." }));
@@ -199,6 +201,50 @@ async function applyViewAs(req: any): Promise<{ status: number; message: string;
     if ((await sandboxGenerationsToday()) >= SANDBOX_DAILY_AI_LIMIT) {
       return { status: 429, message: `Limite diário de ${SANDBOX_DAILY_AI_LIMIT} gerações de IA nas sandboxes atingido.`, code: "SANDBOX_AI_LIMIT" };
     }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// RJ-5.5: membros da equipa de uma agência trabalham na conta da agência.
+// Um membro ativo (convidado e aceite) passa a ver e a trabalhar nos clientes,
+// reviews e respostas da agência, e gasta os créditos do plano da agência.
+// O pedido corre como o dono (req.user) e guarda quem o fez (req.member).
+// Pagamentos e gestão da equipa ficam reservados ao dono (e a admins da equipa).
+// ---------------------------------------------------------------------------
+async function applyAgencyMembership(req: any): Promise<{ status: number; message: string; code: string } | null> {
+  const user = req.user;
+  if (!user?.agencyId || user.isAdmin || user.isSuperAdmin) return null;
+  const path = String(req.originalUrl || req.url || "").split("?")[0];
+  const { memberKeepsOwnIdentity, memberBlockedReason } = await import("./middleware/member-rules.js");
+  if (memberKeepsOwnIdentity(path)) return null;
+  try {
+    const { db } = await import("./db.js");
+    const { agencies, agencyMembers } = await import("../shared/schema.js");
+    const { and, eq } = await import("drizzle-orm");
+    const [agency] = await db.select().from(agencies).where(eq(agencies.id, Number(user.agencyId)));
+    if (!agency || Number(agency.ownerId) === Number(user.id)) return null;
+    const [membership] = await db.select().from(agencyMembers).where(and(
+      eq(agencyMembers.agencyId, agency.id),
+      eq(agencyMembers.userId, Number(user.id)),
+      eq(agencyMembers.status, "active"),
+    ));
+    // Membro removido ou suspenso: volta a ser só a sua própria conta.
+    if (!membership) return null;
+    const owner = await storage.getUser(Number(agency.ownerId));
+    if (!owner || !owner.isActive) return null;
+
+    req.member = user;
+    req.memberRole = membership.role || "member";
+    req.agency = agency;
+    req.user = owner;
+
+    const reason = memberBlockedReason(req.method, path);
+    if (reason) {
+      return { status: 403, message: `Indisponível para membros da equipa: ${reason}.`, code: "AGENCY_MEMBER_BLOCKED" };
+    }
+  } catch (error: any) {
+    console.warn("[auth] agency membership check failed:", error?.message);
   }
   return null;
 }

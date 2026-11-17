@@ -4,6 +4,8 @@ import type { PlanKey } from "../shared/planCapabilities";
 
 export interface SubscriptionState {
   role: "super_admin" | "operator" | "customer";
+  /** RJ-5.5: preenchido quando a sessão é de um membro da equipa de uma agência. */
+  teamMember?: { email: string; role: string; agencyName: string | null } | null;
   planId: PlanKey;
   status: "active" | "trial" | "expired" | "canceled";
   isTrialing: boolean;

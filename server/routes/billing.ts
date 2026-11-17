@@ -118,6 +118,10 @@ export function registerBillingRoutes(app: any) {
       const { platformRole } = await import("../middleware/roles.js");
       return res.json({
         role: platformRole(user),
+        // RJ-5.5: membro da equipa a trabalhar na conta da agência.
+        teamMember: req.member
+          ? { email: req.member.email, role: req.memberRole || "member", agencyName: req.agency?.name || null }
+          : null,
         planId,
         status,
         isTrialing: Boolean(isTrialing),

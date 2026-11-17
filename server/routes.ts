@@ -178,6 +178,12 @@ export async function registerRoutes(app: any): Promise<void> {
   const requireAgencyManager = async (req: any, res: any, next: any) => {
     try {
       const user = req.user;
+      // RJ-5.5: um membro corre como o dono (req.user = dono); quem decide é o próprio membro.
+      if (req.member) {
+        const { canManageTeam } = await import("./middleware/member-rules.js");
+        if (canManageTeam({ isOwner: false, memberRole: req.memberRole })) return next();
+        return res.status(403).json({ message: "Só o dono ou um administrador da agência pode gerir a equipa." });
+      }
       let agencyId = user.agencyId ? Number(user.agencyId) : null;
       if (!agencyId) {
         const [agency] = await db.insert(agencies).values({
@@ -691,6 +697,8 @@ export async function registerRoutes(app: any): Promise<void> {
         // RJ-4.3: a tabela responses não tem colunas sentiment/keywords; antes eram passados
         // no objeto e o Drizzle deitava-os fora em silêncio. Ficam em learning_meta.
         learningMeta: {
+          // RJ-5.5: quem gerou (membro da equipa ou o próprio dono).
+          generatedBy: Number(req.member?.id || userId),
           sentiment: aiResult.sentiment,
           reviewKeywords: aiResult.keywords,
           seoKeywords: aiResult.seoKeywords || [],
@@ -789,7 +797,7 @@ export async function registerRoutes(app: any): Promise<void> {
         userId: Number(userId),
         cost: creditCost,
         update: updateFields,
-        description: `Resposta aceite (${response.responseType || 'unknown'})`,
+        description: `Resposta aceite (${response.responseType || 'unknown'})${req.member ? ` por ${req.member.email}` : ''}`,
       });
       if (!result.ok) {
         if (result.reason === "insufficient_credits") {
