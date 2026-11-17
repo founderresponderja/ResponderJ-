@@ -4,7 +4,9 @@
 /** Caminhos onde o membro continua a ser ele próprio (não passa a correr como o dono). */
 export function memberKeepsOwnIdentity(path: string): boolean {
   // /api/account (RJ-7.1): exportar ou apagar os dados é sempre da própria pessoa.
-  return path.startsWith("/api/backoffice") || path.startsWith("/api/invitations") || path.startsWith("/api/account");
+  // /api/consents (RJ-7.2): quem aceita os termos é a pessoa, não a agência.
+  return path.startsWith("/api/backoffice") || path.startsWith("/api/invitations") || path.startsWith("/api/account")
+    || path.startsWith("/api/consents");
 }
 
 const MEMBER_BLOCKED: { method?: string; pattern: RegExp; what: string }[] = [

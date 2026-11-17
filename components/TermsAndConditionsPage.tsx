@@ -23,7 +23,7 @@ const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({ onBack 
                 <FileText className="w-6 h-6" />
                 Termos e Condicoes
               </h1>
-              <p className="text-purple-100 text-sm mt-1">Ultima atualizacao: 10 de abril de 2026</p>
+              <p className="text-purple-100 text-sm mt-1">Última atualização: 10 de abril de 2026 (versão 2026-04-10)</p>
             </div>
           </div>
         </div>

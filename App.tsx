@@ -10,6 +10,7 @@ import { createCheckoutSession, redirectToCheckout } from './services/subscripti
 import { useSubscription } from './hooks/useSubscription';
 import { PlanId } from './types';
 import { getViewAs, stopViewAs } from './utils/viewAs';
+import ConsentGate from './components/ConsentGate';
 import { PLANS } from './shared/plans';
 import BlogPage, { blogArticles } from './components/BlogPage';
 
@@ -390,6 +391,10 @@ function App() {
         </div>
       </Suspense>
 
+      {/* RJ-7.2: aceitação dos Termos e da Política de Privacidade na versão em vigor. */}
+      {currentView === 'app' && isSignedIn && !getViewAs() && (
+        <ConsentGate onOpenDocument={(doc) => navigateToLeaf(doc)} />
+      )}
       <SofiaChat lang={currentLang} />
       {!getViewAs() && subscription.teamMember && (
         <div className="fixed inset-x-0 bottom-0 z-[10000] flex items-center justify-center gap-2 bg-brand-900 px-4 py-1.5 text-xs font-medium text-white shadow">
