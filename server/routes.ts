@@ -53,7 +53,7 @@ import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
 import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 
 import { db } from "./db.js";
-import { users, establishments, reviews, responses, socialPlatformConnections, agencyMembers } from "../shared/schema.js";
+import { users, establishments, reviews, responses, socialPlatformConnections, agencyMembers, agencies } from "../shared/schema.js";
 import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 
 import Stripe from "stripe";
@@ -172,8 +172,36 @@ export async function registerRoutes(app: any): Promise<void> {
   });
 
 
+  // RJ-5.3 (Equipa): gestor da agência = dono (agencies.owner_id) ou membro com papel "admin".
+  // Um cliente do plano Agência sem agência criada recebe uma automaticamente na primeira vez.
+  const requireAgencyManager = async (req: any, res: any, next: any) => {
+    try {
+      const user = req.user;
+      let agencyId = user.agencyId ? Number(user.agencyId) : null;
+      if (!agencyId) {
+        const [agency] = await db.insert(agencies).values({
+          name: user.companyName || `Agência de ${user.firstName || user.email}`,
+          ownerId: user.id,
+        }).returning();
+        await db.insert(agencyMembers).values({ agencyId: agency.id, userId: user.id, role: "admin", status: "active", joinedAt: new Date() });
+        await storage.updateUser(user.id, { agencyId: agency.id, isAgencyOwner: true } as any);
+        user.agencyId = agency.id;
+        agencyId = agency.id;
+      }
+      const [agency] = await db.select().from(agencies).where(eq(agencies.id, agencyId));
+      const [membership] = await db.select().from(agencyMembers).where(and(
+        eq(agencyMembers.agencyId, agencyId), eq(agencyMembers.userId, Number(user.id)), eq(agencyMembers.status, "active"),
+      ));
+      if (agency?.ownerId === Number(user.id) || membership?.role === "admin") return next();
+      return res.status(403).json({ message: "Só o dono ou um administrador da agência pode gerir a equipa." });
+    } catch (error: any) {
+      console.error("[agency] requireAgencyManager failed:", error?.message);
+      return res.status(500).json({ message: "Erro ao verificar a agência." });
+    }
+  };
+
   // Agency Management
-  app.get('/api/agency/members', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.get('/api/agency/members', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const user = req.user;
       if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
@@ -200,24 +228,41 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/agency/invite-member', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.post('/api/agency/invite-member', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const { email, role } = req.body;
       const user = req.user;
       if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
 
-      const counts = await storage.getAgencyMemberCount(user.agencyId);
-      if (counts.total >= 5) return res.status(403).json({ message: "Limite de membros atingido" });
+      const cleanEmail = String(email || "").trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return res.status(400).json({ message: "Email inválido" });
+      const safeRole = role === "admin" ? "admin" : "member";
 
-      const invite = await storage.inviteAgencyMember(user.agencyId, email, role, user.id);
-      
-      res.json({ message: "Convite enviado com sucesso", invite });
+      // RJ-2.4: limite de utilizadores do plano (shared/plans.ts), contando o dono.
+      const { PLANS } = await import("../shared/plans.js");
+      const counts = await storage.getAgencyMemberCount(user.agencyId);
+      if (counts.total >= PLANS.agency.users) {
+        return res.status(403).json({ message: `Limite de ${PLANS.agency.users} utilizadores atingido` });
+      }
+
+      const invite = await storage.inviteAgencyMember(user.agencyId, cleanEmail, safeRole, user.id);
+
+      // RJ-5.3: o convite passa a ser mesmo enviado por email (antes só ficava na base de dados).
+      const { sendMail } = await import("./services/mailer.js");
+      const appUrl = process.env.APP_BASE_URL || "https://www.responderja.pt";
+      const mail = await sendMail({
+        to: cleanEmail,
+        subject: "Convite para a equipa no Responder Já",
+        text: `Olá,\n\n${user.firstName || user.email} convidou-te para a equipa da agência no Responder Já.\n\nPara aceitar, abre este link e entra (ou cria conta) com este email (${cleanEmail}):\n${appUrl}/convite/${invite.token}\n\nO convite é válido durante 7 dias.`,
+      });
+
+      res.json({ message: mail.ok ? "Convite enviado por email" : "Convite criado, mas o email não foi enviado", invite: { id: invite.id, email: invite.email, role: invite.role, expiresAt: invite.expiresAt }, emailSent: mail.ok });
     } catch (e: any) {
       res.status(500).json({ message: e.message || "Erro ao enviar convite" });
     }
   });
 
-  app.patch('/api/agency/members/:memberId', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.patch('/api/agency/members/:memberId', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const { memberId } = req.params;
       const user = req.user;
@@ -257,7 +302,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.get('/api/agency/delegations', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.get('/api/agency/delegations', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const user = req.user;
       if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
@@ -269,7 +314,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/agency/delegate-admin', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
+  app.post('/api/agency/delegate-admin', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const user = req.user;
       const { userId, type, days } = req.body;

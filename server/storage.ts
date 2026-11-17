@@ -599,6 +599,8 @@ export class DatabaseStorage implements IStorage {
       invitedBy: invite.invitedBy,
       joinedAt: new Date()
     });
+    // O membro fica ligado à agência (antes não ficava, e não via nada da equipa).
+    await db.update(users).set({ agencyId: invite.agencyId, updatedAt: new Date() }).where(eq(users.id, Number(userId)));
   }
 
   async getAgencyMembers(agencyId: number | string): Promise<any[]> {
@@ -611,7 +613,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async inviteAgencyMember(agencyId: number | string, email: string, role: string, invitedBy: number | string): Promise<any> {
-    const token = Math.random().toString(36).substring(2);
+    // Token imprevisível (antes Math.random, que não serve para segredos).
+    const token = (await import("node:crypto")).randomBytes(24).toString("base64url");
     const [invite] = await db.insert(agencyInvitations).values({
       agencyId: Number(agencyId),
       email,

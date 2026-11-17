@@ -18,7 +18,6 @@ import {
   ArrowRight,
   Menu,
   Users,
-  Share2,
   Building2,
   Lock,
   Inbox as InboxIcon,
@@ -45,7 +44,8 @@ const PlatformList = lazy(() => import('./PlatformList'));
 const AccountingPage = lazy(() => import('./AccountingPage'));
 const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
-const CRMPage = lazy(() => import('./CRMPage'));
+// RJ-5.3: CRM retirado da app de cliente (ideia futura). Equipa ligada ao plano Agência.
+const AgencyTeamManagement = lazy(() => import('./AgencyTeamManagement'));
 const AgencyOverviewPage = lazy(() => import('./AgencyOverviewPage'));
 
 type AgencyClient = {
@@ -162,7 +162,6 @@ const MainApp: React.FC<MainAppProps> = ({
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
     if (path === '/agency') setActiveTab('agency');
-    if (path === '/leads') setActiveTab('crm');
   }, []);
 
   useEffect(() => {
@@ -350,12 +349,11 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="inbox" icon={InboxIcon} label={nav.menu.inbox} />
           {/* TODO: remove after Inbox proves stable */}
           {/* <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} /> */}
-          <NavButton tab="social-manager" icon={Share2} label={nav.menu.social} />
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
-          {isAgencyPlan && <NavButton tab="crm" icon={Users} label={nav.menu.crm} />}
           <NavButton tab="business-profile" icon={Store} label={nav.menu.profile} />
           <NavButton tab="platforms" icon={List} label={nav.menu.platforms} />
           {isAgencyPlan && <NavButton tab="agency" icon={Building2} label="Agency" />}
+          {isAgencyPlan && <NavButton tab="team" icon={Users} label="Equipa" />}
           <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />
         </div>
 
@@ -520,8 +518,7 @@ const MainApp: React.FC<MainAppProps> = ({
                   onGenerateFromReview={handleGenerateFromReview}
                 />
               )}
-              {activeTab === 'crm' && isAgencyPlan && <CRMPage lang={lang} />}
-              {activeTab === 'social-manager' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
+              {activeTab === 'team' && isAgencyPlan && <AgencyTeamManagement />}
               {activeTab === 'platforms' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'business-profile' && <BusinessProfilePage />}
               {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}

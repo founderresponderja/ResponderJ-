@@ -9,10 +9,8 @@ import {
   Sun, 
   Moon, 
   Info, 
-  Users, 
   Zap, 
   Share2, 
-  Calendar, 
   MessageSquare, 
   Globe, 
   Smartphone, 
@@ -155,18 +153,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
         badge: "Tempo Real",
       },
       {
-        title: "Calendário de Conteúdo",
-        description: "Planeie e organize o seu conteúdo com ferramentas visuais intuitivas para consistência máxima.",
-        details: ["Vista mensal e semanal", "Agendamento de posts", "Gestão centralizada", "Histórico de publicações"],
-        badge: "Produtividade",
-      },
-      {
-        title: "Gestão de Leads & CRM",
-        description: "Transforme reviews em oportunidades de negócio. Capture, organize e converta leads automaticamente.",
-        details: ["CRM integrado", "Detecção de oportunidades", "Histórico de interações", "Funil de vendas"],
-        badge: "CRM Integrado",
-      },
-      {
         title: "Segurança Empresarial",
         description: "Certificação de segurança com compliance total GDPR e legislação portuguesa.",
         details: ["Encriptação AES-256", "Compliance GDPR/RGPD", "Backups automáticos", "Auditoria de segurança"],
@@ -193,18 +179,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
         badge: "Real Time",
       },
       {
-        title: "Content Calendar",
-        description: "Plan and organize your content with intuitive visual tools.",
-        details: ["Monthly and weekly view", "Post scheduling", "Centralized management", "Publication history"],
-        badge: "Productivity",
-      },
-      {
-        title: "Lead Management & CRM",
-        description: "Turn reviews into opportunities. Capture, organize and convert leads automatically.",
-        details: ["Integrated CRM", "Opportunity detection", "Interaction history", "Sales funnel"],
-        badge: "Integrated CRM",
-      },
-      {
         title: "Enterprise Security",
         description: "Security-focused platform with GDPR compliance.",
         details: ["AES-256 encryption", "GDPR compliance", "Automatic backups", "Security auditing"],
@@ -229,18 +203,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
         description: "Panel completo con métricas detalladas e insights de rendimiento.",
         details: ["Métricas de engagement", "Informes automáticos por email", "Seguimiento de palabras clave", "ROI de reputación"],
         badge: "Tiempo Real",
-      },
-      {
-        title: "Calendario de Contenido",
-        description: "Planifica y organiza tu contenido con herramientas visuales intuitivas.",
-        details: ["Vista mensual y semanal", "Programación de publicaciones", "Gestión centralizada", "Historial de publicaciones"],
-        badge: "Productividad",
-      },
-      {
-        title: "Gestión de Leads y CRM",
-        description: "Convierte reseñas en oportunidades de negocio automáticamente.",
-        details: ["CRM integrado", "Detección de oportunidades", "Historial de interacciones", "Embudo de ventas"],
-        badge: "CRM Integrado",
       },
       {
         title: "Seguridad Empresarial",
@@ -272,7 +234,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
     ],
   };
 
-  const featureIcons = [Bot, Share2, BarChart3, Calendar, Users, ShieldCheck];
+  // RJ-5.3: CRM e Calendário de Conteúdo retirados (não existem no produto; ficam como ideias futuras).
+  const featureIcons = [Bot, Share2, BarChart3, ShieldCheck];
   const stepIcons = [Share2, SettingsIcon, Zap, TrendingUp];
 
   const features = featuresByLang[lang].map((feature, index) => ({
