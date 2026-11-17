@@ -12,15 +12,10 @@ import {
   invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback,
   oauthStates, OAuthState, InsertOAuthState
 } from "../shared/schema.js";
-import { db, pool } from "./db.js";
+import { db } from "./db.js";
 import { eq, ilike, or, and, desc, sql, gte, lt } from "drizzle-orm";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
-
-const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
-  sessionStore: session.Store;
   
   // User methods
   getUser(id: string | number): Promise<User | undefined>;
@@ -163,15 +158,6 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.Store;
-
-  constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true,
-    });
-  }
-
   // Users
   async getUser(id: string | number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, Number(id)));
