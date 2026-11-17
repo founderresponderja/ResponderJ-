@@ -7,7 +7,7 @@
       "maxDuration": 30
     },
     "api/cron/sync-reviews.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     }
   },
   "crons": [

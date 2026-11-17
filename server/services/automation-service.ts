@@ -3,7 +3,6 @@ import { reviews, responses, establishments, users } from "../../shared/schema.j
 import { eq, isNull } from "drizzle-orm";
 import { storage } from "../storage.js";
 import { aiResponseService } from "./ai-response-service.js";
-import { emailService } from "./email-service.js";
 
 export const automationService = {
   /**
@@ -58,6 +57,7 @@ export const automationService = {
       // 2. Executar Ação
       if (shouldTrigger) {
         let responseText = action.template;
+        let generated = false;
         
         if (action.type === 'auto_respond') {
            try {
@@ -70,6 +70,7 @@ export const automationService = {
                responseType: 'auto_reply'
              });
              responseText = aiResult.response;
+             generated = true;
            } catch (e) {
              console.error(`Erro ao gerar resposta automática para regra ${rule.id}`, e);
              // Fallback para o template puro se a IA falhar
@@ -87,6 +88,7 @@ export const automationService = {
           ruleName: rule.name,
           action: action.type,
           response: responseText,
+          generated,
           template: action.template
         });
         
@@ -98,116 +100,98 @@ export const automationService = {
   },
 
   /**
-   * Processo batch para verificar novas reviews e aplicar automação
-   * Verifica reviews sem resposta e aplica as regras configuradas pelo utilizador
+   * RJ-3.4: respostas automáticas, chamado pelo agendamento diário (api/cron/sync-reviews.ts)
+   * logo a seguir à sincronização. Antes dependia de um setInterval que nunca corria na Vercel
+   * (as funções não ficam ligadas entre pedidos), por isso a funcionalidade do plano Pro não fazia nada.
+   *
+   * Regras (corrigem o código antigo, que nunca tinha corrido):
+   * - só reviews novas (marcadas em reviews.automation_checked_at) e dos planos com respostas automáticas;
+   * - a resposta fica PENDENTE para o cliente aprovar: não é publicada sozinha e só gasta crédito
+   *   ao ser aceite, como as outras (antes marcava "publicada" sem publicar e descontava logo);
+   * - reviews sem regra aplicável ficam só marcadas como vistas (antes criava respostas falsas
+   *   "Ignorado: ..." que apareceriam na Caixa de entrada);
+   * - um email por cliente com o número de respostas à espera de aprovação;
+   * - pára antes do limite de tempo da função (deadline).
    */
-  async processNewReviewsBatch() {
-     console.log("🔄 [Automação] A verificar novas interações para resposta automática...");
-     
-     try {
-        // Buscar reviews que ainda não têm resposta associada
-        const pendingItems = await db
-            .select({
-                review: reviews,
-                userId: establishments.userId
-            })
-            .from(reviews)
-            .innerJoin(establishments, eq(reviews.establishmentId, establishments.id))
-            .leftJoin(responses, eq(reviews.id, responses.reviewId))
-            .where(isNull(responses.id))
-            .limit(20); // Lote pequeno para evitar bloqueios
+  async processNewReviewsBatch(options: { deadline?: number; limit?: number } = {}) {
+    const deadline = options.deadline ?? Date.now() + 20000;
+    const limit = options.limit ?? 50;
+    const stats = { checked: 0, generated: 0, skippedPlan: 0, failed: 0, stoppedForTime: false };
+    const { sql } = await import("drizzle-orm");
+    const { PLAN_CAPABILITIES, normalizePlan } = await import("../../shared/planCapabilities.js");
+    const { sendMail } = await import("./mailer.js");
 
-        for (const item of pendingItems) {
-            const { review, userId } = item;
-            
-            // Verificar se utilizador tem créditos suficientes
-            const user = await storage.getUser(userId);
-            if (!user || (user.credits || 0) <= 0) continue;
+    const { rows } = await db.execute(sql`
+      SELECT r.id, r.review_text, r.platform, r.rating, r.sentiment, r.author_name, r.language,
+             e.user_id
+      FROM reviews r
+      JOIN establishments e ON e.id = r.establishment_id
+      WHERE r.automation_checked_at IS NULL
+        AND r.created_at > now() - interval '7 days'
+        AND NOT EXISTS (SELECT 1 FROM responses x WHERE x.review_id = r.id AND x.approval_status <> 'discarded')
+      ORDER BY r.created_at
+      LIMIT ${limit}`);
 
-            // Executar motor de regras
-            const results = await this.executeAutomation(userId, {
-                text: review.reviewText || "",
-                platform: review.platform,
-                rating: review.rating || undefined,
-                sentiment: review.sentiment || undefined,
-                author: review.authorName || "Cliente"
-            });
-
-            if (results.length > 0) {
-                // Processar resultados
-                for (const res of results) {
-                    if (res.action === 'auto_respond' && res.response) {
-                        // Salvar resposta gerada
-                        await storage.createAiResponse({
-                            reviewId: review.id,
-                            userId: userId,
-                            responseText: res.response,
-                            tone: "automático",
-                            language: review.language || "pt",
-                            responseType: "auto_reply",
-                            creditsUsed: 1,
-                            aiModel: "gemini-2.5-flash",
-                            customerName: review.authorName,
-                            isPublished: true, // Assumimos publicação automática
-                            publishedAt: new Date(),
-                            // @ts-ignore - Propriedades opcionais no schema
-                            variationNumber: 1
-                        });
-
-                        // Debitar crédito
-                        await storage.updateUserCredits(userId, (user.credits || 0) - 1);
-                        
-                        // Registar transação de crédito
-                        await storage.createCreditTransaction({
-                            userId,
-                            type: 'usage',
-                            amount: -1,
-                            description: `Resposta Automática (Regra: ${res.ruleName})`
-                        });
-
-                        // Enviar notificação por email se o utilizador tiver email configurado
-                        if (user.email) {
-                            try {
-                                await emailService.sendResponseGeneratedEmail(
-                                    user.email,
-                                    user.firstName,
-                                    review.platform,
-                                    res.response
-                                );
-                            } catch (emailError) {
-                                console.error("Erro ao enviar notificação de automação:", emailError);
-                            }
-                        }
-
-                        console.log(`🤖 Auto-resposta gerada para review ${review.id}`);
-                    }
-                }
-            } else {
-                // Nenhuma regra correspondeu. 
-                // Registar uma resposta "sistema" ou "ignorada" para evitar processar esta review novamente no próximo batch.
-                // Isto previne loops infinitos de verificação em reviews que não têm regras aplicáveis.
-                await storage.createAiResponse({
-                    reviewId: review.id,
-                    userId: userId,
-                    responseText: "Ignorado: Nenhuma regra de automação correspondeu.",
-                    tone: "system",
-                    language: "system",
-                    responseType: "automation_skip", 
-                    creditsUsed: 0,
-                    aiModel: "system",
-                    customerName: review.authorName,
-                    isPublished: false, 
-                    publishedAt: new Date(),
-                    // @ts-ignore
-                    variationNumber: 0
-                });
-                console.log(`⏩ Review ${review.id} ignorada (sem regras correspondentes)`);
-            }
+    const perUser = new Map<number, number>();
+    for (const row of rows as any[]) {
+      if (Date.now() > deadline) { stats.stoppedForTime = true; break; }
+      const userId = Number(row.user_id);
+      const markChecked = () => db.execute(sql`UPDATE reviews SET automation_checked_at = now() WHERE id = ${row.id}`);
+      try {
+        const user = await storage.getUser(userId);
+        const plan = normalizePlan(user?.subscriptionPlan || user?.selectedPlan);
+        if (!user || !PLAN_CAPABILITIES[plan].hasAutoResponse || Number(user.credits || 0) < 1) {
+          stats.skippedPlan++;
+          await markChecked();
+          continue;
         }
-     } catch (error) {
-         console.error("Erro no processamento batch de automação:", error);
-     }
-     
-     return true;
+        const results = await this.executeAutomation(userId, {
+          text: row.review_text || "",
+          platform: row.platform,
+          rating: row.rating ?? undefined,
+          sentiment: row.sentiment ?? undefined,
+          author: row.author_name || "Cliente",
+        });
+        const auto = results.find((r: any) => r.action === "auto_respond" && r.generated && r.response);
+        if (auto) {
+          await storage.createAiResponse({
+            reviewId: row.id,
+            userId,
+            responseText: auto.response,
+            originalResponseText: auto.response,
+            tone: "profissional",
+            language: row.language || "pt",
+            responseType: "auto_reply",
+            creditsUsed: 1,
+            aiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+            customerName: row.author_name,
+            approvalStatus: "pending",
+            isPublished: false,
+            variationNumber: 1,
+            learningMeta: { automationRule: auto.ruleName, generatedBy: "automation" },
+          } as any);
+          stats.generated++;
+          perUser.set(userId, (perUser.get(userId) || 0) + 1);
+        }
+        stats.checked++;
+        await markChecked();
+      } catch (error: any) {
+        stats.failed++;
+        console.error(`[automation] review ${row.id} failed:`, error?.message);
+        // Fica por marcar: volta a ser tentada no próximo dia.
+      }
+    }
+
+    for (const [userId, count] of perUser) {
+      const user = await storage.getUser(userId).catch(() => undefined);
+      if (!user?.email) continue;
+      await sendMail({
+        to: user.email,
+        subject: `${count} ${count === 1 ? "resposta automática" : "respostas automáticas"} à espera de aprovação`,
+        text: `Olá${user.firstName ? ` ${user.firstName}` : ""},\n\nAs suas regras de automação prepararam ${count} ${count === 1 ? "resposta" : "respostas"} a reviews novas. Estão na Caixa de entrada, à espera de aprovação: só são publicadas e só gastam crédito quando as aceitar.\n\nEquipa Responder Já`,
+      }).catch(() => undefined);
+    }
+    console.log("[automation] batch", stats);
+    return stats;
   }
 };
