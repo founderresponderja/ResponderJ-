@@ -15,7 +15,14 @@ export function isMailerConfigured(): boolean {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
-export async function sendMail(input: MailInput): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+// Um só tipo de resultado (o projeto compila sem strictNullChecks, onde uniões discriminadas não estreitam).
+export interface MailResult {
+  ok: boolean;
+  id?: string;
+  error?: string;
+}
+
+export async function sendMail(input: MailInput): Promise<MailResult> {
   if (!isMailerConfigured()) return { ok: false, error: "Email não configurado (RESEND_API_KEY / EMAIL_FROM)." };
   try {
     const res = await fetch("https://api.resend.com/emails", {
