@@ -117,6 +117,16 @@ export class GoogleReviewsService {
   }
 
   /**
+   * Converte o starRating da API do Google (ONE..FIVE, ou STAR_RATING_UNSPECIFIED) em 1..5.
+   * RJ-4.2: antes, ONE e TWO eram tratados como 3 em /api/reviews, escondendo reviews más.
+   */
+  static starRatingToNumber(starRating: unknown): number | null {
+    const map: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
+    if (typeof starRating === "number" && starRating >= 1 && starRating <= 5) return Math.round(starRating);
+    return map[String(starRating ?? "").trim().toUpperCase()] ?? null;
+  }
+
+  /**
    * Obtém reviews de uma conta conectada
    */
   static async fetchReviews(userExternalId: string, establishmentId?: number | null) {

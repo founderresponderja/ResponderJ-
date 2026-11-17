@@ -308,7 +308,7 @@ export async function registerRoutes(app: any): Promise<void> {
       const withPlatforms = await Promise.all(clients.map(async (c) => {
         const connections = await db.select().from(socialPlatformConnections)
           .where(and(
-            eq(socialPlatformConnections.userExternalId, String(req.user?.id)),
+            eq(socialPlatformConnections.userId, userId),
             eq(socialPlatformConnections.establishmentId, c.id),
             eq(socialPlatformConnections.status, "connected"),
           ));
@@ -413,7 +413,7 @@ export async function registerRoutes(app: any): Promise<void> {
         }).length;
 
         const connected = await db.select().from(socialPlatformConnections).where(and(
-          eq(socialPlatformConnections.userExternalId, String(req.user?.id)),
+          eq(socialPlatformConnections.userId, userId),
           eq(socialPlatformConnections.establishmentId, client.id),
           eq(socialPlatformConnections.status, "connected"),
         ));

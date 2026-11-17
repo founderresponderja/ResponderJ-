@@ -267,6 +267,13 @@ router.get("/ai-usage", async (_req, res) => {
 // ---------------------------------------------------------------------------
 // Sincronizações
 // ---------------------------------------------------------------------------
+router.get("/cron-runs", async (_req, res) => {
+  const rows = await db.select({ createdAt: adminAuditLog.createdAt, details: adminAuditLog.details })
+    .from(adminAuditLog).where(eq(adminAuditLog.action, "cron_sync"))
+    .orderBy(desc(adminAuditLog.createdAt)).limit(14);
+  res.json(rows);
+});
+
 router.get("/sync", async (_req, res) => {
   const rows = await db
     .select({

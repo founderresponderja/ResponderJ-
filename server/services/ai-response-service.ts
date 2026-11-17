@@ -230,7 +230,36 @@ export const aiResponseService = {
     }
   },
 
+  /**
+   * RJ-4.4: deteção local por palavras e caracteres típicos de cada língua.
+   * Devolve null quando não há uma vencedora clara (aí pergunta-se à IA).
+   */
+  detectLanguageHeuristic(reviewText: string): "pt" | "en" | "es" | null {
+    const text = ` ${String(reviewText || "").toLowerCase()} `;
+    const words = text.match(/[a-záàâãéêíóôõúüçñ]+/g) || [];
+    if (words.length === 0) return null;
+    const LEX: Record<"pt" | "en" | "es", string[]> = {
+      pt: ["não", "muito", "obrigado", "obrigada", "você", "estava", "foi", "atendimento", "comida", "bom", "boa", "ótimo", "ótima", "também", "mas", "com", "uma", "para", "pelo", "pela", "isso", "aqui", "mais", "sempre", "simpático", "simpáticos", "espera", "lugar", "voltar", "voltaremos", "recomendo", "nós", "são", "está", "estão", "então", "já", "ao", "às", "à", "nao", "obg", "em", "tudo", "parabéns", "equipa", "razoável", "excelente", "pessoal", "gostei", "adorei", "preço", "sítio", "também"],
+      es: ["muy", "pero", "gracias", "fue", "estaba", "comida", "bueno", "buena", "también", "con", "una", "para", "el", "los", "las", "del", "servicio", "lugar", "volver", "recomiendo", "nosotros", "son", "está", "están", "hay", "todo", "nada", "mucho", "perfecto", "personal", "llegó", "repetiré", "sitio", "amable"],
+      en: ["the", "and", "was", "were", "very", "great", "with", "but", "not", "staff", "food", "place", "good", "nice", "service", "would", "again", "recommend", "we", "they", "this", "that", "is", "are", "had", "have", "friendly", "lovely", "value", "money", "avoid", "twice", "highly"],
+    };
+    const score = { pt: 0, es: 0, en: 0 };
+    for (const w of words) {
+      for (const lang of ["pt", "es", "en"] as const) if (LEX[lang].includes(w)) score[lang] += 1;
+    }
+    // Caracteres exclusivos pesam muito: ã/õ/ç só existem em português; ñ/¿/¡ em espanhol.
+    score.pt += (text.match(/[ãõç]/g) || []).length * 2 + (text.match(/ção|ções|ões|lh|nh/g) || []).length;
+    score.es += (text.match(/[ñ¿¡]/g) || []).length * 2 + (text.match(/ción|ciones|ll/g) || []).length;
+    const ranked = (Object.entries(score) as ["pt" | "en" | "es", number][]).sort((x, y) => y[1] - x[1]);
+    const [first, second] = ranked;
+    if (first[1] === 0) return null;
+    if (first[1] >= 2 && first[1] >= second[1] * 2) return first[0];
+    return null;
+  },
+
   async detectLanguage(reviewText: string): Promise<"pt" | "en" | "es"> {
+    const local = this.detectLanguageHeuristic(reviewText);
+    if (local) return local;
     try {
       const text = await this.generateWithFallback(
         [
@@ -243,10 +272,9 @@ export const aiResponseService = {
         ],
         0.1,
       );
-      const normalized = text.toLowerCase();
-      if (normalized.includes("en")) return "en";
-      if (normalized.includes("es")) return "es";
-      return "pt";
+      // RJ-4.4: ler só um código isolado. Antes, "includes('es')" apanhava "Portuguese" como espanhol.
+      const match = String(text || "").toLowerCase().match(/\b(pt|en|es)\b/);
+      return (match?.[1] as "pt" | "en" | "es") ?? "pt";
     } catch {
       return "pt";
     }
