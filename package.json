@@ -5,14 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-seo-assets.mjs && vite build",
+    "build": "node scripts/migrate.mjs --auto && node scripts/generate-seo-assets.mjs && vite build",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "migrate:ai-engine": "node scripts/apply-sql-migration.mjs migrations/20260409_ai_engine_approval_learning.sql",
-    "migrate:agency-mode": "node scripts/apply-sql-migration.mjs migrations/20260409_agency_mode_multi_business.sql",
-    "migrate:rj11": "node scripts/apply-sql-migration.mjs migrations/20261116_rj11_identity.sql",
-    "backfill:rj11": "node scripts/backfill-rj11.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "backfill:rj11": "node scripts/backfill-rj11.mjs",
+    "db:migrate:status": "node scripts/migrate.mjs --status"
   },
   "dependencies": {
     "@clerk/backend": "^2.7.3",
