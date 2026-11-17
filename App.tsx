@@ -391,6 +391,11 @@ function App() {
       </Suspense>
 
       <SofiaChat lang={currentLang} />
+      {!getViewAs() && subscription.teamMember && (
+        <div className="fixed inset-x-0 bottom-0 z-[10000] flex items-center justify-center gap-2 bg-brand-900 px-4 py-1.5 text-xs font-medium text-white shadow">
+          <span>Equipa de <strong>{subscription.teamMember.agencyName || 'agência'}</strong>: está a trabalhar na conta da agência com os créditos do plano dela. Pagamentos ficam com o dono da agência.</span>
+        </div>
+      )}
       {getViewAs() && (
         <div className="fixed inset-x-0 top-0 z-[10001] flex items-center justify-center gap-3 bg-amber-400 px-4 py-2 text-sm font-medium text-amber-950 shadow">
           <span>Modo de teste: a ver como <strong>{getViewAs()!.label}</strong>. Dados simulados; pagamentos, publicações e ligações reais estão desligados.</span>
