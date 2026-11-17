@@ -44,7 +44,7 @@ export const aiTrainingService = {
              Return strictly a JSON array of strings.`;
 
              const result = await ai.models.generateContent({
-                 model: 'gemini-2.5-flash',
+                 model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
                  contents: prompt,
                  config: {
                      responseMimeType: 'application/json',

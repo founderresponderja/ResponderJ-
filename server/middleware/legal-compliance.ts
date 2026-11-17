@@ -42,7 +42,8 @@ export const legalComplianceHeaders = (req: any, res: any, next: any) => {
   res.setHeader('X-ePrivacy-Compliance', 'Directive-2002-58-EC');
   
   // Transferências internacionais adequadas (RGPD Art. 45º)
-  res.setHeader('X-Data-Transfer-Adequacy', 'OpenAI-US-Compliant');
+  // RJ-0.4: o fornecedor de IA é o Google (Gemini). A base legal é revista na RJ-7 / GATE-3.
+  res.setHeader('X-Data-Transfer-Adequacy', 'Google-Gemini');
   
   next();
 };
@@ -139,11 +140,11 @@ export const gdprAuditLog = (req: any, res: any, next: any) => {
  */
 export const validateDataTransfers = (req: any, res: any, next: any) => {
   // Lista de países/serviços com adequacy decision
-  const adequateCountries = ['US-OpenAI', 'EU', 'UK', 'Canada'];
+  const adequateCountries = ['US-Google', 'EU', 'UK', 'Canada'];
   
   // Verificar se há transferência internacional
   if (req.path.includes('/api/generate') || req.path.includes('/ai/')) {
-    res.setHeader('X-Data-Transfer-To', 'OpenAI-US');
+    res.setHeader('X-Data-Transfer-To', 'Google-Gemini');
     res.setHeader('X-Transfer-Legal-Basis', 'Article-49-1a-Consent');
     res.setHeader('X-Adequacy-Decision', 'EU-US-DPF-2023');
   }

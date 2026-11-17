@@ -4,10 +4,11 @@ import { db } from "../db.js";
 import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "../../shared/schema.js";
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+// RJ-0.4 (decisão de 17/11/2026): o Gemini é o único fornecedor de IA.
+// Modelo de reserva: gemini-1.5-flash já foi descontinuado pela Google; passa a gemini-2.5-flash-lite
+// (sem data de desligamento anunciada em 22/10/2026). Ambos configuráveis na Vercel.
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const GEMINI_FALLBACK_MODEL = "gemini-1.5-flash";
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
 const geminiClient = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
@@ -39,17 +40,6 @@ export interface GeneratedResponse {
   seoKeywords?: string[];
   responseType: string;
   characterCount?: number;
-}
-
-interface OpenAIResponse {
-  choices?: Array<{
-    message?: {
-      content?: string | null;
-    };
-  }>;
-  usage?: {
-    total_tokens?: number;
-  };
 }
 
 interface GeminiResponseLike {
@@ -85,36 +75,6 @@ const PLATFORM_CONFIGS: Record<string, any> = {
 };
 
 export const aiResponseService = {
-  async callOpenAI(messages: Array<{ role: "system" | "user"; content: string }>, temperature = 0.7): Promise<OpenAIResponse> {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured.");
-    }
-
-    const response = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        messages,
-        temperature,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
-    }
-
-    return (await response.json()) as OpenAIResponse;
-  },
-
-  extractTextFromOpenAI(data: OpenAIResponse): string {
-    return data.choices?.[0]?.message?.content?.trim() || "";
-  },
-
   async callGemini(messages: Array<{ role: "system" | "user"; content: string }>, temperature = 0.7, asJson = false): Promise<GeminiResponseLike> {
     if (!geminiClient) {
       throw new Error("GEMINI_API_KEY/API_KEY is not configured.");
@@ -157,7 +117,8 @@ export const aiResponseService = {
       });
       return { text: response.text || "" };
     } catch (error: any) {
-      console.warn(`Gemini primary model failed (${GEMINI_MODEL}), trying fallback (${GEMINI_FALLBACK_MODEL})`, error);
+      if (GEMINI_FALLBACK_MODEL === GEMINI_MODEL) throw error;
+      console.warn(`Gemini primary model failed (${GEMINI_MODEL}), trying fallback (${GEMINI_FALLBACK_MODEL})`, error?.message || error);
       const fallback = await geminiClient.models.generateContent({
         model: GEMINI_FALLBACK_MODEL,
         contents: prompt,
@@ -167,30 +128,15 @@ export const aiResponseService = {
     }
   },
 
+  // Nome mantido por compatibilidade: hoje há um só fornecedor (Gemini), com modelo de reserva em callGemini.
   async generateWithFallback(
     messages: Array<{ role: "system" | "user"; content: string }>,
     temperature = 0.7,
     asJson = false,
   ): Promise<string> {
-    const openAiEnabled = !!process.env.OPENAI_API_KEY;
-    const geminiEnabled = !!geminiClient;
-
-    if (!openAiEnabled && !geminiEnabled) {
-      throw new Error("No AI provider configured. Set OPENAI_API_KEY or GEMINI_API_KEY.");
+    if (!geminiClient) {
+      throw new Error("AI provider not configured. Set GEMINI_API_KEY.");
     }
-
-    if (openAiEnabled) {
-      try {
-        const data = await this.callOpenAI(messages, temperature);
-        const text = this.extractTextFromOpenAI(data);
-        if (text) return text;
-        throw new Error("OpenAI returned empty content.");
-      } catch (error) {
-        if (!geminiEnabled) throw error;
-        console.warn("OpenAI failed, switching to Gemini fallback:", error);
-      }
-    }
-
     const geminiData = await this.callGemini(messages, temperature, asJson);
     return geminiData.text?.trim() || "";
   },

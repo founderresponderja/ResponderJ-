@@ -33,7 +33,7 @@ export function registerAdminSystemRoutes(app: any) {
     // Environment check (sensitive, admin only)
     app.get("/api/admin/system/env-check", requireAuth, requireAdmin, (req: any, res: any) => {
         res.json({
-            hasOpenAI: !!process.env.OPENAI_API_KEY,
+            hasGemini: !!process.env.GEMINI_API_KEY,
             hasStripe: !!process.env.STRIPE_SECRET_KEY,
             hasSendGrid: !!process.env.SENDGRID_API_KEY,
             hasDb: !!process.env.DATABASE_URL

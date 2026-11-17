@@ -350,7 +350,7 @@ export class SecurityAuditService {
     const details: string[] = [];
     let score = 100;
 
-    const criticalKeys = ['OPENAI_API_KEY', 'STRIPE_SECRET_KEY', 'SENDGRID_API_KEY'];
+    const criticalKeys = ['GEMINI_API_KEY', 'STRIPE_SECRET_KEY', 'RESEND_API_KEY'];
     const optionalKeys = ['FACEBOOK_CLIENT_SECRET', 'GOOGLE_CLIENT_SECRET', 'INSTAGRAM_CLIENT_SECRET'];
 
     let missingCritical = 0;

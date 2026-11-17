@@ -52,7 +52,7 @@ export function registerApiKeysGuideRoutes(app: any) {
 
       // Definir todas as chaves primeiro
       const configuredKeys = [
-        'OPENAI_API_KEY',
+        'GEMINI_API_KEY',
         'DATABASE_URL', 
         'SESSION_SECRET'
       ];
@@ -186,15 +186,15 @@ export function registerApiKeysGuideRoutes(app: any) {
           setupUrl: 'https://app.sendgrid.com/settings/api_keys',
           documentation: 'https://docs.sendgrid.com/for-developers/sending-email/api-getting-started'
         },
-        'OPENAI_API_KEY': {
-          name: 'OpenAI API Key',
-          service: 'OpenAI',
+        'GEMINI_API_KEY': {
+          name: 'Gemini API Key',
+          service: 'Google Gemini',
           category: 'ai',
           priority: 'critical',
-          description: 'Chave para geração de respostas com IA',
-          configured: !!process.env.OPENAI_API_KEY,
-          setupUrl: 'https://platform.openai.com/api-keys',
-          documentation: 'https://platform.openai.com/docs/quickstart'
+          description: 'Chave para geração de respostas com IA (único fornecedor, RJ-0.4)',
+          configured: !!process.env.GEMINI_API_KEY,
+          setupUrl: 'https://aistudio.google.com/apikey',
+          documentation: 'https://ai.google.dev/gemini-api/docs'
         }
         // Adicionar mais conforme necessário
       };

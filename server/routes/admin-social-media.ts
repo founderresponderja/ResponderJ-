@@ -192,7 +192,7 @@ router.post('/generate-hashtags', requireAuth, async (req, res) => {
 
     // Usar Gemini para gerar hashtags relevantes
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
       contents: `Analisa o conteúdo fornecido e gera 5-8 hashtags relevantes em português para redes sociais (Facebook e Instagram). 
 
 Critérios:
