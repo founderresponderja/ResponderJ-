@@ -130,76 +130,55 @@ try {
   }
 
   // ---------------------------------------------------------------------------
-  // 2. Every connection with an owner gets an establishment
+  // 2 + 3. Establishments and duplicates
   // ---------------------------------------------------------------------------
-  const { rows: orphanRows } = await pool.query(`
-    SELECT id, user_id, user_external_id
-    FROM social_platform_connections
-    WHERE establishment_id IS NULL
-  `);
-  const orphans = orphanRows.map((r) => ({
-    id: r.id,
-    owner_id: r.user_id ?? ownerByClerkId.get(r.user_external_id) ?? null,
-  }));
-  const unowned = orphans.filter((o) => !o.owner_id).length;
-  if (unowned) console.warn(`  ! ${unowned} connection(s) without establishment have no resolvable owner; left as is`);
-
-  const establishmentByUser = new Map();
-  for (const row of orphans) {
-    if (!row.owner_id) continue;
-    let estId = establishmentByUser.get(row.owner_id);
-    if (!estId) {
-      const { rows: est } = await pool.query(
-        `SELECT id FROM establishments WHERE user_id = $1 ORDER BY id LIMIT 1`,
-        [row.owner_id],
-      );
-      if (est.length) {
-        estId = est[0].id;
-      } else {
-        stats.establishmentsCreated++;
-        console.log(`  + create establishment for user ${row.owner_id}`);
-        if (APPLY) {
-          const { rows: created } = await pool.query(
-            `INSERT INTO establishments (user_id, name, brand_tone)
-             SELECT id, COALESCE(NULLIF(trim(company_name), ''), 'O meu negócio'), 'profissional'
-             FROM users WHERE id = $1
-             RETURNING id`,
-            [row.owner_id],
-          );
-          estId = created[0].id;
-        } else {
-          estId = -1; // placeholder in dry run
-        }
-      }
-      establishmentByUser.set(row.owner_id, estId);
-    }
-    stats.connectionsGivenEstablishment++;
-    await write(`UPDATE social_platform_connections SET establishment_id = $1 WHERE id = $2`, [estId, row.id]);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 3. Duplicates: keep the most recent row per (user_id, platform, establishment_id)
-  // ---------------------------------------------------------------------------
-  if (APPLY) {
-    const { rows: dupes } = await pool.query(`
-      SELECT id FROM (
-        SELECT id, row_number() OVER (
-          PARTITION BY user_id, platform, establishment_id
-          ORDER BY updated_at DESC, id DESC
-        ) AS rn
-        FROM social_platform_connections
-        WHERE user_id IS NOT NULL AND establishment_id IS NOT NULL AND status <> 'disconnected'
-      ) t WHERE rn > 1
-    `);
-    stats.duplicatesDisabled = dupes.length;
-    for (const { id } of dupes) {
-      await pool.query(
-        `UPDATE social_platform_connections SET status = 'disconnected', updated_at = now() WHERE id = $1`,
-        [id],
-      );
-    }
+  // The unique index social_platform_user_unique is (user_external_id, platform,
+  // establishment_id). Giving a NULL-establishment row the owner's establishment
+  // collides when another row already holds that slot, so duplicates are resolved
+  // FIRST: per (user_external_id, platform, target establishment) keep the connected,
+  // most recently updated row; the others are disconnected and their
+  // establishment_id is set to NULL (rows are kept, never deleted).
+  if (!APPLY) {
+    console.log("  (steps 2-3 only run with --apply; they need user_id written by step 1)");
   } else {
-    console.log("  (duplicates are counted only with --apply, after owners and establishments are set)");
+    const created = await pool.query(`
+      INSERT INTO establishments (user_id, name, brand_tone)
+      SELECT DISTINCT u.id, COALESCE(NULLIF(trim(u.company_name), ''), 'O meu negócio'), 'profissional'
+      FROM social_platform_connections c
+      JOIN users u ON u.id = c.user_id
+      WHERE c.establishment_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM establishments e WHERE e.user_id = u.id)
+    `);
+    stats.establishmentsCreated = created.rowCount ?? 0;
+
+    const dupes = await pool.query(`
+      UPDATE social_platform_connections s
+      SET status = 'disconnected', establishment_id = NULL, updated_at = now()
+      FROM (
+        SELECT id, row_number() OVER (
+          PARTITION BY user_external_id, platform, target
+          ORDER BY (status = 'connected') DESC, updated_at DESC, id DESC
+        ) AS rn
+        FROM (
+          SELECT c.id, c.user_external_id, c.platform, c.status, c.updated_at,
+                 COALESCE(c.establishment_id,
+                          (SELECT min(e.id) FROM establishments e WHERE e.user_id = c.user_id)) AS target
+          FROM social_platform_connections c
+          WHERE c.user_id IS NOT NULL
+        ) x
+      ) r
+      WHERE s.id = r.id AND r.rn > 1
+    `);
+    stats.duplicatesDisabled = dupes.rowCount ?? 0;
+
+    const assigned = await pool.query(`
+      UPDATE social_platform_connections c
+      SET establishment_id = (SELECT min(e.id) FROM establishments e WHERE e.user_id = c.user_id)
+      WHERE c.establishment_id IS NULL
+        AND c.user_id IS NOT NULL
+        AND c.status <> 'disconnected'
+    `);
+    stats.connectionsGivenEstablishment = assigned.rowCount ?? 0;
   }
 
   console.log("\n=== Summary ===");
