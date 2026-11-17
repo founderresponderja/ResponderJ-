@@ -373,97 +373,12 @@ export const emailSequences = pgTable("email_sequences", {
   };
 });
 
-// --- Invoicing ---
-export const invoices = pgTable("invoices", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  settingsId: integer("settings_id"),
-  invoiceNumber: text("invoice_number").notNull(),
-  invoiceSeries: text("invoice_series"),
-  invoiceSequenceNumber: integer("invoice_sequence_number"),
-  
-  customerName: text("customer_name").notNull(),
-  customerVatNumber: text("customer_vat_number"),
-  customerAddress: text("customer_address"),
-  customerPostalCode: text("customer_postal_code"),
-  customerCity: text("customer_city"),
-  customerCountry: text("customer_country"),
-  customerEmail: text("customer_email"),
-  
-  issueDate: timestamp("issue_date").notNull(),
-  dueDate: timestamp("due_date").notNull(),
-  
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  vatAmount: decimal("vat_amount", { precision: 10, scale: 2 }).notNull(),
-  withholdingAmount: decimal("withholding_amount", { precision: 10, scale: 2 }).default("0.00"),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  currency: text("currency").default("EUR"),
-  
-  paymentMethod: text("payment_method"),
-  paymentReference: text("payment_reference"),
-  paymentDate: timestamp("payment_date"),
-  
-  status: text("status").default("draft"),
-  notes: text("notes"),
-  metadata: jsonb("metadata"),
-  
-  atDocumentId: text("at_document_id"),
-  atValidationCode: text("at_validation_code"),
-  atQrCode: text("at_qr_code"),
-  atSubmittedAt: timestamp("at_submitted_at"),
-  atError: text("at_error"),
-  
-  pdfPath: text("pdf_path"),
-  emailSent: boolean("email_sent").default(false),
-  emailSentAt: timestamp("email_sent_at"),
-  
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => {
-  return {
-    userInvoiceIdx: index("user_invoice_idx").on(table.userId),
-    invoiceNumberIdx: uniqueIndex("invoice_number_idx").on(table.invoiceNumber),
-  };
-});
+// (RJ-5.1: as tabelas do módulo de faturação/AT simulado saíram do código; ficam na base de dados até à RJ-7.3.)
 
-export const invoiceItems = pgTable("invoice_items", {
-  id: serial("id").primaryKey(),
-  invoiceId: integer("invoice_id").notNull(),
-  description: text("description").notNull(),
-  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
-  vatRate: decimal("vat_rate", { precision: 5, scale: 2 }).notNull(),
-  lineTotal: decimal("line_total", { precision: 10, scale: 2 }).notNull(),
-  vatAmount: decimal("vat_amount", { precision: 10, scale: 2 }).notNull(),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  productCode: text("product_code"),
-  productCategory: text("product_category"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => {
-  return {
-    invoiceItemsIdx: index("invoice_items_idx").on(table.invoiceId),
-  };
-});
 
-export const invoiceSettings = pgTable("invoice_settings", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  companyName: text("company_name").notNull(),
-  companyNif: text("company_nif").notNull(),
-  companyAddress: text("company_address").notNull(),
-  invoicePrefix: text("invoice_prefix").default("FAT"),
-  nextNumber: integer("next_number").default(1),
-  vatRate: decimal("vat_rate", { precision: 5, scale: 2 }).default("23.00"),
-  withholdingTaxRate: decimal("withholding_tax_rate", { precision: 5, scale: 2 }).default("0.00"),
-  invoiceSequence: integer("invoice_sequence").default(1),
-  atUsername: text("at_username"),
-  atPassword: text("at_password"),
-  atTestMode: boolean("at_test_mode").default(true),
-  invoiceEmailEnabled: boolean("invoice_email_enabled").default(true),
-  defaultVatRate: decimal("default_vat_rate", { precision: 5, scale: 2 }).default("23.00"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+
+
+
 
 // --- Referrals ---
 export const referrals = pgTable("referrals", {
@@ -609,9 +524,6 @@ export const insertCreditPackageSchema = createInsertSchema(creditPackages);
 export const insertReferralSchema = createInsertSchema(referrals);
 export const insertReferralRewardSchema = createInsertSchema(referralRewards);
 export const insertLeadSchema = createInsertSchema(leads);
-export const insertInvoiceSchema = createInsertSchema(invoices);
-export const insertInvoiceItemSchema = createInsertSchema(invoiceItems);
-export const insertInvoiceSettingsSchema = createInsertSchema(invoiceSettings);
 export const insertSubscriptionSchema = createInsertSchema(subscriptions);
 export const insertEmailSequenceSchema = createInsertSchema(emailSequences);
 export const insertAutomationRuleSchema = createInsertSchema(automationRules);
@@ -682,14 +594,8 @@ export type InsertReferralReward = typeof referralRewards.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
 export type InsertLead = typeof leads.$inferInsert;
 
-export type Invoice = typeof invoices.$inferSelect;
-export type InsertInvoice = typeof invoices.$inferInsert;
 
-export type InvoiceItem = typeof invoiceItems.$inferSelect;
-export type InsertInvoiceItem = typeof invoiceItems.$inferInsert;
 
-export type InvoiceSettings = typeof invoiceSettings.$inferSelect;
-export type InsertInvoiceSettings = typeof invoiceSettings.$inferInsert;
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
