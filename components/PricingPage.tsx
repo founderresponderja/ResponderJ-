@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { PlanId } from '../types';
+import { PLANS, PLAN_KEYS, formatPriceEur } from '../shared/plans';
 
 interface PricingPageProps {
   isLoading?: boolean;
@@ -8,37 +9,15 @@ interface PricingPageProps {
   error?: string | null;
 }
 
-const plans = [
-  {
-    id: 'trial' as PlanId,
-    title: 'Trial',
-    priceLabel: 'Grátis',
-    subtitle: '7 dias, sem cartão',
-    features: ['7 dias de teste', 'Sem cartão de crédito', 'Acesso imediato ao registo'],
-  },
-  {
-    id: 'starter' as PlanId,
-    title: 'Starter',
-    priceLabel: '19.99€/mês',
-    subtitle: '50 respostas IA, 1 utilizador',
-    features: ['50 respostas IA/mês', '1 utilizador', 'Checkout Stripe'],
-    highlight: true,
-  },
-  {
-    id: 'pro' as PlanId,
-    title: 'Profissional',
-    priceLabel: '49.99€/mês',
-    subtitle: '150 respostas IA, suporte prioritário',
-    features: ['150 respostas IA/mês', '1 utilizador', 'Suporte prioritário'],
-  },
-  {
-    id: 'agency' as PlanId,
-    title: 'Agência/Enterprise',
-    priceLabel: '149.99€/mês',
-    subtitle: '500 respostas IA, 5 utilizadores',
-    features: ['500 respostas IA/mês', '5 utilizadores', 'Suporte prioritário'],
-  },
-];
+// RJ-2.1: textos e preços vêm de shared/plans.ts (a mesma tabela que o servidor usa).
+const plans = PLAN_KEYS.map((key) => ({
+  id: key as PlanId,
+  title: PLANS[key].label,
+  priceLabel: formatPriceEur(PLANS[key].priceEur),
+  subtitle: PLANS[key].marketing.subtitle,
+  features: PLANS[key].marketing.bullets,
+  highlight: PLANS[key].marketing.highlight ?? false,
+}));
 
 const PricingPage: React.FC<PricingPageProps> = ({ isLoading, onSelectPlan, error }) => {
   return (

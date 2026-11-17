@@ -1,52 +1,23 @@
+/**
+ * Capacidades por plano, derivadas de shared/plans.ts (RJ-2.1).
+ * Mantido para compatibilidade com o código que já importa PLAN_CAPABILITIES.
+ */
+import { PLANS, normalizePlan as normalize, type PlanKey as Key } from "./plans.js";
+
+const capabilities = (key: Key) => ({
+  maxResponses: PLANS[key].monthlyResponses,
+  maxPlatforms: PLANS[key].maxPlatforms,
+  maxEstablishments: PLANS[key].maxEstablishments,
+  ...PLANS[key].features,
+});
+
 export const PLAN_CAPABILITIES = {
-  trial: {
-    maxResponses: 10,
-    maxPlatforms: 1,
-    hasAnalytics: false,
-    hasAdvancedAnalytics: false,
-    hasAgentTraining: false,
-    hasAutoResponse: false,
-    hasClientManagement: false,
-    hasWhiteLabel: false
-  },
-  starter: {
-    maxResponses: 50,
-    maxPlatforms: 2,
-    hasAnalytics: true,
-    hasAdvancedAnalytics: false,
-    hasAgentTraining: false,
-    hasAutoResponse: false,
-    hasClientManagement: false,
-    hasWhiteLabel: false
-  },
-  pro: {
-    maxResponses: 150,
-    maxPlatforms: 5,
-    hasAnalytics: true,
-    hasAdvancedAnalytics: true,
-    hasAgentTraining: true,
-    hasAutoResponse: true,
-    hasClientManagement: false,
-    hasWhiteLabel: false
-  },
-  agency: {
-    maxResponses: -1,
-    maxPlatforms: -1,
-    hasAnalytics: true,
-    hasAdvancedAnalytics: true,
-    hasAgentTraining: true,
-    hasAutoResponse: true,
-    hasClientManagement: true,
-    hasWhiteLabel: true
-  }
-} as const;
-
-export type PlanKey = keyof typeof PLAN_CAPABILITIES;
-export type PlanFeatureKey = keyof (typeof PLAN_CAPABILITIES)["trial"];
-
-export const normalizePlan = (plan?: string | null): PlanKey => {
-  const value = String(plan || "").toLowerCase();
-  if (value === "regular") return "starter";
-  if (value in PLAN_CAPABILITIES) return value as PlanKey;
-  return "trial";
+  trial: capabilities("trial"),
+  starter: capabilities("starter"),
+  pro: capabilities("pro"),
+  agency: capabilities("agency"),
 };
+
+export type PlanKey = Key;
+export type PlanFeatureKey = keyof (typeof PLAN_CAPABILITIES)["trial"];
+export const normalizePlan = normalize;

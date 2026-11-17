@@ -28,6 +28,8 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
     // 1. Check Credits (pre-check, but atomic deduction handles the real check)
     const user = await storage.getUserById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
+    // RJ-2.2: igual a /api/generate-response — só gera com saldo; o débito é feito ao aceitar.
+    if (Number(user.credits ?? 0) < 1) return res.status(400).json({ message: "Créditos insuficientes" });
 
     // 2. Get Context
     const [establishment] = await db
@@ -108,26 +110,10 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
       savedResponses.push(r);
     }
 
-    // 6. Deduct Credit (1 credit per generation request - Atomic Operation)
-    const deducted = await storage.deductUserCreditsAtomic(userId, 1);
-    
-    if (!deducted) {
-       // If deduction failed (e.g. race condition reached 0), we still return the generated response 
-       // but log it as an overage or handle appropriately. 
-       // For strict enforcement, we would do this BEFORE generation, but AI costs are sunk cost at this point.
-       // Best practice: Reserve credit before generation, commit after. 
-       // For simplicity here: we accept the minor loss or mark account as negative if logic allowed.
-       console.warn(`User ${userId} generated response but credit deduction failed (likely 0 balance)`);
-    }
-
-    if (deducted) {
-        await storage.createCreditTransaction({
-            userId,
-            type: 'usage',
-            amount: -1,
-            description: `Generated responses for review ${savedReview.id}`
-        });
-    }
+    // 6. RJ-2.2: um só modelo de débito em toda a aplicação — gerar não gasta créditos;
+    // o crédito é descontado quando a resposta é aceite (POST /api/responses/:id/accept),
+    // que também regista o movimento. Antes este fluxo descontava ao gerar e registava o
+    // movimento mesmo quando o débito falhava (o resultado era um objeto, sempre "verdadeiro").
 
     // Get fresh user data for UI update
     const updatedUser = await storage.getUserById(userId);

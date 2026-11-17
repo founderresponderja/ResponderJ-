@@ -336,8 +336,11 @@ export async function registerRoutes(app: any): Promise<void> {
       const countResult = await db.select({ count: sql<number>`count(*)` })
         .from(establishments)
         .where(eq(establishments.userId, userId));
-      if (Number(countResult[0]?.count || 0) >= 5) {
-        return res.status(400).json({ message: "Limite de 5 negócios atingido." });
+      // RJ-2.4: limite de estabelecimentos do plano (shared/plans.ts).
+      const { PLANS } = await import("../shared/plans.js");
+      const maxEst = PLANS.agency.maxEstablishments;
+      if (maxEst !== -1 && Number(countResult[0]?.count || 0) >= maxEst) {
+        return res.status(400).json({ message: `Limite de ${maxEst} negócios atingido.` });
       }
 
       const payload = req.body || {};

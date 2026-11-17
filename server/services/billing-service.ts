@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { PLANS } from "../../shared/plans.js";
 import { storage } from "../storage.js";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_mock", {
@@ -14,60 +15,27 @@ const getEnv = (...keys: string[]) => {
 };
 
 export class BillingService {
-  static PAYMENT_PLANS = {
-    starter: {
-      id: "starter",
-      name: "Starter",
-      priceId: getEnv("STRIPE_PRICE_ID_STARTER", "STRIPE_STARTER_PRICE_ID") || "price_starter",
-      price: 19.99,
-      currency: "eur",
-      credits: 50,
-      locations: 1,
-      users: 1,
-      byokSupported: true,
-      features: [
-        "50 respostas AI por mês",
-        "1 localização de negócio",
-        "1 utilizador",
-        "BYOK (IA) opcional",
-        "Suporte por email"
-      ]
-    },
-    pro: {
-      id: "pro", 
-      name: "Pro",
-      priceId: getEnv("STRIPE_PRICE_ID_PRO", "STRIPE_PRO_PRICE_ID") || "price_pro",
-      price: 49.99,
-      currency: "eur", 
-      credits: 150,
-      locations: 1,
-      users: 1,
-      byokSupported: false,
-      features: [
-        "150 respostas AI por mês",
-        "1 utilizador",
-        "Suporte prioritário",
-        "Análise avançada"
-      ]
-    },
-    agency: {
-      id: "agency",
-      name: "Agência", 
-      priceId: getEnv("STRIPE_PRICE_ID_AGENCY", "STRIPE_AGENCY_PRICE_ID") || "price_agency",
-      price: 149.99,
-      currency: "eur",
-      credits: 500,
-      locations: 5,
-      users: 5,
-      byokSupported: false,
-      features: [
-        "500 respostas AI por mês",
-        "5 utilizadores",
-        "Plano para agência/enterprise",
-        "Suporte prioritário 24/7"
-      ]
-    }
-  };
+  // RJ-2.1: derivado de shared/plans.ts (fonte única).
+  static PAYMENT_PLANS = Object.fromEntries(
+    (["starter", "pro", "agency"] as const).map((key) => {
+      const p = PLANS[key];
+      return [key, {
+        id: key,
+        name: p.label,
+        priceId: getEnv(...(p.stripePriceEnv as [string, string])) || `price_${key}`,
+        price: p.priceEur,
+        currency: "eur",
+        credits: p.monthlyResponses,
+        locations: p.maxEstablishments,
+        users: p.users,
+        byokSupported: false,
+        features: p.marketing.bullets,
+      }];
+    }),
+  ) as Record<"starter" | "pro" | "agency", {
+    id: string; name: string; priceId: string; price: number; currency: string; credits: number;
+    locations: number; users: number; byokSupported: boolean; features: string[];
+  }>;
 
   static async createSubscription(userId: string, planId: string, paymentMethodId: string) {
     const plan = this.PAYMENT_PLANS[planId as keyof typeof this.PAYMENT_PLANS];
@@ -190,11 +158,9 @@ export class BillingService {
       }
 
       const priceId = subscription.items?.data?.[0]?.price?.id;
-      const planMap: Record<string, string[]> = {
-        starter: [process.env.STRIPE_PRICE_ID_STARTER || "", process.env.STRIPE_STARTER_PRICE_ID || ""],
-        pro: [process.env.STRIPE_PRICE_ID_PRO || "", process.env.STRIPE_PRO_PRICE_ID || ""],
-        agency: [process.env.STRIPE_PRICE_ID_AGENCY || "", process.env.STRIPE_AGENCY_PRICE_ID || ""],
-      };
+      const planMap: Record<string, string[]> = Object.fromEntries(
+        (["starter", "pro", "agency"] as const).map((key) => [key, (PLANS[key].stripePriceEnv || []).map((name) => process.env[name] || "")]),
+      );
 
       const matchedEntry = Object.entries(planMap).find(
         ([, ids]) => ids.some((id) => id && id === priceId)
@@ -210,9 +176,8 @@ export class BillingService {
 
       const planId = matchedEntry[0] as "starter" | "pro" | "agency";
 
-      const { PLAN_CAPABILITIES } = await import("../../shared/planCapabilities.js");
-      const planCaps = PLAN_CAPABILITIES[planId] || PLAN_CAPABILITIES.starter;
-      const maxResponses = planCaps.maxResponses;
+      // RJ-2.1: créditos do período = respostas do plano (shared/plans.ts).
+      const maxResponses = PLANS[planId].monthlyResponses;
       const newCredits = maxResponses === -1 ? 999999 : maxResponses;
 
       const planChanged = user.subscriptionPlan !== planId;

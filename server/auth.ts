@@ -102,8 +102,9 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
           }
           user = existing.clerkUserId ? existing : await storage.setUserClerkId(existing.id, clerkUserId);
         } else {
-          // Trial dura 7 dias a partir do primeiro login.
-          const TRIAL_DURATION_DAYS = 7;
+          // Trial a partir do primeiro login; duração e créditos vêm de shared/plans.ts (RJ-2.1).
+          const { PLANS } = await import("../shared/plans.js");
+          const TRIAL_DURATION_DAYS = PLANS.trial.trialDays ?? 7;
           const now = new Date();
           const trialEnd = new Date(now);
           trialEnd.setDate(trialEnd.getDate() + TRIAL_DURATION_DAYS);
@@ -116,7 +117,7 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
             lastName: clerkUser.lastName || "",
             role: "user",
             isActive: true,
-            credits: 10,
+            credits: PLANS.trial.monthlyResponses,
             selectedPlan: "trial",
             subscriptionPlan: "trial",
             currentPeriodStart: now,
