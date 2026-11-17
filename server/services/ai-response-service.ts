@@ -3,6 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { db } from "../db.js";
 import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "../../shared/schema.js";
+import { normalizeGeneration } from "./ai-normalize.js";
 
 // RJ-0.4 (decisão de 17/11/2026): o Gemini é o único fornecedor de IA.
 // Modelo de reserva: gemini-1.5-flash já foi descontinuado pela Google; passa a gemini-2.5-flash-lite
@@ -38,6 +39,8 @@ export interface GeneratedResponse {
   language: string;
   sentiment: "positive" | "negative" | "neutral";
   seoKeywords?: string[];
+  /** RJ-4.3: temas que o cliente refere na review (ex.: "atendimento", "tempo de espera"). */
+  reviewKeywords?: string[];
   responseType: string;
   characterCount?: number;
 }
@@ -75,7 +78,7 @@ const PLATFORM_CONFIGS: Record<string, any> = {
 };
 
 export const aiResponseService = {
-  async callGemini(messages: Array<{ role: "system" | "user"; content: string }>, temperature = 0.7, asJson = false): Promise<GeminiResponseLike> {
+  async callGemini(messages: Array<{ role: "system" | "user"; content: string }>, temperature = 0.7, asJson: boolean | Record<string, any> = false): Promise<GeminiResponseLike> {
     if (!geminiClient) {
       throw new Error("GEMINI_API_KEY/API_KEY is not configured.");
     }
@@ -88,7 +91,7 @@ export const aiResponseService = {
       ? {
           temperature,
           responseMimeType: "application/json",
-          responseSchema: {
+          responseSchema: typeof asJson === "object" ? asJson : {
             type: Type.OBJECT,
             properties: {
               variations: {
@@ -132,7 +135,7 @@ export const aiResponseService = {
   async generateWithFallback(
     messages: Array<{ role: "system" | "user"; content: string }>,
     temperature = 0.7,
-    asJson = false,
+    asJson: boolean | Record<string, any> = false,
   ): Promise<string> {
     if (!geminiClient) {
       throw new Error("AI provider not configured. Set GEMINI_API_KEY.");
@@ -226,36 +229,31 @@ export const aiResponseService = {
     }
   },
 
-  async getLearningPattern(input: {
-    userId?: number;
-    language: string;
-    tone: string;
-    sentiment: string;
-  }): Promise<{
-    openingStyle?: string | null;
-    closingStyle?: string | null;
-    preferredPhrases?: string[];
-    avoidedPhrases?: string[];
-  } | null> {
-    if (!input.userId) return null;
-    const [pattern] = await db
+  /** RJ-4.6: padrões aprendidos dos três sentimentos de uma vez (o sentimento só se sabe na resposta da IA). */
+  async getLearningPatternsBySentiment(input: { userId?: number; language: string | null; tone: string }) {
+    if (!input.userId) return {} as Record<string, any>;
+    const conds = [
+      eq(responseLearningPatterns.userId, input.userId),
+      eq(responseLearningPatterns.tone, input.tone),
+    ];
+    if (input.language) conds.push(eq(responseLearningPatterns.language, input.language));
+    const rows = await db
       .select()
       .from(responseLearningPatterns)
-      .where(and(
-        eq(responseLearningPatterns.userId, input.userId),
-        eq(responseLearningPatterns.language, input.language),
-        eq(responseLearningPatterns.tone, input.tone),
-        eq(responseLearningPatterns.sentiment, input.sentiment),
-      ))
+      .where(and(...conds))
       .orderBy(desc(responseLearningPatterns.updatedAt))
-      .limit(1);
-    if (!pattern) return null;
-    return {
-      openingStyle: pattern.openingStyle,
-      closingStyle: pattern.closingStyle,
-      preferredPhrases: (pattern.preferredPhrases as string[]) || [],
-      avoidedPhrases: (pattern.avoidedPhrases as string[]) || [],
-    };
+      .limit(9);
+    const out: Record<string, any> = {};
+    for (const row of rows) {
+      if (out[row.sentiment]) continue;
+      out[row.sentiment] = {
+        openingStyle: row.openingStyle,
+        closingStyle: row.closingStyle,
+        preferredPhrases: (row.preferredPhrases as string[]) || [],
+        avoidedPhrases: (row.avoidedPhrases as string[]) || [],
+      };
+    }
+    return out;
   },
 
   extractPhraseDifferences(original: string, edited: string) {
@@ -344,12 +342,16 @@ export const aiResponseService = {
     return Array.from(keywords).slice(0, 8);
   },
 
+  /**
+   * RJ-4.6: uma só chamada ao Gemini por geração. Antes eram 3 (sentimento, língua e resposta),
+   * e o fluxo /api/reviews-ai fazia mais 2 a seguir. Agora a mesma resposta JSON traz
+   * o sentimento, a língua, os temas da review (RJ-4.3) e as 3 variações.
+   */
   async generateReviewResponses(request: ReviewResponseRequest): Promise<GeneratedResponse[]> {
     const { reviewText, platform, tone, language, establishmentContext, dynamicFields, localSeoKeywords, extraInstructions, userId } = request;
-    
-    const sentiment = await this.detectSentiment(reviewText);
-    const autoLanguage = await this.detectLanguage(reviewText);
-    const effectiveLanguage = (language || autoLanguage).toLowerCase();
+
+    // Língua: a pedida, ou a deteção local (sem IA). Se nenhuma servir, a IA deteta na mesma chamada.
+    const knownLanguage = (language || this.detectLanguageHeuristic(reviewText) || "").toLowerCase() || null;
     const platformKey = platform.toLowerCase().replace(/\s+/g, '_');
     const config = PLATFORM_CONFIGS[platformKey] || PLATFORM_CONFIGS['google_maps'];
     const seoKeywords = this.buildLocalSeoKeywords({
@@ -359,20 +361,27 @@ export const aiResponseService = {
       establishmentType: establishmentContext?.type,
       provided: localSeoKeywords,
     });
-    const learningPattern = await this.getLearningPattern({
-      userId,
-      language: effectiveLanguage,
-      tone,
-      sentiment,
-    });
+    const patterns = await this.getLearningPatternsBySentiment({ userId, language: knownLanguage, tone }).catch(() => ({} as Record<string, any>));
+    const patternText = (["positive", "neutral", "negative"] as const)
+      .filter((k) => patterns[k])
+      .map((k) => {
+        const p = patterns[k];
+        return `- If the review is ${k}: opening "${p.openingStyle || "N/A"}"; closing "${p.closingStyle || "N/A"}"; prefer: ${(p.preferredPhrases || []).join(", ") || "N/A"}; avoid: ${(p.avoidedPhrases || []).join(", ") || "N/A"}`;
+      })
+      .join("\n      ");
 
     const systemInstruction = `
       You are an expert customer service AI for ${config.name || platform}.
-      
-      Review Sentiment: ${sentiment.toUpperCase()}
+
+      Step 1. Classify the review sentiment as positive, neutral or negative.
+      Step 2. ${knownLanguage
+        ? `The review language is "${knownLanguage}". Write the replies in that language.`
+        : `Detect the review language (pt, en or es; if unsure use pt) and write the replies in it.`}
+      Step 3. List up to 5 short topics the customer mentions (e.g. "service", "waiting time", "food"),
+              written in the review's language. Empty list if none.
+      Step 4. Write 3 DISTINCT reply variations: concise, balanced, detailed.
+
       Target Tone: ${tone}
-      Language: ${effectiveLanguage} (reply in the same language as the review)
-      
       Platform Constraints:
       - Max Characters: ${config.maxChars}
       - Emojis Allowed: ${config.allowsEmojis}
@@ -385,45 +394,58 @@ export const aiResponseService = {
 
       Customer Name: ${dynamicFields?.customerName || 'Customer'}
       SEO Local Keywords (include naturally when appropriate): ${seoKeywords.join(", ")}
-      Learned style preferences:
-      - Preferred opening: ${learningPattern?.openingStyle || "N/A"}
-      - Preferred closing: ${learningPattern?.closingStyle || "N/A"}
-      - Preferred phrases: ${(learningPattern?.preferredPhrases || []).join(", ") || "N/A"}
-      - Avoid phrases: ${(learningPattern?.avoidedPhrases || []).join(", ") || "N/A"}
+      ${patternText ? `Learned style preferences (apply the one matching the sentiment):\n      ${patternText}` : ""}
 
-      Task: Generate 3 DISTINCT variations of a response.
-      1. Concise
-      2. Balanced/Standard
-      3. Detailed/Personalized
-      
       For negative reviews, be apologetic and solution-oriented.
       For positive reviews, be grateful and inviting.
     `;
+
+    const schema = {
+      type: Type.OBJECT,
+      properties: {
+        sentiment: { type: Type.STRING, enum: ["positive", "neutral", "negative"] },
+        language: { type: Type.STRING, enum: ["pt", "en", "es"] },
+        keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+        variations: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              text: { type: Type.STRING },
+              type: { type: Type.STRING, enum: ["concise", "balanced", "detailed"] },
+            },
+            required: ["text", "type"],
+          },
+        },
+      },
+      required: ["sentiment", "language", "keywords", "variations"],
+    };
 
     try {
       const raw = await this.generateWithFallback(
         [
           { role: "system", content: systemInstruction },
-          {
-            role: "user",
-            content: `Customer Review: "${reviewText}"\n\nReturn ONLY valid JSON in this format:
-{"variations":[{"text":"...","type":"concise"},{"text":"...","type":"balanced"},{"text":"...","type":"detailed"}]}`,
-          },
+          { role: "user", content: `Customer Review: "${reviewText}"` },
         ],
         0.7,
-        true,
+        schema,
       );
       const json = this.parseJsonPayload(raw, { variations: [] as Array<{ text: string; type: string }> }) as {
+        sentiment?: string;
+        language?: string;
+        keywords?: string[];
         variations: Array<{ text: string; type: string }>;
       };
-      
-      return json.variations.map((v: any, index: number) => ({
+      const parsed = this.normalizeGeneration(json, knownLanguage);
+
+      return parsed.variations.map((v, index) => ({
         variationNumber: index + 1,
         responseText: v.text,
         tone: tone,
-        language: effectiveLanguage,
-        sentiment,
+        language: parsed.language,
+        sentiment: parsed.sentiment,
         seoKeywords,
+        reviewKeywords: parsed.keywords,
         responseType: v.type,
         characterCount: v.text.length
       }));
@@ -432,6 +454,13 @@ export const aiResponseService = {
       console.error("Generation error:", error);
       return [];
     }
+  },
+
+  normalizeGeneration(
+    json: Parameters<typeof normalizeGeneration>[0],
+    knownLanguage: string | null,
+  ) {
+    return normalizeGeneration(json, knownLanguage);
   },
 
   // Legacy support wrapper
@@ -460,11 +489,14 @@ export const aiResponseService = {
       });
 
       const selected = variations[0]; // Default to first
+      if (!selected) throw new Error("A IA não devolveu nenhuma resposta.");
 
+      // RJ-4.6: sentimento e temas vêm da mesma chamada (antes fazia uma 4.ª chamada só para o sentimento).
       return {
-          response: selected ? selected.responseText : "Erro ao gerar resposta.",
-          sentiment: await this.detectSentiment(params.comment),
-          keywords: selected?.seoKeywords || [],
+          response: selected.responseText,
+          sentiment: selected.sentiment,
+          keywords: selected.reviewKeywords || [],
+          seoKeywords: selected.seoKeywords || [],
           detectedLanguage: { language: selected?.language || "pt" },
           tokensUsed: 0
       };

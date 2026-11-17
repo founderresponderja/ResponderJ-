@@ -152,6 +152,8 @@ export const reviews = pgTable("reviews", {
   reviewText: text("review_text"),
   language: text("language"),
   sentiment: text("sentiment"),
+  // RJ-4.3: temas que o cliente refere (vêm da mesma chamada à IA que gera a resposta).
+  keywords: jsonb("keywords").$type<string[]>(),
   reviewDate: timestamp("review_date"),
   externalResponseText: text("external_response_text"),
   externalResponseAt: timestamp("external_response_at"),

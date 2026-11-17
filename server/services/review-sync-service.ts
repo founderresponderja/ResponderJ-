@@ -2,6 +2,7 @@ import { db } from "../db.js";
 import { reviews, socialPlatformConnections } from "../../shared/schema.js";
 import { and, eq, sql } from "drizzle-orm";
 import { GoogleReviewsService } from "./google-reviews-service.js";
+import { sentimentFromRating } from "../../shared/sentiment.js";
 
 type PlatformName = "google" | "tripadvisor" | "booking" | "facebook";
 
@@ -73,7 +74,8 @@ export const reviewSyncService = {
             rating: GoogleReviewsService.starRatingToNumber(review.starRating),
             reviewText: review.comment || "",
             language: "pt",
-            sentiment: null,
+            // RJ-4.3: sentimento de base pelas estrelas, sem chamar a IA; a geração de resposta substitui-o.
+            sentiment: sentimentFromRating(GoogleReviewsService.starRatingToNumber(review.starRating)),
             reviewDate: review.createTime ? new Date(review.createTime) : new Date(),
           }).onConflictDoNothing().returning({ id: reviews.id });
           if (insertedRows.length > 0) inserted++;

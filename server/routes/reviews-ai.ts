@@ -69,8 +69,11 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
     }
 
     // 4. Save Review
-    const sentiment = await aiResponseService.detectSentiment(reviewText);
-    const detectedLanguage = await aiResponseService.detectLanguage(reviewText);
+    // RJ-4.6: sentimento, língua e temas vêm da mesma chamada que gerou as respostas
+    // (antes eram mais 2 chamadas à IA aqui).
+    const sentiment = variations[0].sentiment;
+    const detectedLanguage = variations[0].language;
+    const reviewKeywords = variations[0].reviewKeywords || [];
     const [savedReview] = await db.insert(reviews).values({
       establishmentId: establishment?.id,
       platform: platform || 'google_maps',
@@ -78,7 +81,8 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
       language: detectedLanguage,
       authorName: customerName,
       reviewDate: new Date(),
-      sentiment
+      sentiment,
+      keywords: reviewKeywords,
     }).returning();
 
     // 5. Save Responses
@@ -98,13 +102,14 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
         product,
         location,
         creditsUsed: 1,
-        aiModel: "gemini-2.5-flash",
+        aiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         approvalStatus: "pending",
         isSelected: false,
         isPublished: false,
         learningMeta: {
           sentiment: v.sentiment || sentiment,
           seoKeywords: v.seoKeywords || seoKeywords,
+          reviewKeywords,
         },
       }).returning();
       savedResponses.push(r);
@@ -124,6 +129,7 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
       responses: variations,
       sentiment,
       detectedLanguage,
+      keywords: reviewKeywords,
       creditsRemaining: updatedUser?.credits || 0
     });
 
