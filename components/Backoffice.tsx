@@ -60,6 +60,7 @@ const ACTION_LABEL: Record<string, string> = {
   transfer_code_wrong: 'Código de transferência errado',
   transfer_done: 'Aceitou a função de super administrador',
   transfer_cancel: 'Cancelou a transferência',
+  cron_sync: 'Agendamento diário de sincronização',
 };
 
 const fmtDate = (v: string | null | undefined, withTime = false) =>
@@ -642,7 +643,9 @@ const AiTab: React.FC<{ api: Api }> = ({ api }) => {
 
 const SyncTab: React.FC<{ api: Api }> = ({ api }) => {
   const { data, error } = useLoad(() => api<SyncRow[]>('/sync'), []);
+  const runs = useLoad(() => api<{ createdAt: string; details: any }[]>('/cron-runs'), []);
   if (!data) return <Loading error={error} />;
+  const lastRun = runs.data?.[0];
   const failing = data.filter((r) => r.lastOk === false).length;
   const stale = data.filter((r) => !r.lastSyncAt || Date.now() - new Date(r.lastSyncAt).getTime() > 36 * 3600 * 1000).length;
   return (
@@ -651,6 +654,17 @@ const SyncTab: React.FC<{ api: Api }> = ({ api }) => {
         <Stat label="Ligações ativas" value={data.length} />
         <Stat label="Com erro na última sincronização" value={failing} />
         <Stat label="Sem sincronizar há +36 h" value={stale} />
+      </div>
+      <div className={`${card} p-4 text-sm`}>
+        <div className="font-medium">Agendamento diário (03:00 UTC)</div>
+        {!runs.data ? <div className="text-slate-500">A carregar…</div> : !lastRun ? (
+          <div className="text-amber-700">Ainda não há registo de nenhuma execução.</div>
+        ) : (
+          <div className={lastRun.details?.ok ? 'text-emerald-700' : 'text-red-600'}>
+            Última execução: {fmtDate(lastRun.createdAt, true)} · {lastRun.details?.ok ? `OK, ${lastRun.details?.imported ?? 0} reviews novas` : `Erro: ${lastRun.details?.error}`}
+            {lastRun.createdAt && Date.now() - new Date(lastRun.createdAt).getTime() > 30 * 3600 * 1000 && <span className="ml-2 text-amber-700">(há mais de 30 horas: o agendamento pode não estar a correr)</span>}
+          </div>
+        )}
       </div>
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full text-sm">

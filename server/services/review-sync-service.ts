@@ -64,20 +64,13 @@ export const reviewSyncService = {
           ));
           if (existing) continue;
 
-          const ratingMap: Record<string, number> = {
-            ONE: 1,
-            TWO: 2,
-            THREE: 3,
-            FOUR: 4,
-            FIVE: 5,
-          };
           // A regra única (RJ-1.4) trava repetidas se duas sincronizações correrem ao mesmo tempo.
           const insertedRows = await db.insert(reviews).values({
             establishmentId: connection.establishmentId,
             platform: "google",
             externalId: reviewExternalId,
             authorName: review.reviewer?.displayName || "Cliente Google",
-            rating: ratingMap[String(review.starRating || "").toUpperCase()] ?? null,
+            rating: GoogleReviewsService.starRatingToNumber(review.starRating),
             reviewText: review.comment || "",
             language: "pt",
             sentiment: null,

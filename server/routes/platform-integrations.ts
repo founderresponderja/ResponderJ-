@@ -411,8 +411,13 @@ router.post("/sync-now", async (req, res) => {
   if (!cronSecret) {
     return res.status(503).json({ error: "Sync not configured." });
   }
-  const providedSecret = String(req.body?.secret || "");
-  if (providedSecret !== cronSecret) {
+  // RJ-3.5: o segredo vem no cabeçalho Authorization (como no agendamento), nunca no corpo,
+  // e é comparado em tempo constante.
+  const authHeader = String(req.headers.authorization || "");
+  const providedSecret = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const a = Buffer.from(providedSecret);
+  const b = Buffer.from(cronSecret);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({ error: "Unauthorized." });
   }
 
