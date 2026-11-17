@@ -80,7 +80,10 @@ export function registerBillingRoutes(app: any) {
 
       // Status: derive from the plan and Stripe subscription presence
       let status: "active" | "trial" | "expired" | "canceled" = "trial";
-      if (planId !== "trial") {
+      if (user.isAdmin || user.isSuperAdmin) {
+        // Administradores têm sempre acesso, sem subscrição Stripe.
+        status = "active";
+      } else if (planId !== "trial") {
         status = user.stripeSubscriptionId ? "active" : "expired";
       } else if (!isTrialing) {
         status = "expired";
@@ -97,7 +100,7 @@ export function registerBillingRoutes(app: any) {
           .from(socialPlatformConnections)
           .where(
             and(
-              eq(socialPlatformConnections.userExternalId, String(user.id)),
+              eq(socialPlatformConnections.userId, user.id),
               eq(socialPlatformConnections.status, "connected")
             )
           );
