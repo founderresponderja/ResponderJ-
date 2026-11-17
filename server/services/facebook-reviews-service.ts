@@ -15,7 +15,7 @@ async function graph<T = any>(path: string, params: Record<string, string>, meth
   } else {
     body = new URLSearchParams(params);
   }
-  const res = await fetch(url.toString(), { method, body });
+  const res = await fetch(url.toString(), { method, body, signal: AbortSignal.timeout(15000) }); // RJ-8.3
   const data: any = await res.json().catch(() => ({}));
   if (!res.ok || data?.error) {
     const err = data?.error || {};

@@ -26,6 +26,7 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
   if (!isMailerConfigured()) return { ok: false, error: "Email não configurado (RESEND_API_KEY / EMAIL_FROM)." };
   try {
     const res = await fetch("https://api.resend.com/emails", {
+      signal: AbortSignal.timeout(10000), // RJ-8.3: não prender o pedido se o Resend não responder
       method: "POST",
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
