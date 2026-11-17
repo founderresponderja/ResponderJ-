@@ -2,7 +2,7 @@
 import { storage } from '../storage.js';
 import { isEncrypted, getEncryptionInfo } from '../encryption.js';
 import { db } from '../db.js';
-import { users, corporateSocialAccounts, invoiceSettings } from '../../shared/schema.js';
+import { users, corporateSocialAccounts } from '../../shared/schema.js';
 import { eq, sql } from 'drizzle-orm';
 
 export interface SecurityAuditResult {
@@ -219,23 +219,6 @@ export class SecurityAuditService {
          }
       }
       
-      // Analyze Invoice Settings (AT Password)
-      const invSettings = await db.select().from(invoiceSettings);
-      for (const settings of invSettings) {
-          if (settings.atPassword) {
-              analysis.totalFields++;
-               if (isEncrypted(settings.atPassword)) {
-                  analysis.encryptedFields++;
-                  const info = getEncryptionInfo(settings.atPassword);
-                  const method = `${info.version} (${info.algorithm})`;
-                  analysis.encryptionMethods[method] = (analysis.encryptionMethods[method] || 0) + 1;
-                  if (!info.secure) analysis.weakEncryption.push(`Invoice Settings ${settings.id} AT Password`);
-               } else {
-                  analysis.unencryptedSensitive.push(`Invoice Settings ${settings.id} AT Password`);
-               }
-          }
-      }
-
       // Remover duplicados
       analysis.unencryptedSensitive = Array.from(new Set(analysis.unencryptedSensitive));
       analysis.weakEncryption = Array.from(new Set(analysis.weakEncryption));

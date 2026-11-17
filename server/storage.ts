@@ -6,10 +6,10 @@ import {
   InsertUser, User, InsertLead, Lead, InsertAutomationRule, AutomationRule,
   InsertResponse, Response, InsertEstablishment, Establishment, 
   InsertCreditTransaction, CreditTransaction, InsertSubscription, Subscription,
-  InsertEmailSequence, EmailSequence, InsertInvoice, Invoice, InsertInvoiceItem, InvoiceItem,
-  InsertInvoiceSettings, InvoiceSettings, InsertReferral, Referral, InsertReferralReward, ReferralReward,
+  InsertEmailSequence, EmailSequence,
+  InsertReferral, Referral, InsertReferralReward, ReferralReward,
   creditPackages, InsertCreditPackage, CreditPackage,
-  invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback,
+  qualityFeedback, InsertQualityFeedback, QualityFeedback,
   oauthStates, OAuthState, InsertOAuthState
 } from "../shared/schema.js";
 
@@ -142,20 +142,6 @@ export interface IStorage {
   // CSV Uploads
   createCsvUpload(data: any): Promise<any>;
   getCsvUpload(id: string): Promise<any>;
-
-  // Invoicing
-  getInvoiceSettings(userId: number | string): Promise<InvoiceSettings | undefined>;
-  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
-  createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
-  updateInvoiceSequence(settingsId: number | string, sequence: number): Promise<void>;
-  createInvoiceAuditLog(log: any): Promise<void>;
-  getInvoice(id: number | string): Promise<Invoice | undefined>;
-  getInvoiceWithDetails(id: number | string): Promise<Invoice & { items: InvoiceItem[] } | undefined>;
-  updateInvoiceStatus(id: number | string, status: string): Promise<void>;
-  updateInvoiceATData(id: number | string, data: any): Promise<void>;
-  updateInvoiceATError(id: number | string, error: string): Promise<void>;
-  updateInvoicePdfPath(id: number | string, path: string): Promise<void>;
-  updateInvoiceEmailSent(id: number | string, sent: boolean, date: Date): Promise<void>;
 
   // Quality Feedback
   createQualityFeedback(feedback: InsertQualityFeedback): Promise<QualityFeedback>;
@@ -840,71 +826,6 @@ export class DatabaseStorage implements IStorage {
 
   async getCsvUpload(id: string): Promise<any> {
     return this.csvUploads.get(id);
-  }
-
-  // Invoicing Implementation
-  async getInvoiceSettings(userId: number | string): Promise<InvoiceSettings | undefined> {
-    const [settings] = await db.select().from(invoiceSettings).where(eq(invoiceSettings.userId, Number(userId)));
-    return settings;
-  }
-
-  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
-    const [newInvoice] = await db.insert(invoices).values(invoice).returning();
-    return newInvoice;
-  }
-
-  async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
-    const [newItem] = await db.insert(invoiceItems).values(item).returning();
-    return newItem;
-  }
-
-  async updateInvoiceSequence(settingsId: number | string, sequence: number): Promise<void> {
-    await db.update(invoiceSettings).set({ invoiceSequence: sequence }).where(eq(invoiceSettings.id, Number(settingsId)));
-  }
-
-  async createInvoiceAuditLog(log: any): Promise<void> {
-    await this.createAuditLog(log);
-  }
-
-  async getInvoice(id: number | string): Promise<Invoice | undefined> {
-    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, Number(id)));
-    return invoice;
-  }
-
-  async getInvoiceWithDetails(id: number | string): Promise<Invoice & { items: InvoiceItem[] } | undefined> {
-    const invoice = await this.getInvoice(id);
-    if (!invoice) return undefined;
-    
-    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id));
-    return { ...invoice, items };
-  }
-
-  async updateInvoiceStatus(id: number | string, status: string): Promise<void> {
-    await db.update(invoices).set({ status }).where(eq(invoices.id, Number(id)));
-  }
-
-  async updateInvoiceATData(id: number | string, data: any): Promise<void> {
-     await db.update(invoices).set({
-       atDocumentId: data.atReference,
-       atValidationCode: data.atValidationCode,
-       atQrCode: data.atQrCode,
-       atSubmittedAt: data.atSubmissionDate,
-     }).where(eq(invoices.id, Number(id)));
-  }
-
-  async updateInvoiceATError(id: number | string, error: string): Promise<void> {
-    await db.update(invoices).set({ atError: error }).where(eq(invoices.id, Number(id)));
-  }
-
-  async updateInvoicePdfPath(id: number | string, path: string): Promise<void> {
-    await db.update(invoices).set({ pdfPath: path }).where(eq(invoices.id, Number(id)));
-  }
-
-  async updateInvoiceEmailSent(id: number | string, sent: boolean, date: Date): Promise<void> {
-    await db.update(invoices).set({ 
-      emailSent: sent,
-      emailSentAt: date 
-    }).where(eq(invoices.id, Number(id)));
   }
 
   // Quality Feedback

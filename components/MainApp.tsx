@@ -43,7 +43,6 @@ import { useSubscription } from '../hooks/useSubscription';
 // Lazy load heavy tab components
 const Dashboard = lazy(() => import('./Dashboard'));
 const PlatformList = lazy(() => import('./PlatformList'));
-const AccountingPage = lazy(() => import('./AccountingPage'));
 const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
 const PrivacyDataPage = lazy(() => import('./PrivacyDataPage'));
@@ -108,7 +107,7 @@ const MainApp: React.FC<MainAppProps> = ({
   const { signOut } = useClerk();
   const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy'>('overview');
   const [reportOpen, setReportOpen] = useState(false); // RJ-5.6
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
@@ -531,7 +530,6 @@ const MainApp: React.FC<MainAppProps> = ({
               {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
               {activeTab === 'pricing' && <BillingPage lang={lang} />}
               {activeTab === 'privacy' && <PrivacyDataPage />}
-              {activeTab === 'accounting' && <AccountingPage />}
             </div>
           </Suspense>
         </main>
