@@ -111,7 +111,9 @@ export function registerBillingRoutes(app: any) {
 
       const platformsLimit = caps.maxPlatforms === -1 ? -1 : caps.maxPlatforms;
 
+      const { platformRole } = await import("../middleware/roles.js");
       return res.json({
+        role: platformRole(user),
         planId,
         status,
         isTrialing: Boolean(isTrialing),

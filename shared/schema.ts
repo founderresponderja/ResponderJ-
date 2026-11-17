@@ -702,3 +702,15 @@ export type OAuthState = typeof oauthStates.$inferSelect;
 export type InsertOAuthState = typeof oauthStates.$inferInsert;
 export type ResponseLearningPattern = typeof responseLearningPatterns.$inferSelect;
 export type InsertResponseLearningPattern = typeof responseLearningPatterns.$inferInsert;
+
+// Backoffice (migrations/20261117_04_backoffice_roles.sql): registo de ações de operadores.
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: serial("id").primaryKey(),
+  actorUserId: integer("actor_user_id"),
+  action: text("action").notNull(),
+  targetUserId: integer("target_user_id"),
+  details: jsonb("details"),
+  ip: text("ip"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AdminAuditLogEntry = typeof adminAuditLog.$inferSelect;

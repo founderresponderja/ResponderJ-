@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import type { PlanKey } from "../shared/planCapabilities";
 
 export interface SubscriptionState {
+  role: "super_admin" | "operator" | "customer";
   planId: PlanKey;
   status: "active" | "trial" | "expired" | "canceled";
   isTrialing: boolean;
@@ -37,6 +38,7 @@ export interface SubscriptionContextValue extends SubscriptionState {
 }
 
 const DEFAULT_STATE: SubscriptionState = {
+  role: "customer",
   planId: "trial",
   status: "trial",
   isTrialing: false,

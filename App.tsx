@@ -19,7 +19,7 @@ const AboutPage = lazy(() => import('./components/AboutPage'));
 const CookieManagementPage = lazy(() => import('./components/CookieManagementPage'));
 const PrivacyPolicyPage = lazy(() => import('./components/PrivacyPolicyPage'));
 const TermsAndConditionsPage = lazy(() => import('./components/TermsAndConditionsPage'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const Backoffice = lazy(() => import('./components/Backoffice'));
 const InvitePage = lazy(() => import('./components/InvitePage'));
 
 const TRIAL_LIMIT = 10;
@@ -183,6 +183,16 @@ function App() {
       setCurrentView('login');
     }
   }, [isLoaded, isSignedIn, currentView]);
+
+  // Operadores e super administrador entram no backoffice, não na aplicação de cliente.
+  // (A aplicação de cliente fica para o modo "ver como cliente", com contas-sandbox.)
+  useEffect(() => {
+    if (!isSignedIn || subscription.isInitialLoading) return;
+    if (subscription.role !== 'customer' && currentView === 'app') {
+      window.history.replaceState({}, '', '/admin');
+      setCurrentView('admin');
+    }
+  }, [isSignedIn, subscription.isInitialLoading, subscription.role, currentView]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -361,7 +371,11 @@ function App() {
           {currentView === 'cookies' && <CookieManagementPage onBack={handleLeafBack} />}
           {currentView === 'privacy' && <PrivacyPolicyPage onBack={handleLeafBack} />}
           {currentView === 'terms' && <TermsAndConditionsPage onBack={handleLeafBack} />}
-          {currentView === 'admin' && isSignedIn && subscription.status === 'active' && <AdminDashboard onBack={() => handleNavigation('app')} theme={theme} />}
+          {currentView === 'admin' && isSignedIn && (
+            subscription.isInitialLoading ? <PageLoader /> :
+            subscription.role !== 'customer' ? <Backoffice onLogout={async () => { await signOut(); handleNavigation('landing'); }} /> :
+            <div className="min-h-screen flex items-center justify-center p-6 text-center"><p className="text-slate-600">Esta área é reservada a operadores da plataforma.</p></div>
+          )}
 
           {currentView === 'invite' && inviteToken && (
             <InvitePage
