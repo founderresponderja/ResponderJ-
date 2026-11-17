@@ -164,12 +164,14 @@ router.post("/transfer", requireSuperAdmin, async (req: any, res) => {
   const toId = Number(req.body?.toUserId);
   const confirmEmail = String(req.body?.confirmEmail || "").trim().toLowerCase();
   const [to] = await db.select().from(users).where(eq(users.id, toId));
-  if (!to || !to.isAdmin || to.isSuperAdmin || !to.isActive) {
-    return res.status(400).json({ message: "Escolhe um operador ativo." });
-  }
-  if (!to.clerkUserId) return res.status(400).json({ message: "Esse operador ainda não entrou na aplicação." });
+  const refuse = (reason: string, message: string) => {
+    console.warn(`[transfer] start refused (${reason}) by user ${req.user.id} for target ${toId}`);
+    return res.status(400).json({ message });
+  };
+  if (!to || !to.isAdmin || to.isSuperAdmin || !to.isActive) return refuse("target_not_active_operator", "Escolhe um operador ativo.");
+  if (!to.clerkUserId) return refuse("target_never_logged_in", "Esse operador ainda não entrou na aplicação.");
   if (confirmEmail !== to.email.toLowerCase()) {
-    return res.status(400).json({ message: "O email de confirmação não corresponde ao operador escolhido." });
+    return refuse("confirm_email_mismatch", `O email que escreveste não corresponde ao do operador escolhido (${to.email}).`);
   }
 
   const [t] = await db.insert(adminRoleTransfers).values({
