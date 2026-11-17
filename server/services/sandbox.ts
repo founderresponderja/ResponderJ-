@@ -152,7 +152,9 @@ export async function resetSandbox(key: SandboxKey) {
         brandTone: "simpático e profissional",
       }).returning();
 
-      await tx.insert(socialPlatformConnections).values(est.platforms.map((platform) => ({
+      // RJ-4.5: só o Google tem ligação real; as reviews das outras plataformas ficam como
+      // adicionadas à mão (continuam a aparecer na Caixa de entrada com a plataforma certa).
+      await tx.insert(socialPlatformConnections).values(est.platforms.filter((p) => p === "google").map((platform) => ({
         userExternalId: `sandbox:${key}`,
         userId: user.id,
         establishmentId: e.id,

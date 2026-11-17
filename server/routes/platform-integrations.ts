@@ -191,7 +191,7 @@ router.get("/status", requireAuth, async (req, res) => {
   }).where(and(
     eq(socialPlatformConnections.userId, userId),
     eq(socialPlatformConnections.establishmentId, establishmentId),
-    inArray(socialPlatformConnections.platform, ["thefork", "airbnb"]),
+    ne(socialPlatformConnections.platform, "google"),
     eq(socialPlatformConnections.status, "connected"),
   ));
 
@@ -203,7 +203,7 @@ router.get("/status", requireAuth, async (req, res) => {
 
   const map: Record<string, any> = {};
   for (const row of rows) {
-    if (["thefork", "airbnb"].includes(row.platform)) {
+    if (row.platform !== "google") {
       continue;
     }
     // Prefer a connected row if duplicates exist for the same platform.
@@ -252,7 +252,17 @@ router.post("/connect/:platform", requireAuth, async (req, res) => {
     }
   }
 
-  if (platform === "google" || platform === "facebook") {
+  // RJ-4.5: só o Google tem ligação real (OAuth + sincronização de reviews). Antes TripAdvisor e
+  // Booking ficavam "ligados" sem fazer nada (e gastavam o limite de plataformas do plano), e o
+  // Facebook pedia autorização mas nunca importava reviews.
+  if (platform !== "google") {
+    return res.status(400).json({
+      error: "A ligação direta a esta plataforma ainda não está disponível. Pode adicionar as reviews à mão na Caixa de entrada.",
+      code: "PLATFORM_NOT_AVAILABLE",
+    });
+  }
+
+  if (platform === "google") {
     const state = crypto.randomBytes(16).toString("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -272,18 +282,6 @@ router.post("/connect/:platform", requireAuth, async (req, res) => {
 
     const oauthUrl = platform === "google" ? buildGoogleOAuthUrl(state) : buildFacebookOAuthUrl(state);
     return res.json({ oauthUrl });
-  }
-
-  if (platform === "tripadvisor" || platform === "booking") {
-    await upsertConnection({
-      userId,
-      clerkUserId,
-      establishmentId,
-      platform,
-      status: "connected",
-      meta: { mode: "scraper_or_api", connectedAt: new Date().toISOString() },
-    });
-    return res.json({ connected: true, mode: "scraper_or_api" });
   }
 
   return res.status(400).json({ error: "Plataforma não suportada." });

@@ -87,7 +87,11 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
         notifyError(`Atingiste o limite de plataformas do teu plano (${allowed}). Faz upgrade para continuares.`);
         return;
       }
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        notifyError(data?.error || 'Não foi possível ligar esta plataforma.');
+        return;
+      }
       if (data?.oauthUrl) {
         window.location.href = data.oauthUrl;
         return;
@@ -183,7 +187,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     {
       name: Platform.THE_FORK,
       key: 'thefork',
-      comingSoon: false,
+      comingSoon: true,
       description: "Crucial para restaurantes na Europa. Aumenta reservas diretas.",
       url: "https://www.theforkmanager.com/",
       color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900"
@@ -207,7 +211,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     {
       name: Platform.AIRBNB,
       key: 'airbnb',
-      comingSoon: false,
+      comingSoon: true,
       description: "Focado na experiência pessoal do hóspede e Superhost status.",
       url: "https://www.airbnb.com/hosting",
       color: "bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900"
@@ -258,8 +262,9 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {platformInfo.map((p) => (
           <div key={p.name} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all p-6 flex flex-col h-full animate-fade-in">
-            <div className={`w-fit px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border mb-4 ${p.color}`}>
-              {t.supported}
+            {/* RJ-4.5: só o Google tem ligação real; as outras mostram "Em breve" em vez de "Integração Ativa". */}
+            <div className={`w-fit px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border mb-4 ${p.comingSoon ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700' : p.color}`}>
+              {p.comingSoon ? 'Em breve' : t.supported}
             </div>
             <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{p.name}</h3>
             <p className="text-slate-600 dark:text-slate-400 mb-6 flex-grow text-sm leading-relaxed">
@@ -278,7 +283,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
               {p.key && (
                 <div className="flex items-center justify-between gap-3">
                   <span className={`text-xs font-semibold ${connections[p.key]?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {connections[p.key]?.connected ? 'Conectado' : 'Não conectado'}
+                    {p.comingSoon ? 'Adicione as reviews à mão na Caixa de entrada' : connections[p.key]?.connected ? 'Conectado' : 'Não conectado'}
                   </span>
                   {p.comingSoon ? (
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
