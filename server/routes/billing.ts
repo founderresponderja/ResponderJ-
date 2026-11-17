@@ -267,7 +267,7 @@ export function registerBillingRoutes(app: any) {
     }
   });
 
-  app.post("/api/billing/create-checkout-session", async (req: any, res: any) => {
+  app.post("/api/billing/create-checkout-session", requireAuth, async (req: any, res: any) => {
     try {
       if (!STRIPE_SECRET_KEY) {
         console.error("[stripe] checkout error: STRIPE_SECRET_KEY is not configured");
@@ -277,7 +277,10 @@ export function registerBillingRoutes(app: any) {
         });
       }
 
-      const { clerkUserId, email, planId } = req.body || {};
+      // Identity comes from the verified session, never from the request body (RJ-1.7).
+      const clerkUserId = String(req.clerkUserId || "");
+      const email = String(req.user?.email || "");
+      const { planId } = req.body || {};
       if (!email) {
         return res.status(400).json({ error: "Email é obrigatório para criar checkout." });
       }
@@ -347,10 +350,12 @@ export function registerBillingRoutes(app: any) {
     }
   });
 
-  app.get("/api/billing/subscription-status", async (req: any, res: any) => {
+  app.get("/api/billing/subscription-status", requireAuth, async (req: any, res: any) => {
     try {
-      const clerkUserId = req.query?.clerkUserId as string | undefined;
-      const email = req.query?.email as string | undefined;
+      // Only the caller's own status (RJ-1.7): it used to accept any email or Clerk id
+      // in the query string and reveal whether that person was a customer and on which plan.
+      const clerkUserId = String(req.clerkUserId || "") || undefined;
+      const email = String(req.user?.email || "") || undefined;
       if (!email && !clerkUserId) {
         return res.json({ active: false, status: "trial", planId: "trial" });
       }

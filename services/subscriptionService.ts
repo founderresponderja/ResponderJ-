@@ -1,15 +1,15 @@
 import { loadStripe } from '@stripe/stripe-js';
 import { PlanId } from '../types.js';
-import { getCsrfToken } from '../utils/api';
+import { buildAuthHeaders } from '../utils/api';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
-export async function createCheckoutSession(payload: { clerkUserId?: string; email?: string; planId: PlanId }) {
-  const csrfToken = await getCsrfToken();
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (csrfToken) {
-    headers['x-csrf-token'] = csrfToken;
-  }
+export async function createCheckoutSession(
+  payload: { planId: PlanId },
+  getToken?: () => Promise<string | null>,
+) {
+  // The server takes the user's identity from the Clerk token, not from the body (RJ-1.7).
+  const headers = await buildAuthHeaders({ getToken });
 
   const res = await fetch('/api/billing/create-checkout-session', {
     method: 'POST',

@@ -36,7 +36,7 @@ const PageLoader = () => (
 );
 
 function App() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
   const subscription = useSubscription();
@@ -238,11 +238,11 @@ function App() {
     try {
       setCheckoutError(null);
       setIsStartingCheckout(true);
-      const session = await createCheckoutSession({
-        clerkUserId: user?.id,
-        email: user?.primaryEmailAddress?.emailAddress,
-        planId,
-      });
+      if (!isSignedIn) {
+        handleNavigation('login');
+        return;
+      }
+      const session = await createCheckoutSession({ planId }, getToken);
       await redirectToCheckout(session.url);
     } catch (error: any) {
       setCheckoutError(error.message || 'Falha ao iniciar pagamento.');
