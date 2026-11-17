@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { incidents, incidentAttachments, incidentEvents, users } from "../../shared/schema.js";
 import { sendMail } from "./mailer.js";
+import { withTimeout } from "../utils/timeout.js";
 import {
   CATEGORIES, SEVERITIES, CATEGORY_LABEL, SLA_BUSINESS_DAYS, normalizeClassification, dueDateFor,
   ackEmail, resolvedEmail, type Severity,
@@ -45,7 +46,8 @@ Classify the report.
 Subject: ${subject || "(sem assunto)"}
 Report:
 ${description.slice(0, 4000)}`;
-    const res = await client.models.generateContent({
+    // RJ-8.3: se a IA demorar, segue com a classificação por omissão (o reporte não se perde).
+    const res = await withTimeout(client.models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
       config: {
@@ -62,7 +64,7 @@ ${description.slice(0, 4000)}`;
           required: ["category", "severity", "summary", "reason"],
         },
       },
-    });
+    }), 10000, "classificação do erro");
     return { ...normalizeClassification(JSON.parse(res.text || "{}")), classified: true };
   } catch (error: any) {
     console.warn("[incidents] AI classification failed:", error?.message);

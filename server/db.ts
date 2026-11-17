@@ -21,7 +21,9 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 5000, // 5 segundos timeout
   idleTimeoutMillis: 30000, // Fechar conexões inativas após 30s
-  max: 20, // Limite máximo de conexões simultâneas (ajustado para Neon)
+  // RJ-8.3: cada instância da Vercel tem a sua pool; com muitas instâncias, 20 ligações cada
+  // esgotavam o limite do Neon. 10 chega para os pedidos em simultâneo de uma instância.
+  max: Number(process.env.DB_POOL_MAX) || 10,
   ssl: true // Forçar SSL para segurança
 });
 

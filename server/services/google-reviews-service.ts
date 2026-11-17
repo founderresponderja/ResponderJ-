@@ -4,6 +4,9 @@ import { db } from "../db.js";
 import { socialPlatformConnections } from "../../shared/schema.js";
 import { decryptSensitiveData, encryptSensitiveData } from "../encryption.js";
 
+// RJ-8.3: cada chamada à Google tem no máximo 15 s (a função da Vercel tem 30 s no total).
+const EXTERNAL_TIMEOUT_MS = 15000;
+
 // Serviço dedicado à gestão de reviews do Google Business Profile
 export class GoogleReviewsService {
   private static accountManagementUrl = "https://mybusinessaccountmanagement.googleapis.com/v1";
@@ -53,6 +56,7 @@ export class GoogleReviewsService {
     }
 
     const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+      signal: AbortSignal.timeout(EXTERNAL_TIMEOUT_MS),
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -159,6 +163,7 @@ export class GoogleReviewsService {
     const accessToken = await this.getValidAccessToken(connection.id);
 
     const response = await fetch(`https://mybusiness.googleapis.com/v4/${reviewName}/reply`, {
+      signal: AbortSignal.timeout(EXTERNAL_TIMEOUT_MS),
       method: "PUT",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -191,6 +196,7 @@ export class GoogleReviewsService {
     const accessToken = await this.getValidAccessToken(connection.id);
 
     const response = await fetch(`https://mybusiness.googleapis.com/v4/${reviewName}/reply`, {
+      signal: AbortSignal.timeout(EXTERNAL_TIMEOUT_MS),
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -221,7 +227,7 @@ export class GoogleReviewsService {
     for (let page = 0; page < maxPages; page++) {
       const url = new URL(baseUrl);
       if (pageToken) url.searchParams.set("pageToken", pageToken);
-      const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` } });
+      const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(EXTERNAL_TIMEOUT_MS) });
       if (!response.ok) {
         const body = (await response.text()).slice(0, 300);
         // RJ-4.1: antes os erros eram engolidos e a sincronização dizia "OK, 0 reviews".

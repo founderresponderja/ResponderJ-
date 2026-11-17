@@ -2,10 +2,16 @@ import express from "express";
 import type { Request, Response } from "express";
 import { GoogleGenAI } from "@google/genai";
 import { ensureDatabaseConnection } from "../server/db.js";
+import { retryOnce, withTimeout } from "../server/utils/timeout.js";
 
-const app = express();
+// RJ-8.3: a app é montada de novo em cada tentativa de arranque. Antes, se o arranque falhasse
+// (ex.: base de dados a acordar), a promessa falhada ficava guardada e TODOS os pedidos seguintes
+// dessa instância falhavam até a Vercel a reciclar.
+let currentApp: any = null;
 let initialized = false;
 let initializing: Promise<void> | null = null;
+let initMs: number | null = null;
+const instanceStartedAt = Date.now();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 type ChatLanguage = "pt" | "en" | "es";
@@ -45,8 +51,11 @@ async function initApp() {
     return;
   }
 
+  const started = Date.now();
   initializing = (async () => {
-    await ensureDatabaseConnection();
+    const app = express();
+    // A base de dados Neon pode estar a "acordar" no primeiro pedido: tenta duas vezes.
+    await retryOnce(() => ensureDatabaseConnection(), 800);
 
     await runStartupMigrations();
 
@@ -119,10 +128,19 @@ async function initApp() {
       });
       if (!res.headersSent) res.status(500).json({ message: "Erro interno." });
     });
+    currentApp = app;
     initialized = true;
+    initMs = Date.now() - started;
+    console.log(`[cold-start] app pronta em ${initMs} ms`);
   })();
 
-  await initializing;
+  try {
+    await initializing;
+  } catch (error) {
+    // Não guardar a falha: o pedido seguinte tenta arrancar de novo.
+    initializing = null;
+    throw error;
+  }
 }
 
 async function runStartupMigrations() {
@@ -130,6 +148,26 @@ async function runStartupMigrations() {
 }
 
 export default async function handler(req: Request, res: Response) {
+  // RJ-8.3: verificação de saúde rápida (sem montar a app): base de dados e tempo de arranque.
+  if (req.method === "GET" && req.url?.split("?")[0] === "/api/health") {
+    const t = Date.now();
+    let database = "ok";
+    try {
+      await withTimeout(ensureDatabaseConnection(), 5000, "base de dados");
+    } catch {
+      database = "falha";
+    }
+    return res.status(database === "ok" ? 200 : 503).json({
+      status: database === "ok" ? "ok" : "degradado",
+      database,
+      databaseMs: Date.now() - t,
+      appReady: initialized,
+      initMs,
+      instanceAgeS: Math.round((Date.now() - instanceStartedAt) / 1000),
+      time: new Date().toISOString(),
+    });
+  }
+
   // Fast-path chat endpoint in serverless to avoid heavy app bootstrap failures.
   if (req.method === "POST" && req.url?.startsWith("/api/ai/chat")) {
     try {
@@ -148,7 +186,7 @@ export default async function handler(req: Request, res: Response) {
         .join("\n");
 
       const prompt = `${chatContext}\nUser: ${message}\nSofia:`;
-      const response = await ai.models.generateContent({
+      const response = await withTimeout(ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         contents: prompt,
         config: {
@@ -156,7 +194,7 @@ export default async function handler(req: Request, res: Response) {
           temperature: 0.7,
           maxOutputTokens: 350,
         },
-      });
+      }), 20000, "Sofia");
 
       return res.status(200).json({
         response: response.text || "",
@@ -169,6 +207,11 @@ export default async function handler(req: Request, res: Response) {
     }
   }
 
-  await initApp();
-  return app(req, res);
+  try {
+    await initApp();
+  } catch (error: any) {
+    console.error("[cold-start] arranque falhou:", error?.message);
+    return res.status(503).json({ message: "Serviço a arrancar. Tente de novo dentro de alguns segundos." });
+  }
+  return currentApp(req, res);
 }
