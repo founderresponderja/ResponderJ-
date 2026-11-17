@@ -4,6 +4,9 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Foreign keys live in SQL migrations (migrations/20261117_01_foreign_keys_not_valid.sql, RJ-1.4),
+// not in this file. Any new column that points to another table needs its FK in a new migration.
+
 // --- Users & Auth ---
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
