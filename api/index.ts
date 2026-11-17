@@ -58,6 +58,9 @@ async function initApp() {
 
     // Stripe webhook must receive raw body for signature validation.
     app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
+    // RJ-5.6: webhook de email do Resend (assinatura sobre o corpo cru) e reportes com até 2 imagens.
+    app.use("/api/incidents/inbound-email", express.raw({ type: "*/*", limit: "1mb" }));
+    app.use("/api/incidents", express.json({ limit: "4mb" }));
     app.use(express.json({ limit: "1mb" }));
     app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 

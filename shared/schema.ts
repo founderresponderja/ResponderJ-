@@ -743,3 +743,49 @@ export const stripeEvents = pgTable("stripe_events", {
   receivedAt: timestamp("received_at").defaultNow().notNull(),
   processedAt: timestamp("processed_at"),
 });
+
+// --- RJ-5.6: reporte de erros ---
+export const incidents = pgTable("incidents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  reporterEmail: text("reporter_email").notNull(),
+  source: text("source").notNull().default("app"),
+  subject: text("subject"),
+  description: text("description").notNull(),
+  pageUrl: text("page_url"),
+  category: text("category").notNull().default("other"),
+  severity: text("severity").notNull().default("medium"),
+  aiSummary: text("ai_summary"),
+  aiReason: text("ai_reason"),
+  aiClassified: boolean("ai_classified").notNull().default(false),
+  slaBusinessDays: integer("sla_business_days").notNull(),
+  dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+  status: text("status").notNull().default("open"),
+  assignedTo: integer("assigned_to"),
+  resolutionNote: text("resolution_note"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedBy: integer("resolved_by"),
+  inboundEmailId: text("inbound_email_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+export type Incident = typeof incidents.$inferSelect;
+
+export const incidentAttachments = pgTable("incident_attachments", {
+  id: serial("id").primaryKey(),
+  incidentId: integer("incident_id").notNull(),
+  filename: text("filename"),
+  contentType: text("content_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  dataBase64: text("data_base64").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const incidentEvents = pgTable("incident_events", {
+  id: serial("id").primaryKey(),
+  incidentId: integer("incident_id").notNull(),
+  actorUserId: integer("actor_user_id"),
+  type: text("type").notNull(),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});

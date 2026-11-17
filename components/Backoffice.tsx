@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Activity, Bot, Crown, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, UserCog, Users, X } from 'lucide-react';
+import { Activity, BarChart3, Bot, Bug, Crown, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, UserCog, Users, X } from 'lucide-react';
 import { startViewAs } from '../utils/viewAs';
+import { IncidentsTab, IncidentStatsTab } from './BackofficeIncidents';
 
 type Role = 'super_admin' | 'operator' | 'customer';
-type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit' | 'operators';
+type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit' | 'operators' | 'incidents' | 'incident-stats';
 
 interface Me { id: number; email: string; name: string; role: Role }
 interface Overview {
@@ -61,6 +62,9 @@ const ACTION_LABEL: Record<string, string> = {
   transfer_done: 'Aceitou a função de super administrador',
   transfer_cancel: 'Cancelou a transferência',
   cron_sync: 'Agendamento diário de sincronização',
+  incident_resolved: 'Deu um erro reportado como resolvido',
+  account_export: 'Cliente descarregou os seus dados',
+  account_deleted: 'Cliente apagou a conta',
 };
 
 const fmtDate = (v: string | null | undefined, withTime = false) =>
@@ -111,8 +115,12 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
     { id: 'sandbox', label: 'Ver como cliente', icon: <Eye className="h-4 w-4" /> },
     { id: 'ai', label: 'Uso da IA', icon: <Bot className="h-4 w-4" /> },
     { id: 'sync', label: 'Sincronizações', icon: <RefreshCw className="h-4 w-4" /> },
+    { id: 'incidents', label: 'Erros', icon: <Bug className="h-4 w-4" /> },
     { id: 'audit', label: 'Registo de ações', icon: <Activity className="h-4 w-4" /> },
-    ...(me?.role === 'super_admin' ? [{ id: 'operators' as Tab, label: 'Operadores', icon: <UserCog className="h-4 w-4" /> }] : []),
+    ...(me?.role === 'super_admin' ? [
+      { id: 'incident-stats' as Tab, label: 'Indicadores de erros', icon: <BarChart3 className="h-4 w-4" /> },
+      { id: 'operators' as Tab, label: 'Operadores', icon: <UserCog className="h-4 w-4" /> },
+    ] : []),
   ];
 
   return (
@@ -151,6 +159,8 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
         {tab === 'sandbox' && <SandboxTab api={api} />}
         {tab === 'ai' && <AiTab api={api} />}
         {tab === 'sync' && <SyncTab api={api} />}
+        {tab === 'incidents' && <IncidentsTab api={api} />}
+        {tab === 'incident-stats' && me?.role === 'super_admin' && <IncidentStatsTab api={api} />}
         {tab === 'audit' && <AuditTab api={api} />}
         {tab === 'operators' && me?.role === 'super_admin' && <OperatorsTab api={api} meId={me.id} />}
       </main>
