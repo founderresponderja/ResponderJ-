@@ -127,38 +127,17 @@ export class GoogleReviewsService {
   }
 
   /**
-   * Obtém reviews de uma conta conectada
-   */
-  static async fetchReviews(userExternalId: string, establishmentId?: number | null) {
-    // NOTE: legacy entry point (only used by the dead /api/reviews route). It cannot match
-    // connections whose establishment_id is NULL, because "= NULL" is never true in SQL.
-    const [connection] = await db.select().from(socialPlatformConnections).where(and(
-      eq(socialPlatformConnections.userExternalId, userExternalId),
-      eq(socialPlatformConnections.platform, "google"),
-      eq(socialPlatformConnections.establishmentId, establishmentId ?? null),
-      eq(socialPlatformConnections.status, "connected"),
-    ));
-    if (!connection) return [];
-    return this.fetchReviewsForConnection(connection.id);
-  }
-
-  /**
    * Obtém reviews de uma ligação Google concreta (pelo id da linha em social_platform_connections).
    */
   static async fetchReviewsForConnection(connectionId: number) {
-    let accessToken: string;
-    try {
-      accessToken = await this.getValidAccessToken(connectionId);
-    } catch (err) {
-      console.error("[F8] fetchReviews token refresh failed:", err);
-      return [];
-    }
+    // Sem token válido não há nada a fazer; o erro sobe para a sincronização o registar (meta.lastSync).
+    const accessToken = await this.getValidAccessToken(connectionId);
 
     const locations = await this.fetchLocations(accessToken);
     const allReviews: any[] = [];
     for (const location of locations) {
-      const locationReviews = await this.fetchReviewsByLocation(location.name, accessToken);
-      allReviews.push(...locationReviews.map((review: any) => ({ ...review, locationName: location.name })));
+      const locationReviews = await this.fetchReviewsByLocation(location.reviewsParent, accessToken);
+      allReviews.push(...locationReviews.map((review: any) => ({ ...review, locationName: location.reviewsParent, locationTitle: location.title })));
     }
     return allReviews;
   }
@@ -229,31 +208,63 @@ export class GoogleReviewsService {
     throw new Error(`Google delete reply failed (${response.status}): ${errText}`);
   }
 
-  private static async fetchLocations(accessToken: string) {
-    const accountsResponse = await fetch(`${this.accountManagementUrl}/accounts`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!accountsResponse.ok) return [];
+  /** GET paginado: segue nextPageToken até ao fim (ou até maxPages, por segurança). */
+  private static async fetchAllPages<T>(
+    baseUrl: string,
+    itemsKey: string,
+    accessToken: string,
+    label: string,
+    maxPages = 20,
+  ): Promise<T[]> {
+    const items: T[] = [];
+    let pageToken = "";
+    for (let page = 0; page < maxPages; page++) {
+      const url = new URL(baseUrl);
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      const response = await fetch(url.toString(), { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!response.ok) {
+        const body = (await response.text()).slice(0, 300);
+        // RJ-4.1: antes os erros eram engolidos e a sincronização dizia "OK, 0 reviews".
+        throw new Error(`Google ${label} ${response.status}: ${body}`);
+      }
+      const payload = (await response.json()) as Record<string, any>;
+      items.push(...((payload[itemsKey] as T[]) || []));
+      pageToken = payload.nextPageToken || "";
+      if (!pageToken) return items;
+    }
+    console.warn(`[google] ${label}: stopped after ${maxPages} pages`);
+    return items;
+  }
 
-    const accountsData = await accountsResponse.json() as { accounts?: Array<{ name: string }> };
-    const locations: Array<{ name: string }> = [];
-    for (const account of accountsData.accounts || []) {
-      const response = await fetch(`${this.businessInfoUrl}/${account.name}/locations`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!response.ok) continue;
-      const payload = await response.json() as { locations?: Array<{ name: string }> };
-      locations.push(...(payload.locations || []));
+  /**
+   * Contas e locais do utilizador.
+   * RJ-4.1: a Business Information API devolve "locations/{id}", mas a API de reviews (v4)
+   * precisa de "accounts/{a}/locations/{l}". Antes juntava-se só "locations/{id}/reviews",
+   * que nunca devolvia nada; e faltava o readMask, obrigatório na listagem de locais.
+   */
+  private static async fetchLocations(accessToken: string) {
+    const accounts = await this.fetchAllPages<{ name: string }>(
+      `${this.accountManagementUrl}/accounts?pageSize=20`, "accounts", accessToken, "accounts", 10,
+    );
+    const locations: Array<{ name: string; title: string; reviewsParent: string }> = [];
+    for (const account of accounts) {
+      const accountLocations = await this.fetchAllPages<{ name: string; title?: string }>(
+        `${this.businessInfoUrl}/${account.name}/locations?readMask=name,title&pageSize=100`,
+        "locations", accessToken, `locations of ${account.name}`, 10,
+      );
+      for (const loc of accountLocations) {
+        const reviewsParent = loc.name.startsWith("accounts/") ? loc.name : `${account.name}/${loc.name}`;
+        locations.push({ name: loc.name, title: loc.title || "", reviewsParent });
+      }
     }
     return locations;
   }
 
-  private static async fetchReviewsByLocation(locationName: string, accessToken: string) {
-    const response = await fetch(`https://mybusiness.googleapis.com/v4/${locationName}/reviews`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!response.ok) return [];
-    const payload = await response.json() as { reviews?: any[] };
-    return payload.reviews || [];
+  /** Todas as reviews de um local (50 por página, mais recentes primeiro). */
+  private static async fetchReviewsByLocation(reviewsParent: string, accessToken: string) {
+    return this.fetchAllPages<any>(
+      `https://mybusiness.googleapis.com/v4/${reviewsParent}/reviews?pageSize=50&orderBy=updateTime%20desc`,
+      "reviews", accessToken, `reviews of ${reviewsParent}`, 20,
+    );
   }
 }

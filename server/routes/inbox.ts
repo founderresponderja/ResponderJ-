@@ -36,14 +36,19 @@ router.get("/", requireAuth, async (req: any, res) => {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const [establishment] = await db
+    // RJ-4.7: antes só se lia o primeiro estabelecimento (limit 1); contas com vários
+    // (Pro, Agência) nunca viam as reviews dos restantes. Agora: todos os estabelecimentos
+    // do utilizador, ou só um se vier ?establishmentId= (e for dele).
+    const owned = await db
       .select({ id: establishments.id })
       .from(establishments)
-      .where(eq(establishments.userId, userId))
-      .limit(1);
-    if (!establishment) return res.json({ items: [], page: 1, pageSize: 25, total: 0 });
-
-    const estId = establishment.id;
+      .where(eq(establishments.userId, userId));
+    const requested = req.query.establishmentId ? Number(req.query.establishmentId) : null;
+    if (requested !== null && !owned.some((e) => e.id === requested)) {
+      return res.status(403).json({ message: "Estabelecimento inválido." });
+    }
+    const estIds = requested !== null ? [requested] : owned.map((e) => e.id);
+    if (estIds.length === 0) return res.json({ items: [], page: 1, pageSize: 25, total: 0 });
     const statusFilter = (req.query.status as string | undefined) ?? "";
     const platformFilter = (req.query.platform as string | undefined) ?? "";
     const ratingFilter = req.query.rating ? Number(req.query.rating) : 0;
@@ -70,7 +75,7 @@ router.get("/", requireAuth, async (req: any, res) => {
       ) resp ON true`;
 
     const whereCond = sql`
-      WHERE r.establishment_id = ${estId}
+      WHERE r.establishment_id IN (${sql.join(estIds.map((id) => sql`${id}`), sql`, `)})
       ${platformCond}
       ${ratingCond}
       ${statusCond}`;
@@ -86,7 +91,9 @@ router.get("/", requireAuth, async (req: any, res) => {
         resp.published_at    AS published_at,
         resp.approval_status AS approval_status,
         resp.tone            AS response_tone,
-        resp.language        AS response_language
+        resp.language        AS response_language,
+        r.establishment_id   AS establishment_id,
+        (SELECT name FROM establishments e WHERE e.id = r.establishment_id) AS establishment_name
       FROM reviews r
       ${lateralJoin}
       ${whereCond}
