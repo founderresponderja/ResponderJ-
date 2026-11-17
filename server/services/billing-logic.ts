@@ -126,6 +126,32 @@ export function computeSubscriptionSync(
   return { skip: false, update, planChanged, creditsReset };
 }
 
+/**
+ * RJ-3.2: o que o estado de uma subscrição do Stripe significa para o acesso.
+ * - active / trialing: plano ativo;
+ * - past_due: pagamento falhou, o Stripe está a tentar de novo -> mantém o plano (período de graça);
+ * - incomplete: primeiro pagamento ainda por confirmar -> mantém o que o cliente já tinha (não dá o plano);
+ * - canceled / unpaid / incomplete_expired / paused: perde o plano.
+ */
+export function subscriptionAccess(status: string | null | undefined): "active" | "grace" | "pending" | "revoke" {
+  switch (String(status || "")) {
+    case "active":
+    case "trialing":
+      return "active";
+    case "past_due":
+      return "grace";
+    case "incomplete":
+      return "pending";
+    case "canceled":
+    case "unpaid":
+    case "incomplete_expired":
+    case "paused":
+      return "revoke";
+    default:
+      return "active";
+  }
+}
+
 /** Subscrição cancelada: volta ao Experimental, sem créditos, com o acesso a terminar já. */
 export function subscriptionDeletedUpdate(now: Date = new Date()) {
   return {
