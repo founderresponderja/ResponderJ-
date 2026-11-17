@@ -5,9 +5,12 @@ import App from './App';
 import { SubscriptionProvider } from './hooks/useSubscription';
 import './index.css';
 import { installViewAsFetch } from './utils/viewAs';
+import { installClientErrorReporting } from './utils/clientErrors';
 
 // Modo "Ver como cliente": tem de estar ativo antes de qualquer pedido à API.
 installViewAsFetch();
+// RJ-8.2: erros JavaScript do navegador vão para o backoffice (Saúde técnica).
+installClientErrorReporting();
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 

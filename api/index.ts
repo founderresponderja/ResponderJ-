@@ -64,8 +64,61 @@ async function initApp() {
     app.use(express.json({ limit: "1mb" }));
     app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
+    // RJ-8.2: regista as respostas 5xx da API (agrupadas) para o backoffice → Saúde técnica.
+    const { recordAppError } = await import("../server/services/error-tracking.js");
+    const { shouldRecordStatus, sanitizeClientError } = await import("../server/services/error-tracking-logic.js");
+    app.use((req: any, res: any, next: any) => {
+      const originalJson = res.json.bind(res);
+      res.json = (body: any) => {
+        if (res.statusCode >= 500 && body && typeof body === "object") res.locals.errorMessage = body.message || body.error;
+        return originalJson(body);
+      };
+      res.on("finish", () => {
+        const path = String(req.originalUrl || req.url || "").split("?")[0];
+        if (res.locals.errorRecorded || !shouldRecordStatus(res.statusCode, path)) return;
+        recordAppError({
+          source: "server",
+          kind: "http_500",
+          message: `${res.statusCode} ${req.method} ${String(res.locals.errorMessage || "").slice(0, 300)}`.trim(),
+          path,
+          userId: Number(req.user?.id) || null,
+          sample: { status: res.statusCode, method: req.method },
+        });
+      });
+      next();
+    });
+
+    // Erros do navegador (sem sessão obrigatória; limitado por IP).
+    const clientErrorHits = new Map<string, { n: number; t: number }>();
+    app.post("/api/client-errors", (req: any, res: any) => {
+      const ip = String(req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim();
+      const now = Date.now();
+      const hit = clientErrorHits.get(ip);
+      if (hit && now - hit.t < 60000 && hit.n >= 20) return res.status(204).end();
+      clientErrorHits.set(ip, hit && now - hit.t < 60000 ? { n: hit.n + 1, t: hit.t } : { n: 1, t: now });
+      let body = req.body;
+      if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
+      const e = sanitizeClientError(body || {});
+      recordAppError({ source: "client", kind: e.kind, message: e.message, path: e.path, sample: { stack: e.stack, userAgent: e.userAgent } });
+      res.status(204).end();
+    });
+
     await setupAuthRoutes(app);
     await registerRoutes(app);
+
+    // Exceções que chegam ao fim da cadeia (next(err)).
+    app.use((err: any, req: any, res: any, _next: any) => {
+      res.locals.errorRecorded = true;
+      recordAppError({
+        source: "server",
+        kind: "exception",
+        message: String(err?.message || err || "erro"),
+        path: String(req.originalUrl || req.url || "").split("?")[0],
+        userId: Number(req.user?.id) || null,
+        sample: { stack: String(err?.stack || "").slice(0, 4000) },
+      });
+      if (!res.headersSent) res.status(500).json({ message: "Erro interno." });
+    });
     initialized = true;
   })();
 

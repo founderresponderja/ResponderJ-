@@ -209,6 +209,17 @@ export class Logger {
     };
 
     console.error('ERROR_REPORT:', JSON.stringify(errorReport));
+    // RJ-8.2: também para o registo de erros técnicos (backoffice → Saúde técnica).
+    import('../services/error-tracking.js')
+      .then(({ recordAppError }) => recordAppError({
+        source: 'server',
+        kind: 'exception',
+        message: `${error.name}: ${error.message}`,
+        path: (context as any)?.endpoint || (context as any)?.path || null,
+        userId: Number((context as any)?.userId) || null,
+        sample: { stack: String(error.stack || '').slice(0, 4000) },
+      }))
+      .catch(() => undefined);
   }
 
   /**
