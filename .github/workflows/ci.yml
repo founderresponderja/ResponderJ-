@@ -1,0 +1,56 @@
+# RJ-6.2: verificação automática de cada alteração (PR) e de cada push para main.
+# Bloqueia: testes (npm test) e compilação da app (vite build).
+# Só informa (não bloqueia ainda, ver RJ-6.1): contagem de erros de tipos do TypeScript.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Testes e compilação
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 recente: corre os testes .ts sem dependências extra.
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Testes
+        run: npm test
+
+      - name: Compilar a app
+        # O passo de migrações só corre em produção na Vercel (VERCEL_ENV=production);
+        # aqui é ignorado, por isso a CI nunca toca na base de dados.
+        run: npm run build
+
+      - name: Erros de tipos (informativo, RJ-6.1)
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          npx tsc --noEmit -p . > tsc.log 2>&1
+          COUNT=$(grep -c "error TS" tsc.log)
+          echo "### Erros de tipos do TypeScript: $COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "Ainda não bloqueia a alteração (RJ-6.1). Primeiros 30:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep "error TS" tsc.log | head -30 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "Erros de tipos: $COUNT"
+          exit 0
