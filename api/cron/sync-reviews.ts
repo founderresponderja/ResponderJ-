@@ -3,7 +3,8 @@ import { timingSafeEqual } from "node:crypto";
 import { reviewSyncService } from "../../server/services/review-sync-service.js";
 
 /**
- * Agendamento diário (vercel.json → crons, 03:00 UTC): sincroniza as reviews de todas as ligações.
+ * Agendamento diário (vercel.json → crons, 03:00 UTC): sincroniza as reviews de todas as ligações
+ * e corre as regras de respostas automáticas (RJ-3.4).
  * RJ-3.5: comparação do segredo em tempo constante e registo de cada execução em admin_audit_log
  * (ação "cron_sync"), visível no backoffice → Sincronizações.
  */
@@ -38,18 +39,29 @@ export default async function handler(req: Request, res: Response) {
     console.error("[cron] sync-reviews failed:", error);
   }
 
+  // RJ-3.4: respostas automáticas (plano Pro e Agência) logo a seguir à sincronização,
+  // até 10 s antes do limite de 60 s da função.
+  let automation: any = null;
+  try {
+    const { automationService } = await import("../../server/services/automation-service.js");
+    automation = await automationService.processNewReviewsBatch({ deadline: started + 50000 });
+  } catch (err: any) {
+    automation = { error: err?.message || "automation failed" };
+    console.error("[cron] automation failed:", automation.error);
+  }
+
   try {
     const { db } = await import("../../server/db.js");
     const { adminAuditLog } = await import("../../shared/schema.js");
     await db.insert(adminAuditLog).values({
       actorUserId: null,
       action: "cron_sync",
-      details: { ok: !error, imported: result?.total ?? 0, error, durationMs: Date.now() - started },
+      details: { ok: !error, imported: result?.total ?? 0, error, automation, durationMs: Date.now() - started },
     });
   } catch (logErr: any) {
     console.error("[cron] could not record run:", logErr?.message);
   }
 
   if (error) return res.status(500).json({ ok: false, error });
-  return res.json({ ok: true, imported: result!.total });
+  return res.json({ ok: true, imported: result!.total, automation });
 }

@@ -154,6 +154,8 @@ export const reviews = pgTable("reviews", {
   sentiment: text("sentiment"),
   // RJ-4.3: temas que o cliente refere (vêm da mesma chamada à IA que gera a resposta).
   keywords: jsonb("keywords").$type<string[]>(),
+  // RJ-3.4: quando as regras de automação já viram esta review.
+  automationCheckedAt: timestamp("automation_checked_at", { withTimezone: true }),
   reviewDate: timestamp("review_date"),
   externalResponseText: text("external_response_text"),
   externalResponseAt: timestamp("external_response_at"),
