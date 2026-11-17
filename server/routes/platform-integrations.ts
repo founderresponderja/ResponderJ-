@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { PLANS, normalizePlan } from "../../shared/plans.js";
 import crypto from "crypto";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { establishments, socialPlatformConnections } from "../../shared/schema.js";
-import { encryptSensitiveData } from "../encryption.js";
+import { encryptSensitiveData, decryptSensitiveData } from "../encryption.js";
+import { FacebookReviewsService } from "../services/facebook-reviews-service.js";
+import { FACEBOOK_SCOPES, facebookAppCredentials, facebookAvailableFor, parseSignedRequest } from "../services/facebook-logic.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
 import { storage } from "../storage.js";
 import { requireAuth } from "../auth.js";
@@ -124,14 +126,13 @@ function buildGoogleOAuthUrl(state: string) {
 }
 
 function buildFacebookOAuthUrl(state: string) {
-  const params = new URLSearchParams({
-    client_id: process.env.FACEBOOK_APP_ID || "",
-    redirect_uri: FACEBOOK_CALLBACK_URL,
-    response_type: "code",
-    state,
-    scope: "pages_show_list,pages_read_engagement",
-  });
-  return `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
+  // RJ-4.7: permissões para ler as recomendações da página e responder como a página.
+  return FacebookReviewsService.buildOAuthUrl(state, FACEBOOK_CALLBACK_URL, FACEBOOK_SCOPES);
+}
+
+/** Email de quem está a usar a app (o membro da equipa, se for o caso). */
+function actorEmail(req: any): string {
+  return String(req.member?.email || req.user?.email || "");
 }
 
 async function upsertConnection(input: {
@@ -192,6 +193,7 @@ router.get("/status", requireAuth, async (req, res) => {
     eq(socialPlatformConnections.userId, userId),
     eq(socialPlatformConnections.establishmentId, establishmentId),
     ne(socialPlatformConnections.platform, "google"),
+    ne(socialPlatformConnections.platform, "facebook"),
     eq(socialPlatformConnections.status, "connected"),
   ));
 
@@ -203,15 +205,21 @@ router.get("/status", requireAuth, async (req, res) => {
 
   const map: Record<string, any> = {};
   for (const row of rows) {
-    if (row.platform !== "google") {
+    if (row.platform !== "google" && row.platform !== "facebook") {
       continue;
     }
     // Prefer a connected row if duplicates exist for the same platform.
     if (map[row.platform]?.connected && row.status !== "connected") continue;
+    const meta = (row.meta || {}) as any;
     map[row.platform] = {
       connected: row.status === "connected",
       status: row.status,
       lastSyncAt: row.lastSyncAt,
+      // RJ-4.7: página do Facebook ligada, ou páginas por escolher.
+      ...(row.platform === "facebook" ? {
+        pageName: meta.pageName || null,
+        pages: row.status === "pending_page" ? (meta.pages || []) : undefined,
+      } : {}),
     };
   }
 
@@ -219,7 +227,10 @@ router.get("/status", requireAuth, async (req, res) => {
     google: map.google || { connected: false, status: "disconnected" },
     tripadvisor: map.tripadvisor || { connected: false, status: "disconnected" },
     booking: map.booking || { connected: false, status: "disconnected" },
-    facebook: map.facebook || { connected: false, status: "disconnected" },
+    facebook: {
+      ...(map.facebook || { connected: false, status: "disconnected" }),
+      available: facebookAvailableFor(actorEmail(req), process.env),
+    },
   });
 });
 
@@ -255,14 +266,15 @@ router.post("/connect/:platform", requireAuth, async (req, res) => {
   // RJ-4.5: só o Google tem ligação real (OAuth + sincronização de reviews). Antes TripAdvisor e
   // Booking ficavam "ligados" sem fazer nada (e gastavam o limite de plataformas do plano), e o
   // Facebook pedia autorização mas nunca importava reviews.
-  if (platform !== "google") {
+  const facebookOk = platform === "facebook" && facebookAvailableFor(actorEmail(req), process.env);
+  if (platform !== "google" && !facebookOk) {
     return res.status(400).json({
       error: "A ligação direta a esta plataforma ainda não está disponível. Pode adicionar as reviews à mão na Caixa de entrada.",
       code: "PLATFORM_NOT_AVAILABLE",
     });
   }
 
-  if (platform === "google") {
+  if (platform === "google" || platform === "facebook") {
     const state = crypto.randomBytes(16).toString("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -339,9 +351,34 @@ router.get("/callback/:platform", async (req, res) => {
       return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=token_exchange_failed`);
     }
   } else if (platform === "facebook") {
-    accessToken = `oauth_code_${code}`;
-    refreshToken = `refresh_${code}`;
-    meta = { oauthConnectedAt: new Date().toISOString(), mode: "mock_oauth" };
+    // RJ-4.7: código -> token de utilizador longo -> páginas que a pessoa gere.
+    try {
+      const { userToken, expiresAt } = await FacebookReviewsService.exchangeCode(code, FACEBOOK_CALLBACK_URL);
+      const me = await FacebookReviewsService.me(userToken);
+      const pages = await FacebookReviewsService.listPages(userToken);
+      if (pages.length === 0) {
+        return res.redirect(`${APP_BASE_URL}/?platformConnect=facebook&status=no_pages`);
+      }
+      const base = { oauthConnectedAt: new Date().toISOString(), mode: "oauth_api", facebookUserId: me.id, graphVersion: FacebookReviewsService.graphVersion };
+      if (pages.length === 1) {
+        await upsertConnection({
+          userId: stateEntry.userId, clerkUserId: stateEntry.userExternalId, establishmentId: stateEntry.establishmentId,
+          platform, accessToken: pages[0].access_token, tokenExpiresAt: null, status: "connected",
+          meta: { ...base, pageId: pages[0].id, pageName: pages[0].name },
+        });
+        return res.redirect(`${APP_BASE_URL}/?platformConnect=facebook&status=connected`);
+      }
+      // Várias páginas: guarda o token de utilizador (cifrado) e pede à pessoa que escolha.
+      await upsertConnection({
+        userId: stateEntry.userId, clerkUserId: stateEntry.userExternalId, establishmentId: stateEntry.establishmentId,
+        platform, accessToken: userToken, tokenExpiresAt: expiresAt, status: "pending_page",
+        meta: { ...base, pages: pages.map((p) => ({ id: p.id, name: p.name })) },
+      });
+      return res.redirect(`${APP_BASE_URL}/?platformConnect=facebook&status=choose_page`);
+    } catch (error: any) {
+      console.error("[facebook] OAuth failed:", error?.message);
+      return res.redirect(`${APP_BASE_URL}/?platformConnect=facebook&status=token_exchange_failed`);
+    }
   }
 
   await upsertConnection({
@@ -357,6 +394,70 @@ router.get("/callback/:platform", async (req, res) => {
   });
 
   return res.redirect(`${APP_BASE_URL}/?platformConnect=${platform}&status=connected`);
+});
+
+// RJ-4.7: escolher a página do Facebook quando a pessoa gere mais do que uma.
+router.post("/facebook/select-page", requireAuth, async (req, res) => {
+  const userId = resolveUserId(req);
+  if (!userId) return res.status(401).json({ error: "Autenticação necessária." });
+  const establishmentId = await resolveEstablishmentId(req, userId);
+  if (establishmentId === null) return res.status(403).json({ error: "Estabelecimento inválido." });
+  const pageId = String(req.body?.pageId || "");
+  if (!pageId) return res.status(400).json({ error: "Página em falta." });
+
+  const [conn] = await db.select().from(socialPlatformConnections).where(and(
+    eq(socialPlatformConnections.userId, userId),
+    eq(socialPlatformConnections.establishmentId, establishmentId),
+    eq(socialPlatformConnections.platform, "facebook"),
+    eq(socialPlatformConnections.status, "pending_page"),
+  ));
+  if (!conn?.accessToken) return res.status(404).json({ error: "Não há nenhuma ligação do Facebook à espera de página." });
+
+  try {
+    const userToken = await decryptSensitiveData(conn.accessToken);
+    const page = (await FacebookReviewsService.listPages(userToken)).find((p) => p.id === pageId);
+    if (!page) return res.status(404).json({ error: "Essa página já não está disponível nesta conta do Facebook." });
+    const meta = { ...((conn.meta || {}) as any), pageId: page.id, pageName: page.name };
+    delete (meta as any).pages;
+    await db.update(socialPlatformConnections).set({
+      accessToken: await encryptSensitiveData(page.access_token),
+      tokenExpiresAt: null,
+      status: "connected",
+      meta,
+      updatedAt: new Date(),
+    }).where(eq(socialPlatformConnections.id, conn.id));
+    return res.json({ connected: true, pageName: page.name });
+  } catch (error: any) {
+    console.error("[facebook] select-page failed:", error?.message);
+    return res.status(502).json({ error: "Não foi possível ligar a página. Volte a ligar o Facebook." });
+  }
+});
+
+// RJ-4.7: pedido de apagamento de dados da Meta (obrigatório para a aprovação da app).
+// A Meta envia signed_request quando alguém remove a app nas definições do Facebook.
+router.post("/facebook/data-deletion", async (req, res) => {
+  const { appSecret } = facebookAppCredentials(process.env);
+  const data = parseSignedRequest(String(req.body?.signed_request || ""), appSecret);
+  if (!data?.user_id) return res.status(400).json({ error: "Pedido inválido." });
+  const code = crypto.randomBytes(8).toString("hex");
+  await db.update(socialPlatformConnections).set({
+    status: "disconnected",
+    accessToken: null,
+    refreshToken: null,
+    meta: sql`coalesce(${socialPlatformConnections.meta}, '{}'::jsonb) || ${JSON.stringify({ dataDeletion: { code, at: new Date().toISOString() } })}::jsonb`,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(socialPlatformConnections.platform, "facebook"),
+    sql`${socialPlatformConnections.meta}->>'facebookUserId' = ${String(data.user_id)}`,
+  ));
+  return res.json({ url: `${APP_BASE_URL}/api/platforms/facebook/data-deletion?code=${code}`, confirmation_code: code });
+});
+
+router.get("/facebook/data-deletion", async (req, res) => {
+  const code = String(req.query.code || "").replace(/[^a-f0-9]/g, "").slice(0, 32);
+  res.type("text/plain").send(code
+    ? `Pedido ${code}: a ligação ao Facebook foi desligada e os tokens de acesso foram apagados.`
+    : "Indique o código do pedido.");
 });
 
 router.get("/sync/google", requireAuth, async (req, res) => {

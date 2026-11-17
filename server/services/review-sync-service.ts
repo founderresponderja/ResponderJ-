@@ -39,8 +39,8 @@ export const reviewSyncService = {
     const googleCount = await this.syncGoogle(grouped.google);
     await this.syncTripAdvisor(grouped.tripadvisor);
     await this.syncBooking(grouped.booking);
-    await this.syncFacebook(grouped.facebook);
-    return { total: googleCount };
+    const facebookCount = await this.syncFacebook(grouped.facebook);
+    return { total: googleCount + facebookCount };
   },
 
   async syncGoogle(connections: any[]): Promise<number> {
@@ -112,11 +112,42 @@ export const reviewSyncService = {
     }
   },
 
-  async syncFacebook(connections: any[]) {
+  // RJ-4.7: recomendações da página de Facebook (GET /{page-id}/ratings).
+  async syncFacebook(connections: any[]): Promise<number> {
+    let total = 0;
     for (const connection of connections) {
-      // Placeholder for Graph API polling.
-      await this.markSynced(connection.id, { provider: "facebook", ok: true });
+      const meta = (connection.meta || {}) as any;
+      if (!connection.establishmentId || !meta.pageId || !connection.accessToken) {
+        console.warn(`[sync] facebook connection ${connection.id} incomplete; skipped`);
+        continue;
+      }
+      let inserted = 0;
+      try {
+        const { decryptSensitiveData } = await import("../encryption.js");
+        const { FacebookReviewsService } = await import("./facebook-reviews-service.js");
+        const pageToken = await decryptSensitiveData(connection.accessToken);
+        const items = await FacebookReviewsService.fetchReviews(meta.pageId, pageToken);
+        for (const item of items) {
+          const rows = await db.insert(reviews).values({
+            establishmentId: connection.establishmentId,
+            platform: "facebook",
+            externalId: item.externalId,
+            authorName: item.authorName,
+            rating: item.rating,
+            reviewText: item.reviewText,
+            language: "pt",
+            sentiment: item.sentiment,
+            reviewDate: item.reviewDate,
+          }).onConflictDoNothing().returning({ id: reviews.id });
+          if (rows.length > 0) inserted++;
+        }
+        await this.markSynced(connection.id, { provider: "facebook", ok: true, imported: inserted });
+      } catch (error: any) {
+        await this.markSynced(connection.id, { provider: "facebook", ok: false, error: error?.message || "sync_failed" });
+      }
+      total += inserted;
     }
+    return total;
   },
 
   async markSynced(connectionId: number, meta: Record<string, any>) {

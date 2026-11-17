@@ -10,6 +10,10 @@ type PlatformConnection = {
   connected: boolean;
   status: string;
   lastSyncAt?: string;
+  // RJ-4.7 (Facebook): disponível para esta conta, página ligada, páginas por escolher.
+  available?: boolean;
+  pageName?: string | null;
+  pages?: { id: string; name: string }[];
 };
 
 interface PlatformListProps {
@@ -46,6 +50,39 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
   React.useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  // RJ-4.7: mensagens no regresso do login do Facebook.
+  React.useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('platformConnect') !== 'facebook') return;
+    const status = query.get('status');
+    if (status === 'connected') notifySuccess('Página de Facebook ligada.');
+    else if (status === 'choose_page') notifySuccess('Escolha qual das suas páginas de Facebook quer ligar.');
+    else if (status === 'no_pages') notifyError('Esta conta do Facebook não gere nenhuma página.');
+    else if (status) notifyError('Não foi possível ligar o Facebook. Tente novamente.');
+    query.delete('platformConnect');
+    query.delete('status');
+    const rest = query.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${rest ? `?${rest}` : ''}`);
+  }, []);
+
+  const handleSelectFacebookPage = async (pageId: string) => {
+    setLoadingPlatform('facebook');
+    try {
+      const headers = await buildAuthHeaders({ getToken });
+      const response = await fetch('/api/platforms/facebook/select-page', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, establishmentId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) notifyError(data?.error || 'Não foi possível ligar a página.');
+      else notifySuccess(`Página ${data.pageName} ligada.`);
+      await loadStatus();
+    } finally {
+      setLoadingPlatform(null);
+    }
+  };
 
   const loadPending = React.useCallback(async () => {
     if (!clerkUserId) {
@@ -219,7 +256,8 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
     {
       name: Platform.FACEBOOK,
       key: 'facebook',
-      comingSoon: true,
+      // RJ-4.7: ligação pronta; abre conta a conta até a Meta aprovar a app.
+      comingSoon: !connections.facebook?.available,
       description: "Fundamental para comunidade e interação social direta com a marca.",
       url: "https://business.facebook.com/",
       color: "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-900"
@@ -283,9 +321,23 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
               {p.key && (
                 <div className="flex items-center justify-between gap-3">
                   <span className={`text-xs font-semibold ${connections[p.key]?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {p.comingSoon ? 'Adicione as reviews à mão na Caixa de entrada' : connections[p.key]?.connected ? 'Conectado' : 'Não conectado'}
+                    {p.comingSoon ? 'Adicione as reviews à mão na Caixa de entrada'
+                      : connections[p.key]?.connected ? (connections[p.key]?.pageName ? `Conectado: ${connections[p.key]?.pageName}` : 'Conectado')
+                      : connections[p.key]?.status === 'pending_page' ? 'Escolha a página' : 'Não conectado'}
                   </span>
-                  {p.comingSoon ? (
+                  {!p.comingSoon && connections[p.key]?.status === 'pending_page' && connections[p.key]?.pages?.length ? (
+                    <select
+                      defaultValue=""
+                      disabled={loadingPlatform === p.key}
+                      onChange={(e) => e.target.value && handleSelectFacebookPage(e.target.value)}
+                      className="max-w-[10rem] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800"
+                    >
+                      <option value="" disabled>Página…</option>
+                      {connections[p.key]!.pages!.map((page) => (
+                        <option key={page.id} value={page.id}>{page.name}</option>
+                      ))}
+                    </select>
+                  ) : p.comingSoon ? (
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       Em breve
                     </span>
