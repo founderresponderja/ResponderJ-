@@ -79,7 +79,8 @@ const ResponseCard: React.FC<ResponseCardProps> = ({
 
   const getSentimentBadge = (sentiment?: string) => {
     if (!sentiment) return null;
-    switch (sentiment) {
+    // RJ-4.3: o servidor grava em minúsculas ("positive"); antes o selo mostrava sempre "Neutro".
+    switch (sentiment.charAt(0).toUpperCase() + sentiment.slice(1).toLowerCase()) {
       case 'Positive':
         return (
           <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">

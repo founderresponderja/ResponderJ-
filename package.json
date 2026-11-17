@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "backfill:rj11": "node scripts/backfill-rj11.mjs",
-    "db:migrate:status": "node scripts/migrate.mjs --status"
+    "db:migrate:status": "node scripts/migrate.mjs --status",
+    "test": "node --test tests/*.test.ts"
   },
   "dependencies": {
     "@clerk/backend": "^2.7.3",

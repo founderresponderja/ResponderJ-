@@ -607,7 +607,46 @@ export async function registerRoutes(app: any): Promise<void> {
         return res.status(400).json({ message: "Créditos insuficientes" });
       }
 
-      const businessProfile = businessProfileId ? await storage.getBusinessProfile(userId) : null;
+      // Opcional reviewId — quando vem da Inbox, linkar a response à review.
+      // Posse: a review tem de pertencer a um dos estabelecimentos do utilizador
+      // (antes só se via o primeiro estabelecimento, e quem tem 2 recebia 404 no segundo).
+      const reviewIdRaw = req.body.reviewId;
+      let reviewIdInt: number | undefined;
+      let reviewEstablishment: any = null;
+      if (reviewIdRaw != null) {
+        reviewIdInt = Number(reviewIdRaw);
+        if (!Number.isInteger(reviewIdInt) || reviewIdInt <= 0) {
+          return res.status(400).json({ message: "reviewId inválido" });
+        }
+        const [owned] = await db
+          .select({ establishment: establishments })
+          .from(reviews)
+          .innerJoin(establishments, eq(reviews.establishmentId, establishments.id))
+          .where(and(eq(reviews.id, reviewIdInt), eq(establishments.userId, Number(userId))))
+          .limit(1);
+        if (!owned) {
+          return res.status(404).json({ message: "Review não encontrada" });
+        }
+        reviewEstablishment = owned.establishment;
+        const [existing] = await db
+          .select({ id: responses.id })
+          .from(responses)
+          .where(and(
+            eq(responses.reviewId, reviewIdInt),
+            ne(responses.approvalStatus, 'discarded'),
+          ))
+          .limit(1);
+        if (existing) {
+          return res.status(409).json({
+            message: "Esta review já tem uma resposta activa",
+            responseId: existing.id,
+          });
+        }
+      }
+
+      // Contexto do negócio: o estabelecimento da review, se houver; senão o perfil do utilizador.
+      const businessProfile = reviewEstablishment
+        || (businessProfileId ? await storage.getBusinessProfile(userId) : null);
       const { aiResponseService } = await import("./services/ai-response-service.js");
 
       const businessContext = {
@@ -636,48 +675,6 @@ export async function registerRoutes(app: any): Promise<void> {
         return res.status(400).json({ message: "Créditos insuficientes" });
       }
 
-      // Opcional reviewId — quando vem da Inbox, linkar a response
-      // à review correspondente. Ownership via establishments.userId
-      // (reviews não têm userId directo).
-      const reviewIdRaw = req.body.reviewId;
-      let reviewIdInt: number | undefined;
-      if (reviewIdRaw != null) {
-        reviewIdInt = Number(reviewIdRaw);
-        if (!Number.isInteger(reviewIdInt) || reviewIdInt <= 0) {
-          return res.status(400).json({ message: "reviewId inválido" });
-        }
-        const [establishment] = await db
-          .select({ id: establishments.id })
-          .from(establishments)
-          .where(eq(establishments.userId, userId))
-          .limit(1);
-        if (!establishment) {
-          return res.status(404).json({ message: "Estabelecimento não encontrado" });
-        }
-        const [review] = await db
-          .select({ id: reviews.id })
-          .from(reviews)
-          .where(and(eq(reviews.id, reviewIdInt), eq(reviews.establishmentId, establishment.id)))
-          .limit(1);
-        if (!review) {
-          return res.status(404).json({ message: "Review não encontrada" });
-        }
-        const [existing] = await db
-          .select({ id: responses.id })
-          .from(responses)
-          .where(and(
-            eq(responses.reviewId, reviewIdInt),
-            ne(responses.approvalStatus, 'discarded'),
-          ))
-          .limit(1);
-        if (existing) {
-          return res.status(409).json({
-            message: "Esta review já tem uma resposta activa",
-            responseId: existing.id,
-          });
-        }
-      }
-
       const responseData = {
         userId,
         ...(reviewIdInt !== undefined ? { reviewId: reviewIdInt } : {}),
@@ -685,16 +682,19 @@ export async function registerRoutes(app: any): Promise<void> {
         platform,
         originalMessage,
         responseText: aiResult.response,
-        sentiment: aiResult.sentiment,
-        keywords: aiResult.keywords,
+        originalResponseText: aiResult.response,
         tone: tone || "profissional",
+        language: aiResult.detectedLanguage.language,
         creditsUsed: creditCost,
-        status: "generated",
-        metadata: {
-          detectedLanguage: aiResult.detectedLanguage.language,
-          tokensUsed: aiResult.tokensUsed,
-          extraInstructions: extraInstructions
-        }
+        aiModel: effectiveGeminiModel,
+        // RJ-4.3: a tabela responses não tem colunas sentiment/keywords; antes eram passados
+        // no objeto e o Drizzle deitava-os fora em silêncio. Ficam em learning_meta.
+        learningMeta: {
+          sentiment: aiResult.sentiment,
+          reviewKeywords: aiResult.keywords,
+          seoKeywords: aiResult.seoKeywords || [],
+          extraInstructions: extraInstructions || null,
+        },
       };
 
       // Sub-fase 3.2: créditos só descontam no /api/responses/:id/accept.
@@ -718,8 +718,18 @@ export async function registerRoutes(app: any): Promise<void> {
       // NOTA: Não há createCreditTransaction aqui. A transação é registada
       // no endpoint /accept quando o utilizador confirma a resposta.
 
+      // RJ-4.3: a review ligada fica com o sentimento lido do texto e os temas.
+      if (reviewIdInt !== undefined) {
+        await db.update(reviews)
+          .set({ sentiment: aiResult.sentiment, keywords: aiResult.keywords })
+          .where(eq(reviews.id, reviewIdInt))
+          .catch((e: any) => console.warn("[generate-response] review sentiment update failed", e?.message));
+      }
+
       res.json({
         ...savedResponse,
+        sentiment: aiResult.sentiment,
+        keywords: aiResult.keywords,
         tokensUsed: aiResult.tokensUsed,
         // creditsRemaining é o saldo actual do utilizador (sem decremento).
         creditsRemaining: user.credits,

@@ -31,6 +31,7 @@ interface InboxItem {
   review_text: string | null;
   language: string | null;
   sentiment: string | null;
+  keywords?: string[] | null;
   review_date: string | null;
   external_response_text: string | null;
   external_response_at: string | null;
@@ -93,7 +94,7 @@ function inboxItemToReviewData(
     language: mapLanguage(item.response_language),
     generatedResponse: item.response_text ?? undefined,
     sentiment: (item.sentiment as 'Positive' | 'Neutral' | 'Negative' | undefined) ?? undefined,
-    keywords: [],
+    keywords: Array.isArray(item.keywords) ? item.keywords : [],
     createdAt: new Date(item.created_at),
     responseId: item.response_id ?? undefined,
     approvalStatus: (item.approval_status as 'pending' | 'approved' | 'edited' | 'discarded' | undefined) ?? undefined,

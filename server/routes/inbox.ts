@@ -7,6 +7,7 @@ import { establishments, responses, reviews, socialPlatformConnections } from ".
 import { requireAuth } from "../auth.js";
 import { GoogleReviewsService } from "../services/google-reviews-service.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
+import { sentimentFromRating } from "../../shared/sentiment.js";
 
 const router = Router();
 
@@ -83,7 +84,7 @@ router.get("/", requireAuth, async (req: any, res) => {
     const { rows } = await db.execute(sql`
       SELECT
         r.id, r.platform, r.external_id, r.author_name, r.rating,
-        r.review_text, r.language, r.sentiment, r.review_date,
+        r.review_text, r.language, r.sentiment, r.keywords, r.review_date,
         r.external_response_text, r.external_response_at, r.created_at,
         resp.id              AS response_id,
         resp.response_text   AS response_text,
@@ -216,6 +217,7 @@ router.post("/manual", requireAuth, async (req: any, res) => {
         externalId,
         authorName: typeof authorName === "string" && authorName.trim() ? authorName.trim() : null,
         rating: ratingNum,
+        sentiment: sentimentFromRating(ratingNum),
         reviewText: reviewText.trim(),
         reviewDate: reviewDateParsed,
         externalResponseText: hasExternalReply ? externalResponseText.trim() : null,
