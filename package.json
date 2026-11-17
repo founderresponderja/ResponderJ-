@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/migrate.mjs",
     "backfill:rj11": "node scripts/backfill-rj11.mjs",
     "db:migrate:status": "node scripts/migrate.mjs --status",
-    "test": "node --import ./tests/setup/resolve-ts.mjs --test tests/*.test.ts"
+    "test": "node --import ./tests/setup/resolve-ts.mjs --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@clerk/backend": "^2.7.3",

@@ -1,6 +1,5 @@
 # RJ-6.2: verificação automática de cada alteração (PR) e de cada push para main.
-# Bloqueia: testes (npm test) e compilação da app (vite build).
-# Só informa (não bloqueia ainda, ver RJ-6.1): contagem de erros de tipos do TypeScript.
+# Bloqueia: testes (npm test), compilação da app (vite build) e erros de tipos (tsc, RJ-6.1).
 name: CI
 
 on:
@@ -40,18 +39,6 @@ jobs:
         # aqui é ignorado, por isso a CI nunca toca na base de dados.
         run: npm run build
 
-      - name: Erros de tipos (informativo, RJ-6.1)
-        if: always()
-        continue-on-error: true
-        run: |
-          set +e
-          npx tsc --noEmit -p . > tsc.log 2>&1
-          COUNT=$(grep -c "error TS" tsc.log)
-          echo "### Erros de tipos do TypeScript: $COUNT" >> "$GITHUB_STEP_SUMMARY"
-          echo "Ainda não bloqueia a alteração (RJ-6.1). Primeiros 30:" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep "error TS" tsc.log | head -30 >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "Erros de tipos: $COUNT"
-          grep "error TS" tsc.log || true
-          exit 0
+      - name: Erros de tipos (TypeScript)
+        # RJ-6.1: com 0 erros, qualquer erro novo bloqueia a alteração.
+        run: npm run typecheck

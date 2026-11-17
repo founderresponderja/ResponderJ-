@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ReviewData } from '../types';
-import { Activity, CreditCard, MessageSquare, Star } from 'lucide-react';
+import { Activity, Bot, CreditCard, MessageSquare, Star } from 'lucide-react';
 
 interface DashboardProps {
   history: ReviewData[];

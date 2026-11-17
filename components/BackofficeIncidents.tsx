@@ -52,7 +52,7 @@ const AuthImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
   return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={alt} className="max-h-64 rounded-lg border" /></a>;
 };
 
-export const IncidentsTab: React.FC<{ api: Api }> = ({ api }) => {
+export const IncidentsTab = ({ api }: { api: Api }) => {
   const [rows, setRows] = useState<Row[]>([]);
   const [status, setStatus] = useState('active');
   const [severity, setSeverity] = useState('');
@@ -113,7 +113,7 @@ export const IncidentsTab: React.FC<{ api: Api }> = ({ api }) => {
   );
 };
 
-const IncidentDetail: React.FC<{ api: Api; id: number; onBack: () => void }> = ({ api, id, onBack }) => {
+const IncidentDetail = ({ api, id, onBack }: { api: Api; id: number; onBack: () => void }) => {
   const [inc, setInc] = useState<any>(null);
   const [note, setNote] = useState('');
   const [resolution, setResolution] = useState('');
@@ -222,7 +222,7 @@ interface Stats {
   list: { id: number; summary: string | null; severity: string; status: string; createdAt: string; dueAt: string; resolvedAt: string | null; onTime: boolean | null; operators: string[] }[];
 }
 
-export const IncidentStatsTab: React.FC<{ api: Api }> = ({ api }) => {
+export const IncidentStatsTab = ({ api }: { api: Api }) => {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { api<Stats>('/incidents/stats').then(setStats).catch((e) => setError(e.message)); }, [api]);
