@@ -7,6 +7,7 @@ import { establishments, responses, reviews, socialPlatformConnections } from ".
 import { requireAuth } from "../auth.js";
 import { GoogleReviewsService } from "../services/google-reviews-service.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
+import { FacebookReviewsService } from "../services/facebook-reviews-service.js";
 import { sentimentFromRating } from "../../shared/sentiment.js";
 
 const router = Router();
@@ -29,6 +30,21 @@ async function getGoogleConnectionExternalId(establishmentId: number): Promise<s
     ))
     .limit(1);
   return conn?.userExternalId ?? null;
+}
+
+async function getFacebookConnection(establishmentId: number): Promise<{ pageToken: string } | null> {
+  const [conn] = await db
+    .select()
+    .from(socialPlatformConnections)
+    .where(and(
+      eq(socialPlatformConnections.establishmentId, establishmentId),
+      eq(socialPlatformConnections.platform, "facebook"),
+      eq(socialPlatformConnections.status, "connected"),
+    ))
+    .limit(1);
+  if (!conn?.accessToken) return null;
+  const { decryptSensitiveData } = await import("../encryption.js");
+  return { pageToken: await decryptSensitiveData(conn.accessToken) };
 }
 
 // GET /api/inbox
@@ -244,19 +260,16 @@ router.post("/:reviewId/publish", requireAuth, async (req: any, res) => {
       return res.status(400).json({ message: "reviewId e responseId são obrigatórios" });
     }
 
-    const [establishment] = await db
-      .select({ id: establishments.id })
-      .from(establishments)
-      .where(eq(establishments.userId, userId))
-      .limit(1);
-    if (!establishment) return res.status(404).json({ message: "Estabelecimento não encontrado" });
-
-    const [review] = await db
-      .select()
+    // A review tem de pertencer a um dos estabelecimentos do utilizador (antes só se via o primeiro).
+    const [owned] = await db
+      .select({ review: reviews, establishmentId: establishments.id })
       .from(reviews)
-      .where(and(eq(reviews.id, reviewId), eq(reviews.establishmentId, establishment.id)))
+      .innerJoin(establishments, eq(reviews.establishmentId, establishments.id))
+      .where(and(eq(reviews.id, reviewId), eq(establishments.userId, userId)))
       .limit(1);
-    if (!review) return res.status(404).json({ message: "Review não encontrada" });
+    if (!owned) return res.status(404).json({ message: "Review não encontrada" });
+    const review = owned.review;
+    const establishment = { id: owned.establishmentId };
 
     if (!review.externalId) {
       return res.status(400).json({ message: "Review sem ID externo — não pode ser publicada via API" });
@@ -279,6 +292,28 @@ router.post("/:reviewId/publish", requireAuth, async (req: any, res) => {
     }
     if (response.isPublished) {
       return res.status(409).json({ message: "Resposta já publicada" });
+    }
+
+    // RJ-4.7: Facebook responde com um comentário da página na recomendação.
+    if (review.platform === "facebook") {
+      const fb = await getFacebookConnection(establishment.id);
+      if (!fb) return res.status(409).json({ message: "Facebook não está ligado a este estabelecimento" });
+      let commentId: string;
+      try {
+        commentId = await FacebookReviewsService.reply(review.externalId, fb.pageToken, response.responseText);
+      } catch (error: any) {
+        return res.status(502).json({ ok: false, error: "facebook_api_failed", detail: error?.message });
+      }
+      const publishedAt = new Date();
+      await db.update(responses).set({
+        isPublished: true,
+        publishedAt,
+        learningMeta: { ...((response.learningMeta as any) || {}), facebookCommentId: commentId },
+      }).where(eq(responses.id, responseId));
+      return res.json({ ok: true, publishedAt });
+    }
+    if (review.platform !== "google") {
+      return res.status(400).json({ message: "Esta plataforma ainda não permite publicar daqui. Copie a resposta e publique na própria plataforma." });
     }
 
     const userExternalId = await getGoogleConnectionExternalId(establishment.id);
@@ -328,19 +363,16 @@ router.post("/:reviewId/unpublish", requireAuth, async (req: any, res) => {
       return res.status(400).json({ message: "reviewId e responseId são obrigatórios" });
     }
 
-    const [establishment] = await db
-      .select({ id: establishments.id })
-      .from(establishments)
-      .where(eq(establishments.userId, userId))
-      .limit(1);
-    if (!establishment) return res.status(404).json({ message: "Estabelecimento não encontrado" });
-
-    const [review] = await db
-      .select()
+    // A review tem de pertencer a um dos estabelecimentos do utilizador (antes só se via o primeiro).
+    const [owned] = await db
+      .select({ review: reviews, establishmentId: establishments.id })
       .from(reviews)
-      .where(and(eq(reviews.id, reviewId), eq(reviews.establishmentId, establishment.id)))
+      .innerJoin(establishments, eq(reviews.establishmentId, establishments.id))
+      .where(and(eq(reviews.id, reviewId), eq(establishments.userId, userId)))
       .limit(1);
-    if (!review) return res.status(404).json({ message: "Review não encontrada" });
+    if (!owned) return res.status(404).json({ message: "Review não encontrada" });
+    const review = owned.review;
+    const establishment = { id: owned.establishmentId };
 
     if (!review.externalId) {
       return res.status(400).json({ message: "Review sem ID externo — não pode ser despublicada via API" });
@@ -358,6 +390,22 @@ router.post("/:reviewId/unpublish", requireAuth, async (req: any, res) => {
     if (!response) return res.status(404).json({ message: "Resposta não encontrada" });
     if (!response.isPublished) {
       return res.status(409).json({ message: "Resposta não está publicada" });
+    }
+
+    if (review.platform === "facebook") {
+      const fb = await getFacebookConnection(establishment.id);
+      const commentId = (response.learningMeta as any)?.facebookCommentId;
+      if (!fb || !commentId) return res.status(409).json({ message: "Não foi possível encontrar o comentário publicado no Facebook" });
+      try {
+        await FacebookReviewsService.deleteReply(commentId, fb.pageToken);
+      } catch (error: any) {
+        return res.status(502).json({ ok: false, error: "facebook_api_failed", detail: error?.message });
+      }
+      await db.update(responses).set({ isPublished: false, publishedAt: null }).where(eq(responses.id, responseId));
+      return res.json({ ok: true });
+    }
+    if (review.platform !== "google") {
+      return res.status(400).json({ message: "Esta plataforma não permite cancelar a publicação daqui." });
     }
 
     const userExternalId = await getGoogleConnectionExternalId(establishment.id);
