@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Logo } from './Logo';
-import { Loader2, CheckCircle, AlertTriangle, ArrowRight, User, Mail, Lock, Building } from 'lucide-react';
+import { Loader2, CheckCircle, AlertTriangle, ArrowRight, Mail, Building } from 'lucide-react';
 import { Theme } from '../App';
+import { useAuth, useClerk } from '@clerk/clerk-react';
+import { buildAuthHeaders } from '../utils/api';
 
 interface InvitePageProps {
   token: string;
@@ -22,20 +24,18 @@ const InvitePage: React.FC<InvitePageProps> = ({ token, onNavigateToLogin, onSuc
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invite, setInvite] = useState<InviteDetails | null>(null);
-  const [view, setView] = useState<'loading' | 'details' | 'register' | 'login'>('loading');
-  
-  // Register Form State
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    password: '',
-    confirmPassword: ''
-  });
+  const [view, setView] = useState<'loading' | 'details'>('loading');
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { openSignUp, openSignIn } = useClerk();
+  // Clerk brings the user back here after sign-up / sign-in, so the invite can be accepted.
+  const returnUrl = typeof window !== 'undefined' ? window.location.href : '/';
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!isLoaded) return;
     validateInvite();
-  }, [token]);
+  }, [token, isLoaded, isSignedIn]);
 
   const validateInvite = async () => {
     try {
@@ -48,11 +48,12 @@ const InvitePage: React.FC<InvitePageProps> = ({ token, onNavigateToLogin, onSuc
       setInvite(data);
       setView('details');
       
-      // Check if user is already logged in
-      const userRes = await fetch('/api/auth/user');
+      // If the user is signed in with Clerk, accept automatically when the email matches.
+      if (!isSignedIn) return;
+      const userRes = await fetch('/api/auth/user', { headers: await buildAuthHeaders({ getToken }) });
       if (userRes.ok) {
         const user = await userRes.json();
-        if (user.email === data.email) {
+        if (String(user.email || '').toLowerCase() === String(data.email || '').toLowerCase()) {
           // Auto accept if email matches
           acceptInvite();
         } else {
@@ -70,7 +71,8 @@ const InvitePage: React.FC<InvitePageProps> = ({ token, onNavigateToLogin, onSuc
   const acceptInvite = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/invitations/${token}/accept`, { method: 'POST' });
+      const headers = await buildAuthHeaders({ getToken });
+      const response = await fetch(`/api/invitations/${token}/accept`, { method: 'POST', headers });
       if (!response.ok) throw new Error('Falha ao aceitar convite');
       onSuccess();
     } catch (err: any) {
@@ -80,37 +82,13 @@ const InvitePage: React.FC<InvitePageProps> = ({ token, onNavigateToLogin, onSuc
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      setError("As passwords não coincidem");
+  const handleAcceptClick = () => {
+    if (isSignedIn) {
+      acceptInvite();
       return;
     }
-    
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(`/api/invitations/${token}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          password: formData.password,
-          email: invite?.email // Email comes from invite
-        })
-      });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Erro ao criar conta');
-      }
-      
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Accounts are created only through Clerk (RJ-1.2); the invite is accepted on return.
+    openSignUp({ forceRedirectUrl: returnUrl, signInForceRedirectUrl: returnUrl });
   };
 
   if (isLoading) {
@@ -176,92 +154,26 @@ const InvitePage: React.FC<InvitePageProps> = ({ token, onNavigateToLogin, onSuc
               </div>
 
               <button
-                onClick={() => setView('register')}
+                onClick={handleAcceptClick}
+                disabled={isSubmitting}
                 className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
               >
                 Aceitar Convite <ArrowRight size={18} />
               </button>
               
               <div className="text-center text-sm">
-                <button onClick={onNavigateToLogin} className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                  Já tenho conta, fazer login
-                </button>
+                {!isSignedIn && (
+                  <button
+                    onClick={() => openSignIn({ forceRedirectUrl: returnUrl, signUpForceRedirectUrl: returnUrl })}
+                    className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  >
+                    Já tenho conta, fazer login
+                  </button>
+                )}
               </div>
             </div>
           )}
 
-          {view === 'register' && (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Apelido</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-                <input
-                  type="email"
-                  disabled
-                  value={invite?.email}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-slate-500 cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirmar Password</label>
-                <input
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                  className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all mt-6 shadow-md"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin w-5 h-5" /> Criando conta...
-                  </>
-                ) : (
-                  "Criar Conta e Aceitar"
-                )}
-              </button>
-            </form>
-          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,4 @@
-import passport from "passport";
 import { Express, Request, Response, NextFunction } from "express";
-import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { createClerkClient, verifyToken } from "@clerk/backend";
@@ -37,49 +35,10 @@ const clerkClient = clerkSecretKey ? createClerkClient({ secretKey: clerkSecretK
 // =====================================
 
 export function setupAuth(app: any) {
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.ENCRYPTION_KEY || "responderja-revolutionary-secret-2025",
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production', // True apenas em HTTPS/Prod
-      httpOnly: true, // Previne XSS
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
-      sameSite: 'lax', // Melhor compatibilidade para fluxos de OAuth/Redirecionamento
-      path: '/'
-    },
-  };
-
-  // Necessário para cookies seguros funcionarem atrás de proxies (Replit, Nginx, Vercel)
+  // Authentication is Clerk-only (RJ-1.2): no express-session, no passport.
+  // requireAuth verifies the Clerk token on every request.
+  // Necessário para req.ip / cookies seguros atrás do proxy da Vercel.
   app.set("trust proxy", 1);
-  
-  app.use(session(sessionSettings));
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  // =====================================
-  // SERIALIZAÇÃO
-  // =====================================
-
-  passport.serializeUser((user, done) => done(null, (user as any).id));
-  
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUser(id);
-      
-      if (!user || !user.isActive) {
-        console.warn(`⚠️ Sessão inválida para user ID: ${id}`);
-        return done(null, false);
-      }
-      
-      done(null, user as any);
-    } catch (error) {
-      console.error(`💥 Erro na deserialização do user ${id}:`, error);
-      done(error, null);
-    }
-  });
-
 }
 
 // =====================================
@@ -88,10 +47,6 @@ export function setupAuth(app: any) {
 
 export function requireAuth(req: any, res: any, next: NextFunction) {
   const ensureAuth = async () => {
-    if (req.isAuthenticated()) {
-      return true;
-    }
-
     const authHeader = req.headers.authorization as string | undefined;
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
     const cookieHeader = String(req.headers.cookie || "");
@@ -221,7 +176,7 @@ export function requireFeature(feature: keyof (typeof PLAN_CAPABILITIES)["trial"
  */
 export function requireRole(allowedRoles: string[]) {
   return (req: any, res: any, next: NextFunction) => {
-    if (!req.isAuthenticated() || !req.user) {
+    if (!req.user) {
       return res.status(401).json({ message: "Autenticação necessária" });
     }
 

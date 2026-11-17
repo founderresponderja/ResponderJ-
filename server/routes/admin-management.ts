@@ -39,7 +39,7 @@ const deleteUserSchema = z.object({
 
 // Middleware para verificar se é super admin
 const requireSuperAdmin = async (req: any, res: any, next: any) => {
-  if (!req.isAuthenticated() || !req.user) {
+  if (!req.user) {
     return res.status(401).json({ message: "Não autenticado" });
   }
 
