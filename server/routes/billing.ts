@@ -84,7 +84,10 @@ export function registerBillingRoutes(app: any) {
         // Administradores têm sempre acesso, sem subscrição Stripe.
         status = "active";
       } else if (planId !== "trial") {
-        status = user.stripeSubscriptionId ? "active" : "expired";
+        // Ativo com subscrição Stripe, ou até ao fim do período pago/atribuído
+        // (plano dado pelo backoffice, ou subscrição cancelada que ainda não chegou ao fim).
+        const periodEnd = user.currentPeriodEnd ? new Date(user.currentPeriodEnd).getTime() : 0;
+        status = user.stripeSubscriptionId || periodEnd > now.getTime() ? "active" : "expired";
       } else if (!isTrialing) {
         status = "expired";
       }

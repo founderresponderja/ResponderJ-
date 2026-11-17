@@ -1,6 +1,6 @@
 import { db } from "../db.js";
 import { reviews, socialPlatformConnections } from "../../shared/schema.js";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { GoogleReviewsService } from "./google-reviews-service.js";
 
 type PlatformName = "google" | "tripadvisor" | "booking" | "facebook";
@@ -127,7 +127,8 @@ export const reviewSyncService = {
       .set({
         lastSyncAt: new Date(),
         updatedAt: new Date(),
-        meta,
+        // Junta o resultado em meta.lastSync em vez de apagar o resto do meta (dados do OAuth).
+        meta: sql`coalesce(${socialPlatformConnections.meta}, '{}'::jsonb) || jsonb_build_object('lastSync', ${JSON.stringify({ ...meta, at: new Date().toISOString() })}::jsonb)`,
       })
       .where(eq(socialPlatformConnections.id, connectionId));
   },

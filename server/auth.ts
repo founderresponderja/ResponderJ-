@@ -126,6 +126,13 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
       }
 
       req.user = user;
+
+      // Última atividade (usada no backoffice). No máximo uma escrita por hora por utilizador.
+      const last = user.lastLoginAt ? new Date(user.lastLoginAt).getTime() : 0;
+      if (Date.now() - last > 60 * 60 * 1000) {
+        storage.updateUser(user.id, { lastLoginAt: new Date() } as any).catch((error: any) =>
+          console.warn("[auth] could not update lastLoginAt:", error?.message));
+      }
       return true;
     } catch (error) {
       console.error("[auth] requireAuth failed:", (error as Error)?.message);
