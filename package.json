@@ -10,7 +10,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "migrate:ai-engine": "node scripts/apply-sql-migration.mjs migrations/20260409_ai_engine_approval_learning.sql",
-    "migrate:agency-mode": "node scripts/apply-sql-migration.mjs migrations/20260409_agency_mode_multi_business.sql"
+    "migrate:agency-mode": "node scripts/apply-sql-migration.mjs migrations/20260409_agency_mode_multi_business.sql",
+    "migrate:rj11": "node scripts/apply-sql-migration.mjs migrations/20261116_rj11_identity.sql",
+    "backfill:rj11": "node scripts/backfill-rj11.mjs"
   },
   "dependencies": {
     "@clerk/backend": "^2.7.3",

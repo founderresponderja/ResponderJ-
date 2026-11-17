@@ -7,6 +7,8 @@ import { z } from "zod";
 // --- Users & Auth ---
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  // Clerk user id (claims.sub). Links the Clerk identity to this row (RJ-1.1).
+  clerkUserId: text("clerk_user_id"),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
@@ -50,6 +52,7 @@ export const users = pgTable("users", {
 }, (table) => {
   return {
     emailIdx: uniqueIndex("email_idx").on(table.email),
+    clerkUserIdx: uniqueIndex("users_clerk_user_id_unique").on(table.clerkUserId),
     stripeCustomerIdx: index("stripe_customer_idx").on(table.stripeCustomerId),
   };
 });
@@ -511,6 +514,7 @@ export const corporateSocialAccounts = pgTable("corporate_social_accounts", {
 export const socialPlatformConnections = pgTable("social_platform_connections", {
   id: serial("id").primaryKey(),
   userExternalId: text("user_external_id").notNull(), // Clerk user ID
+  userId: integer("user_id"), // users.id (RJ-1.1); backfilled by scripts/backfill-rj11.mjs
   establishmentId: integer("establishment_id"),
   platform: text("platform").notNull(),
   status: text("status").default("connected"),
@@ -532,6 +536,7 @@ export const oauthStates = pgTable("oauth_states", {
   id: serial("id").primaryKey(),
   state: text("state").notNull(),
   userExternalId: text("user_external_id").notNull(),
+  userId: integer("user_id"), // users.id (RJ-1.1)
   platform: text("platform").notNull(),
   establishmentId: integer("establishment_id"),
   meta: jsonb("meta"),
