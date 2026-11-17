@@ -1,86 +1,81 @@
-
+/**
+ * /api/reviews — leitura das reviews guardadas (RJ-4.7).
+ *
+ * Antes: misturava o histórico de gerações com uma busca "ao vivo" ao Google através de contas
+ * corporativas (de outra funcionalidade), convertia 1-2 estrelas em 3 e devolvia quase sempre
+ * vazio. Agora lê da base de dados, só dos estabelecimentos do utilizador, com a resposta mais
+ * recente de cada review. É também o endpoint de leitura para as futuras apps móveis (RJ-11).
+ */
 import { Router } from "express";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "../db.js";
+import { establishments, responses } from "../../shared/schema.js";
 import { requireAuth } from "../auth.js";
-import { storage } from "../storage.js";
-import { GoogleReviewsService } from "../services/google-reviews-service.js";
 
 const router = Router();
 
-// Listar reviews (Híbrido: Base de dados local + Live Fetch se solicitado)
 router.get("/", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.user.id;
-    const limit = req.query.limit ? parseInt(req.query.limit) : 100;
-    const refresh = req.query.refresh === 'true';
-
-    // 1. Obter histórico local de gerações
-    const localResponses = await storage.getUserAiResponses(userId, limit);
-
-    // 2. Se solicitado refresh, tentar buscar reviews reais das contas conectadas
-    let liveReviews: any[] = [];
-    if (refresh) {
-      // Buscar contas Google conectadas do utilizador
-      // (Assumindo que o user tem permissão para ver as contas corporativas ou tem as suas próprias linkadas)
-      // Para simplificar, vamos buscar as contas sociais guardadas
-      const accounts = await storage.getCorporateSocialAccounts(); 
-      const googleAccount = accounts.find(a => a.platform === 'google' || a.platform === 'google_business');
-
-      if (googleAccount) {
-        try {
-          const externalData = await GoogleReviewsService.fetchReviews(userId.toString(), googleAccount.id);
-          // Mapear para o formato ReviewData
-          liveReviews = externalData.map(r => ({
-            id: r.reviewId,
-            platform: 'Google Maps',
-            customerName: r.reviewer.displayName,
-            rating: r.starRating === 'FIVE' ? 5 : r.starRating === 'FOUR' ? 4 : 3, // Simplificado
-            reviewText: r.comment,
-            tone: 'Neutro', // Default
-            language: 'Português',
-            generatedResponse: r.reviewReply ? r.reviewReply.comment : null,
-            createdAt: r.createTime,
-            isFavorite: false,
-            responseType: r.reviewReply ? 'published' : 'pending'
-          }));
-        } catch (err) {
-          console.warn("Falha ao buscar live reviews:", err);
-        }
-      }
+    const userId = Number(req.user?.id);
+    const owned = await db.select({ id: establishments.id }).from(establishments).where(eq(establishments.userId, userId));
+    const requested = req.query.establishmentId ? Number(req.query.establishmentId) : null;
+    if (requested !== null && !owned.some((e) => e.id === requested)) {
+      return res.status(403).json({ message: "Estabelecimento inválido." });
     }
+    const estIds = requested !== null ? [requested] : owned.map((e) => e.id);
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit || 50)));
+    const offset = Math.max(0, Number(req.query.offset || 0));
+    if (estIds.length === 0) return res.json({ items: [], total: 0, limit, offset });
 
-    // Combinar dados (priorizando live reviews se existirem, ou apenas retornando o histórico de gerações)
-    // Na prática, a UI deve decidir como mostrar, aqui retornamos o histórico de gerações primariamente
-    // mas se houver liveReviews, poderíamos fundir. Para manter a UI atual a funcionar:
-    
-    // Se tivermos live reviews, retornamos essas formatadas, senão o histórico local
-    const finalResponse = liveReviews.length > 0 ? [...liveReviews, ...localResponses] : localResponses;
-    
-    // Ordenar por data
-    finalResponse.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const status = String(req.query.status || "");
+    const statusCond =
+      status === "pending" ? sql`AND COALESCE(resp.is_published, false) = false AND r.external_response_text IS NULL`
+        : status === "responded" ? sql`AND (resp.is_published = true OR r.external_response_text IS NOT NULL)`
+          : sql``;
+    const inEst = sql`r.establishment_id IN (${sql.join(estIds.map((id) => sql`${id}`), sql`, `)})`;
 
-    res.json(finalResponse.slice(0, limit));
+    const { rows } = await db.execute(sql`
+      SELECT r.id, r.establishment_id, r.platform, r.external_id, r.author_name, r.rating, r.review_text,
+             r.language, r.sentiment, r.review_date, r.external_response_text, r.external_response_at,
+             resp.id AS response_id, resp.response_text, resp.approval_status, resp.is_published, resp.published_at
+      FROM reviews r
+      LEFT JOIN LATERAL (
+        SELECT id, response_text, approval_status, is_published, published_at
+        FROM responses WHERE review_id = r.id ORDER BY created_at DESC, id DESC LIMIT 1
+      ) resp ON true
+      WHERE ${inEst} ${statusCond}
+      ORDER BY r.review_date DESC NULLS LAST, r.id DESC
+      LIMIT ${limit} OFFSET ${offset}`);
+    const { rows: countRows } = await db.execute(sql`
+      SELECT COUNT(*)::int AS total FROM reviews r
+      LEFT JOIN LATERAL (SELECT is_published FROM responses WHERE review_id = r.id ORDER BY created_at DESC, id DESC LIMIT 1) resp ON true
+      WHERE ${inEst} ${statusCond}`);
+
+    res.json({ items: rows, total: Number((countRows[0] as any)?.total ?? 0), limit, offset });
   } catch (error) {
     console.error("Error fetching reviews:", error);
     res.status(500).json({ message: "Error fetching reviews" });
   }
 });
 
-// Update a response (e.g. edited text)
+// Editar o texto de uma resposta. Só o dono da resposta (RJ-1.7: antes qualquer utilizador podia editar qualquer resposta).
 router.patch("/:id", requireAuth, async (req: any, res) => {
   try {
-    const { id } = req.params;
-    const { responseText, isFavorite, status } = req.body;
-    
-    // Se o status for "published" e tivermos o ID da review original, tentar publicar
-    // Logica futura: Se id for um ID externo do Google, chamar GoogleReviewsService.replyToReview
-    
-    const updated = await storage.updateAiResponse(id, {
+    const id = Number(req.params.id);
+    const userId = Number(req.user?.id);
+    const [existing] = await db.select().from(responses).where(and(eq(responses.id, id), eq(responses.userId, userId)));
+    if (!existing) return res.status(404).json({ message: "Resposta não encontrada." });
+
+    const responseText = typeof req.body?.responseText === "string" ? req.body.responseText.trim() : "";
+    if (responseText.length === 0 || responseText.length > 5000) {
+      return res.status(400).json({ message: "Texto da resposta inválido." });
+    }
+    const [updated] = await db.update(responses).set({
       responseText,
-      isFavorite,
-      // @ts-ignore
-      isPublished: status === 'published'
-    });
-    
+      originalResponseText: existing.originalResponseText ?? existing.responseText,
+      editCount: sql`coalesce(${responses.editCount}, 0) + 1`,
+      approvalStatus: "edited",
+    }).where(eq(responses.id, id)).returning();
     res.json(updated);
   } catch (error) {
     console.error("Error updating review:", error);
