@@ -1072,7 +1072,7 @@ export async function registerRoutes(app: any): Promise<void> {
     registerSystemRoutes(app);
     // Backoffice novo (operadores). As rotas antigas admin-management (criar utilizadores com
     // password, mudar papéis sem controlo) e admin/technical (descarregar o código-fonte)
-    // foram desligadas: contornavam a regra de um só super administrador.
+    // foram removidas: contornavam a regra de um só super administrador.
     const backofficeRoutes = (await import("./routes/backoffice.js")).default;
     app.use("/api/backoffice", backofficeRoutes);
     const adminSocialMediaRoutes = (await import("./routes/admin-social-media.js")).default;
