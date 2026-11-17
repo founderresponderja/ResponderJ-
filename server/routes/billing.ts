@@ -190,7 +190,41 @@ export function registerBillingRoutes(app: any) {
       }
 
       const payload = req.body;
-      const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      let event: Stripe.Event;
+      try {
+        event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      } catch (error: any) {
+        console.error("[webhook] invalid signature:", error?.message);
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
+
+      // RJ-3.1: idempotência. Regista o evento; se já foi processado, não volta a processar.
+      const { db } = await import("../db.js");
+      const { stripeEvents } = await import("../../shared/schema.js");
+      const { eq, sql } = await import("drizzle-orm");
+      const [claimed] = await db.insert(stripeEvents)
+        .values({ id: event.id, type: event.type })
+        .onConflictDoNothing()
+        .returning({ id: stripeEvents.id });
+      if (!claimed) {
+        const [prev] = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id));
+        const stuck = prev?.status === "processing" && Date.now() - new Date(prev.receivedAt).getTime() > 5 * 60000;
+        if (prev?.status === "processed" || (prev?.status === "processing" && !stuck)) {
+          console.log(`[webhook] duplicate ${event.type} ${event.id} (${prev?.status}); skipped`);
+          return res.json({ received: true, duplicate: true });
+        }
+        // Falhou antes (ou ficou preso): o Stripe está a repetir, por isso tenta-se outra vez.
+        await db.update(stripeEvents)
+          .set({ status: "processing", attempts: sql`${stripeEvents.attempts} + 1`, error: null })
+          .where(eq(stripeEvents.id, event.id));
+      }
+
+      // Objeto (não "let") para o TypeScript não estreitar o valor a null depois do switch.
+      const outcome: { error: string | null } = { error: null };
+      const fail = (where: string, error: any) => {
+        outcome.error = `${where}: ${error?.message || error}`;
+        console.error(`[webhook] ${where} failed:`, error);
+      };
 
       switch (event.type) {
         case 'checkout.session.completed': {
@@ -202,7 +236,7 @@ export function registerBillingRoutes(app: any) {
             }
             console.log(`[webhook] checkout completed for customer ${session.customer}`);
           } catch (error: any) {
-            console.error("[webhook] checkout.session.completed failed:", error);
+            fail("checkout.session.completed", error);
           }
           break;
         }
@@ -212,7 +246,7 @@ export function registerBillingRoutes(app: any) {
           try {
             await BillingService.syncSubscriptionToDatabase(subscription, { resetCreditsOnPlanChange: true });
           } catch (error: any) {
-            console.error("[webhook] customer.subscription.created failed:", error);
+            fail("customer.subscription.created", error);
           }
           break;
         }
@@ -222,7 +256,7 @@ export function registerBillingRoutes(app: any) {
           try {
             await BillingService.syncSubscriptionToDatabase(subscription);
           } catch (error: any) {
-            console.error("[webhook] customer.subscription.updated failed:", error);
+            fail("customer.subscription.updated", error);
           }
           break;
         }
@@ -232,7 +266,7 @@ export function registerBillingRoutes(app: any) {
           try {
             await BillingService.handleSubscriptionDeleted(subscription);
           } catch (error: any) {
-            console.error("[webhook] customer.subscription.deleted failed:", error);
+            fail("customer.subscription.deleted", error);
           }
           break;
         }
@@ -249,7 +283,7 @@ export function registerBillingRoutes(app: any) {
               );
             }
           } catch (error: any) {
-            console.error("[webhook] invoice.payment_failed failed:", error);
+            fail("invoice.payment_failed", error);
           }
           break;
         }
@@ -258,10 +292,18 @@ export function registerBillingRoutes(app: any) {
           console.log("[webhook] unhandled event:", event.type);
       }
 
+      // RJ-3.2: se o processamento falhou, devolve 500 para o Stripe voltar a tentar
+      // (antes devolvia sempre 200 e o evento perdia-se).
+      await db.update(stripeEvents)
+        .set(outcome.error
+          ? { status: "failed", error: outcome.error.slice(0, 1000) }
+          : { status: "processed", processedAt: new Date() })
+        .where(eq(stripeEvents.id, event.id));
+      if (outcome.error) return res.status(500).json({ received: true, processed: false });
       res.json({ received: true, verified: true });
     } catch (error: any) {
-      console.error("Erro no webhook (assinatura inválida ou payload inválido):", error);
-      res.status(400).json({ error: error.message || "Invalid webhook signature" });
+      console.error("[webhook] unexpected error:", error);
+      res.status(500).json({ error: "Webhook processing error" });
     }
   });
 

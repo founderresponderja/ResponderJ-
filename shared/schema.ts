@@ -730,3 +730,14 @@ export const adminRoleTransfers = pgTable("admin_role_transfers", {
   completedAt: timestamp("completed_at"),
 });
 export type AdminRoleTransfer = typeof adminRoleTransfers.$inferSelect;
+
+// RJ-3.1: eventos do Stripe já recebidos (migrations/20261117_08_stripe_events.sql).
+export const stripeEvents = pgTable("stripe_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  status: text("status").notNull().default("processing"),
+  attempts: integer("attempts").notNull().default(1),
+  error: text("error"),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
+});
