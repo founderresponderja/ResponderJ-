@@ -184,7 +184,7 @@ const SENSITIVE_FIELDS = [
   // Identificação
   'nif', 'passportNumber', 'taxId',
   // API Keys
-  'openaiApiKey', 'sendgridApiKey', 'apiSecret'
+  'openaiApiKey', 'geminiApiKey', 'sendgridApiKey', 'apiSecret'
 ];
 
 /**

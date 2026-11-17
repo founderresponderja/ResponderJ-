@@ -83,7 +83,7 @@ export function setupSecurityRoutes(app: any): void {
         sessionSecret: !!process.env.SESSION_SECRET,
         database: !!process.env.DATABASE_URL,
         criticalServices: {
-          openai: !!process.env.OPENAI_API_KEY,
+          gemini: !!process.env.GEMINI_API_KEY,
           stripe: !!process.env.STRIPE_SECRET_KEY,
           sendgrid: !!process.env.SENDGRID_API_KEY,
         }

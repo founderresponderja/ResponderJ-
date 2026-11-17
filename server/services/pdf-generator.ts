@@ -231,7 +231,7 @@ export const apiKeyGuides: ApiKeyGuide[] = [
 
 export function generateApiKeyGuideHTML(): string {
   const currentDate = new Date().toLocaleDateString('pt-PT');
-  const configuredCount = 3; // OpenAI, Database, Session
+  const configuredCount = 3; // Gemini, Database, Session
   const totalCount = 24;
   const completionPercentage = Math.round((configuredCount / totalCount) * 100);
   

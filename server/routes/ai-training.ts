@@ -174,22 +174,22 @@ router.get("/quick-analysis", requireAuth, requireFeature("hasAgentTraining"), a
  */
 router.get("/status", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
-    // Verificar se OpenAI está configurada
-    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+    // RJ-0.4: o fornecedor de IA é o Gemini (antes verificava a chave do OpenAI, que não existe).
+    const hasAi = !!(process.env.GEMINI_API_KEY || process.env.API_KEY);
     
     res.json({
       success: true,
       data: {
-        aiConfigured: hasOpenAI,
+        aiConfigured: hasAi,
         features: {
-          patternAnalysis: hasOpenAI,
-          exampleGeneration: hasOpenAI,
-          historicalAnalysis: hasOpenAI
+          patternAnalysis: hasAi,
+          exampleGeneration: hasAi,
+          historicalAnalysis: hasAi
         },
-        status: hasOpenAI ? "operational" : "configuration_required",
-        message: hasOpenAI 
+        status: hasAi ? "operational" : "configuration_required",
+        message: hasAi 
           ? "Sistema de treino de IA operacional" 
-          : "OpenAI API Key não configurada"
+          : "GEMINI_API_KEY não configurada"
       }
     });
 
