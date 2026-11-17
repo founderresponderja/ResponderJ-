@@ -35,9 +35,7 @@ import { registerSecurityDashboardRoutes } from "./routes/security-dashboard.js"
 import { registerSystemRoutes } from "./routes/system.js";
 import { registerAdminLeadsRoutes } from "./routes/admin-leads.js";
 import { registerAdminSystemRoutes } from "./routes/admin-system.js";
-import { setupAdminManagementRoutes } from "./routes/admin-management.js";
 import { registerDownloadRoutes } from "./routes/downloads.js";
-import { setupTechnicalSpecsRoutes } from "./routes/admin/technical.js";
 import { setupEmailSequenceRoutes } from './routes/email-sequence.js';
 import { registerAnalyticsRoutes } from "./routes/analytics.js"; 
 import { registerApiKeysGuideRoutes } from "./routes/api-keys-guide.js"; 
@@ -1072,8 +1070,11 @@ export async function registerRoutes(app: any): Promise<void> {
   try {
     registerSecurityDashboardRoutes(app);
     registerSystemRoutes(app);
-    setupAdminManagementRoutes(app);
-    setupTechnicalSpecsRoutes(app);
+    // Backoffice novo (operadores). As rotas antigas admin-management (criar utilizadores com
+    // password, mudar papéis sem controlo) e admin/technical (descarregar o código-fonte)
+    // foram desligadas: contornavam a regra de um só super administrador.
+    const backofficeRoutes = (await import("./routes/backoffice.js")).default;
+    app.use("/api/backoffice", backofficeRoutes);
     const adminSocialMediaRoutes = (await import("./routes/admin-social-media.js")).default;
     app.use("/api/admin/social-media", requireAuth, requireAdmin, adminSocialMediaRoutes);
     const reportsRoutes = (await import("./routes/reports.js")).default;
