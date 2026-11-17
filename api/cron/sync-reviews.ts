@@ -50,18 +50,28 @@ export default async function handler(req: Request, res: Response) {
     console.error("[cron] automation failed:", automation.error);
   }
 
+  // RJ-3.3: emails de ciclo de vida (teste a acabar/acabado, poucos créditos).
+  let lifecycle: any = null;
+  try {
+    const { sendLifecycleEmails } = await import("../../server/services/lifecycle-emails.js");
+    lifecycle = await sendLifecycleEmails({ deadline: started + 55000 });
+  } catch (err: any) {
+    lifecycle = { error: err?.message || "lifecycle failed" };
+    console.error("[cron] lifecycle emails failed:", lifecycle.error);
+  }
+
   try {
     const { db } = await import("../../server/db.js");
     const { adminAuditLog } = await import("../../shared/schema.js");
     await db.insert(adminAuditLog).values({
       actorUserId: null,
       action: "cron_sync",
-      details: { ok: !error, imported: result?.total ?? 0, error, automation, durationMs: Date.now() - started },
+      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, durationMs: Date.now() - started },
     });
   } catch (logErr: any) {
     console.error("[cron] could not record run:", logErr?.message);
   }
 
   if (error) return res.status(500).json({ ok: false, error });
-  return res.json({ ok: true, imported: result!.total, automation });
+  return res.json({ ok: true, imported: result!.total, automation, lifecycle });
 }

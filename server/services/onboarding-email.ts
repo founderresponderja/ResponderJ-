@@ -9,9 +9,9 @@ export const onboardingEmailService = {
       subject: "Comece a usar o Responder Já",
       html: `
         <div style="font-family: sans-serif; color: #333;">
-          <h1>Olá ${user.firstName}!</h1>
+          <h1>Olá${user.firstName ? ` ${user.firstName}` : ''}!</h1>
           <p>A sua conta foi criada com sucesso.</p>
-          <p>Para começar a poupar tempo, conecte as suas plataformas no painel de controlo.</p>
+          <p>Para começar, ligue o seu Google Business Profile em "Plataformas" ou adicione uma review na Caixa de entrada.</p>
           <p><strong>Dica rápida:</strong> Configure o "Perfil de Negócio" para que a IA conheça o tom da sua marca.</p>
           <br>
           <a href="${dashboardUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Ir para Dashboard</a>

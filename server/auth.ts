@@ -124,6 +124,12 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
             currentPeriodEnd: trialEnd,
             creditsUsedThisPeriod: 0,
           } as any);
+          // RJ-3.3: email de boas-vindas na criação da conta (não bloqueia o login se falhar).
+          if (user) {
+            import("./services/onboarding-email.js")
+              .then(({ onboardingEmailService }) => onboardingEmailService.sendWelcome(user))
+              .catch((e: any) => console.warn("[auth] welcome email failed:", e?.message));
+          }
         }
       }
 

@@ -1,5 +1,8 @@
-import sgMail, { MailService } from '@sendgrid/mail';
+import { sendMail, isMailerConfigured } from './mailer.js';
 import { storage } from '../storage.js';
+
+const htmlToText = (html: string) =>
+  html.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|h\d|li)>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 import fs from 'fs';
 import path from 'path';
 
@@ -43,85 +46,19 @@ export interface ContactFormData {
 }
 
 export class EmailService {
-  private isConfigured: boolean = false;
-  private defaultConfig: EmailConfig;
-
-  constructor() {
-    this.defaultConfig = {
-      from: process.env.FROM_EMAIL || 'noreply@responderja.com',
-      replyTo: process.env.REPLY_TO_EMAIL || 'suporte@responderja.com',
-      trackingSettings: {
-        clickTracking: true,
-        openTracking: true,
-      }
-    };
-
-    this.initializeService();
-  }
-
-  private initializeService() {
-    if (process.env.SENDGRID_API_KEY) {
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      this.isConfigured = true;
-      console.log('✅ SendGrid configurado com sucesso');
-    } else {
-      console.warn('⚠️ SENDGRID_API_KEY não configurada. Emails serão logados apenas.');
-    }
-  }
-
-  // Teste de conexão SendGrid
+  // RJ-3.3: todos os emails passam pelo Resend (server/services/mailer.ts). Antes usava o SendGrid,
+  // que nunca foi configurado: os emails eram só "simulados" no registo e a função respondia
+  // "enviado" (true) sem enviar nada.
   async testConnection(): Promise<boolean> {
-    if (!this.isConfigured) {
-      console.log('⚠️ SendGrid não configurado - teste simulado');
-      return false;
-    }
-
-    try {
-      // Enviar email de teste
-      await this.sendEmail({
-        to: 'teste@responderja.com',
-        subject: 'Teste de Conexão SendGrid',
-        html: '<h1>Teste</h1><p>Conexão SendGrid funcionando!</p>',
-        text: 'Teste - Conexão SendGrid funcionando!'
-      });
-      return true;
-    } catch (error) {
-      console.error('❌ Erro no teste SendGrid:', error);
-      return false;
-    }
+    return isMailerConfigured();
   }
 
-  // Enviar email simples
-  async sendEmail(emailData: EmailData, config?: Partial<EmailConfig>): Promise<boolean> {
-    const finalConfig = { ...this.defaultConfig, ...config };
-
-    const msg: any = {
-      to: emailData.to,
-      from: finalConfig.from,
-      replyTo: finalConfig.replyTo,
-      subject: emailData.subject,
-      text: emailData.text,
-      html: emailData.html,
-      trackingSettings: finalConfig.trackingSettings,
-    };
-
-    // Early return para modo simulado
-    if (!this.isConfigured) {
-      console.log('📧 Email simulado (SendGrid não configurado):');
-      console.log(`Para: ${msg.to}`);
-      console.log(`Assunto: ${msg.subject}`);
-      // console.log(`Conteúdo: ${msg.html}`); // Reduce verbosity
-      return true;
-    }
-
-    try {
-      await sgMail.send(msg);
-      console.log(`✅ Email enviado para: ${emailData.to}`);
-      return true;
-    } catch (error) {
-      console.error('❌ Erro ao enviar email:', error);
-      return false;
-    }
+  /** Envia um email. Devolve false se não foi enviado (nunca finge sucesso). */
+  async sendEmail(emailData: EmailData, _config?: Partial<EmailConfig>): Promise<boolean> {
+    const text = emailData.text || htmlToText(emailData.html || "");
+    const result = await sendMail({ to: emailData.to, subject: emailData.subject, text, html: emailData.html || undefined });
+    if (!result.ok) console.warn(`[email] não enviado para ${emailData.to}: ${result.error}`);
+    return result.ok;
   }
 
   // Email de notificação de resposta gerada (Automation)
