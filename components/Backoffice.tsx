@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Activity, Bot, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, Bot, Crown, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, UserCog, Users, X } from 'lucide-react';
 import { startViewAs } from '../utils/viewAs';
 
 type Role = 'super_admin' | 'operator' | 'customer';
-type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit';
+type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit' | 'operators';
 
 interface Me { id: number; email: string; name: string; role: Role }
 interface Overview {
@@ -53,6 +53,13 @@ const ACTION_LABEL: Record<string, string> = {
   customer_reactivate: 'Reativou um cliente',
   view_as_start: 'Entrou em modo "ver como cliente"',
   sandbox_reset: 'Repôs os dados de uma sandbox',
+  operator_add: 'Adicionou um operador',
+  operator_remove: 'Removeu um operador',
+  transfer_start: 'Iniciou a transferência de super administrador',
+  transfer_confirm_from: 'Confirmou o código (super administrador)',
+  transfer_code_wrong: 'Código de transferência errado',
+  transfer_done: 'Aceitou a função de super administrador',
+  transfer_cancel: 'Cancelou a transferência',
 };
 
 const fmtDate = (v: string | null | undefined, withTime = false) =>
@@ -104,6 +111,7 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
     { id: 'ai', label: 'Uso da IA', icon: <Bot className="h-4 w-4" /> },
     { id: 'sync', label: 'Sincronizações', icon: <RefreshCw className="h-4 w-4" /> },
     { id: 'audit', label: 'Registo de ações', icon: <Activity className="h-4 w-4" /> },
+    ...(me?.role === 'super_admin' ? [{ id: 'operators' as Tab, label: 'Operadores', icon: <UserCog className="h-4 w-4" /> }] : []),
   ];
 
   return (
@@ -136,12 +144,14 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+        {me && me.role !== 'super_admin' && <IncomingTransfer api={api} />}
         {tab === 'overview' && <OverviewTab api={api} />}
         {tab === 'customers' && <CustomersTab api={api} />}
         {tab === 'sandbox' && <SandboxTab api={api} />}
         {tab === 'ai' && <AiTab api={api} />}
         {tab === 'sync' && <SyncTab api={api} />}
         {tab === 'audit' && <AuditTab api={api} />}
+        {tab === 'operators' && me?.role === 'super_admin' && <OperatorsTab api={api} meId={me.id} />}
       </main>
     </div>
   );
@@ -422,6 +432,159 @@ const SandboxTab: React.FC<{ api: Api }> = ({ api }) => {
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+interface OperatorRow {
+  id: number; email: string; name: string; role: Role; isActive: boolean; linked: boolean;
+  createdAt: string; lastLoginAt: string | null; lastActionAt: string | null;
+  stats30d: { sessions: number; customerViews: number; supportActions: number; viewAs: number; sandboxResets: number; total: number };
+}
+interface OperatorsData {
+  mailer: boolean;
+  transfer: { id: number; fromUserId: number; toUserId: number; status: string; expiresAt: string } | null;
+  operators: OperatorRow[];
+}
+
+const OperatorsTab: React.FC<{ api: Api; meId: number }> = ({ api, meId }) => {
+  const { data, error, reload } = useLoad(() => api<OperatorsData>('/operators'), []);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [toId, setToId] = useState<number | ''>('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [code, setCode] = useState('');
+
+  if (!data) return <Loading error={error} />;
+  const run = async (fn: () => Promise<unknown>, okText: string) => {
+    setBusy(true); setMsg(null);
+    try { await fn(); setMsg({ ok: true, text: okText }); reload(); }
+    catch (e: any) { setMsg({ ok: false, text: e.message }); reload(); }
+    finally { setBusy(false); }
+  };
+  const candidates = data.operators.filter((o) => o.role === 'operator' && o.isActive && o.linked);
+  const t = data.transfer;
+  const target = t ? data.operators.find((o) => o.id === t.toUserId) : null;
+
+  return (
+    <div className="space-y-6">
+      {!data.mailer && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">O envio de email não está configurado (RESEND_API_KEY / EMAIL_FROM). A transferência fica indisponível.</div>}
+      {msg && <div className={`text-sm ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</div>}
+
+      <div className={`${card} overflow-x-auto`}>
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-800">
+            <tr>
+              <th className="px-3 py-2">Operador</th><th className="px-3 py-2">Papel</th><th className="px-3 py-2">Último acesso</th>
+              <th className="px-3 py-2">Sessões 30d</th><th className="px-3 py-2">Fichas vistas</th><th className="px-3 py-2">Ações de suporte</th>
+              <th className="px-3 py-2">Ver como</th><th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.operators.map((o) => (
+              <tr key={o.id} className={`border-t border-slate-100 dark:border-slate-800 ${o.isActive ? '' : 'opacity-50'}`}>
+                <td className="px-3 py-2"><div className="font-medium">{o.email}</div>{!o.linked && <div className="text-xs text-amber-600">Ainda não entrou</div>}</td>
+                <td className="px-3 py-2">{o.role === 'super_admin' ? <span className="flex items-center gap-1 font-medium"><Crown className="h-4 w-4 text-amber-500" />Super administrador</span> : 'Operador'}</td>
+                <td className="px-3 py-2">{fmtDate(o.lastLoginAt, true)}</td>
+                <td className="px-3 py-2">{o.stats30d.sessions}</td>
+                <td className="px-3 py-2">{o.stats30d.customerViews}</td>
+                <td className="px-3 py-2">{o.stats30d.supportActions}</td>
+                <td className="px-3 py-2">{o.stats30d.viewAs}</td>
+                <td className="px-3 py-2 text-right">
+                  {o.role === 'operator' && o.isActive && o.id !== meId && (
+                    <button disabled={busy} onClick={() => window.confirm(`Remover ${o.email}? Perde o acesso ao backoffice.`) && run(() => api(`/operators/${o.id}/remove`, {}), 'Operador removido.')}
+                      className="text-xs text-red-600 hover:underline">Remover</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <form className={`${card} flex flex-wrap items-end gap-2 p-4`} onSubmit={(e) => { e.preventDefault(); run(() => api('/operators', { email }), 'Operador adicionado. Recebe um email com as instruções.').then(() => setEmail('')); }}>
+        <div className="flex-1 min-w-[240px]">
+          <label className="mb-1 block text-xs font-medium text-slate-500">Adicionar operador (email com que vai entrar)</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="nome@exemplo.com"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800" />
+        </div>
+        <button disabled={busy} className={`${btn} bg-brand-600 text-white hover:bg-brand-700`}>Adicionar</button>
+      </form>
+
+      <div className={`${card} space-y-3 p-4 text-sm`}>
+        <div className="flex items-center gap-2 font-medium"><Crown className="h-4 w-4 text-amber-500" />Transferir a função de super administrador</div>
+        {!t && (
+          <>
+            <p className="text-slate-500">Duas confirmações: recebes um código no teu email; depois o operador escolhido recebe outro código e tem 24 horas para aceitar. Passas a operador quando ele aceitar.</p>
+            <div className="flex flex-wrap gap-2">
+              <select value={toId} onChange={(e) => setToId(e.target.value ? Number(e.target.value) : '')} className="rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                <option value="">Escolher operador…</option>
+                {candidates.map((o) => <option key={o.id} value={o.id}>{o.email}</option>)}
+              </select>
+              <input value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} placeholder="Escreve o email dele para confirmar"
+                className="min-w-[240px] flex-1 rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800" />
+              <button disabled={busy || !toId || !data.mailer} onClick={() => run(() => api('/operators/transfer', { toUserId: toId, confirmEmail }), 'Enviámos um código para o teu email.')}
+                className={`${btn} bg-amber-500 text-white hover:bg-amber-600`}>Iniciar transferência</button>
+            </div>
+            {candidates.length === 0 && <p className="text-xs text-slate-500">Só aparecem operadores ativos que já entraram na aplicação pelo menos uma vez.</p>}
+          </>
+        )}
+        {t && t.status === 'awaiting_from' && (
+          <>
+            <p>Transferência para <strong>{target?.email}</strong>. Introduz o código que recebeste no teu email (válido 15 minutos).</p>
+            <div className="flex gap-2">
+              <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} placeholder="000000"
+                className="w-32 rounded-lg border border-slate-300 px-3 py-2 tracking-widest dark:border-slate-700 dark:bg-slate-800" />
+              <button disabled={busy || code.length !== 6} onClick={() => run(() => api(`/operators/transfer/${t.id}/confirm`, { code }), `Código confirmado. ${target?.email} recebeu o código dele.`).then(() => setCode(''))}
+                className={`${btn} bg-amber-500 text-white hover:bg-amber-600`}>Confirmar</button>
+              <button disabled={busy} onClick={() => run(() => api(`/operators/transfer/${t.id}/cancel`, {}), 'Transferência cancelada.')} className={`${btn} border border-slate-300 dark:border-slate-700`}>Cancelar</button>
+            </div>
+          </>
+        )}
+        {t && t.status === 'awaiting_to' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p>À espera que <strong>{target?.email}</strong> aceite (até {fmtDate(t.expiresAt, true)}).</p>
+            <button disabled={busy} onClick={() => run(() => api(`/operators/transfer/${t.id}/cancel`, {}), 'Transferência cancelada.')} className={`${btn} border border-slate-300 dark:border-slate-700`}>Cancelar</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const IncomingTransfer: React.FC<{ api: Api }> = ({ api }) => {
+  const { data, reload } = useLoad(() => api<{ transfer: { id: number; fromEmail: string | null; expiresAt: string } | null }>('/operators/transfer/incoming'), []);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const t = data?.transfer;
+  if (!t && !msg) return null;
+  const run = async (path: string, body: unknown, okText: string, reloadPage = false) => {
+    setBusy(true); setMsg(null);
+    try {
+      await api(path, body);
+      setMsg({ ok: true, text: okText });
+      if (reloadPage) setTimeout(() => window.location.reload(), 1500); else reload();
+    } catch (e: any) { setMsg({ ok: false, text: e.message }); reload(); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="mb-6 space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      {t && (
+        <>
+          <div className="flex items-center gap-2 font-semibold"><Crown className="h-4 w-4" />{t.fromEmail} quer transferir-te a função de super administrador</div>
+          <p>Introduz o código que recebeste no teu email (válido até {fmtDate(t.expiresAt, true)}). Ao aceitar, {t.fromEmail} passa a operador.</p>
+          <div className="flex gap-2">
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} placeholder="000000"
+              className="w-32 rounded-lg border border-amber-300 bg-white px-3 py-2 tracking-widest" />
+            <button disabled={busy || code.length !== 6} onClick={() => run(`/operators/transfer/${t.id}/accept`, { code }, 'És agora super administrador.', true)}
+              className={`${btn} bg-amber-600 text-white hover:bg-amber-700`}>Aceitar</button>
+            <button disabled={busy} onClick={() => run(`/operators/transfer/${t.id}/cancel`, {}, 'Transferência recusada.')} className={`${btn} border border-amber-400`}>Recusar</button>
+          </div>
+        </>
+      )}
+      {msg && <div className={msg.ok ? 'text-emerald-700' : 'text-red-600'}>{msg.text}</div>}
     </div>
   );
 };

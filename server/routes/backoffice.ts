@@ -12,6 +12,10 @@ import { isOperator, platformRole, recordAdminAction, recordBackofficeSession, r
 const router = Router();
 router.use(requireAuth, requireOperator);
 
+// Quadro de operadores e transferência de super administrador (ver backoffice-operators.ts).
+import operatorsRouter from "./backoffice-operators.js";
+router.use("/operators", operatorsRouter);
+
 // Quem sou eu no backoffice.
 router.get("/me", async (req: any, res) => {
   await recordBackofficeSession(req).catch(() => {});

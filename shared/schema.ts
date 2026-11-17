@@ -716,3 +716,17 @@ export const adminAuditLog = pgTable("admin_audit_log", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type AdminAuditLogEntry = typeof adminAuditLog.$inferSelect;
+
+// Transferência da função de super administrador (migrations/20261117_07_role_transfers.sql).
+export const adminRoleTransfers = pgTable("admin_role_transfers", {
+  id: serial("id").primaryKey(),
+  fromUserId: integer("from_user_id").notNull(),
+  toUserId: integer("to_user_id").notNull(),
+  status: text("status").notNull().default("awaiting_from"),
+  codeHash: text("code_hash"),
+  attempts: integer("attempts").notNull().default(0),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+export type AdminRoleTransfer = typeof adminRoleTransfers.$inferSelect;
