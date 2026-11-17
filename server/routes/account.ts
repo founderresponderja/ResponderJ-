@@ -15,6 +15,7 @@ import {
   users, establishments, reviews, responses, responseLearningPatterns, responseTemplates,
   automationRules, creditTransactions, subscriptions, socialPlatformConnections,
   agencies, agencyMembers, agencyInvitations, qualityFeedback, referrals, adminAuditLog,
+  incidents, incidentAttachments,
 } from "../../shared/schema.js";
 import { stripSecrets, deletionBlockedReason, confirmationMatches, isStripeMissing } from "../services/account-logic.js";
 
@@ -49,6 +50,12 @@ router.get("/export", requireAuth, async (req: any, res) => {
       db.select().from(qualityFeedback).where(eq(qualityFeedback.userId, userId)),
       db.select().from(referrals).where(eq(referrals.referrerId, userId)),
     ]);
+    // RJ-5.6: reportes de erro feitos pela pessoa (na app ou por email), com as imagens.
+    const myIncidents = await db.select().from(incidents)
+      .where(sql`${incidents.userId} = ${userId} or lower(${incidents.reporterEmail}) = ${String(user.email || "").toLowerCase()}`);
+    const myAttachments = myIncidents.length
+      ? await db.select().from(incidentAttachments).where(inArray(incidentAttachments.incidentId, myIncidents.map((i) => i.id)))
+      : [];
 
     const clean = (rows: any[]) => rows.map((r) => stripSecrets(r));
     const exportData = {
@@ -74,6 +81,10 @@ router.get("/export", requireAuth, async (req: any, res) => {
       agencyInvitationsReceived: clean(invitationsReceived),
       qualityFeedback: clean(feedback),
       referrals: clean(referralsMade),
+      errorReports: myIncidents.map((i) => ({
+        ...i,
+        attachments: myAttachments.filter((a) => a.incidentId === i.id),
+      })),
     };
 
     await db.insert(adminAuditLog).values({
@@ -136,6 +147,8 @@ router.post("/delete", requireAuth, async (req: any, res) => {
     await db.transaction(async (tx) => {
       if (email) {
         await tx.delete(agencyInvitations).where(sql`lower(${agencyInvitations.email}) = ${email}`);
+        // RJ-5.6: reportes por email sem conta associada (os da conta apagam-se em cascata).
+        await tx.delete(incidents).where(sql`lower(${incidents.reporterEmail}) = ${email}`);
         for (const t of ["leads", "referrals"]) {
           if (has(t, "email")) await tx.execute(sql`DELETE FROM ${sql.identifier(t)} WHERE lower(email) = ${email}`);
         }

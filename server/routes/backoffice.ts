@@ -16,6 +16,10 @@ router.use(requireAuth, requireOperator);
 import operatorsRouter from "./backoffice-operators.js";
 router.use("/operators", operatorsRouter);
 
+// Inbox de erros e indicadores (RJ-5.6, ver backoffice-incidents.ts).
+import incidentsRouter from "./backoffice-incidents.js";
+router.use("/incidents", incidentsRouter);
+
 // Quem sou eu no backoffice.
 router.get("/me", async (req: any, res) => {
   await recordBackofficeSession(req).catch(() => {});

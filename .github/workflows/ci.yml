@@ -53,4 +53,5 @@ jobs:
           grep "error TS" tsc.log | head -30 >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "Erros de tipos: $COUNT"
+          grep "error TS" tsc.log || true
           exit 0
