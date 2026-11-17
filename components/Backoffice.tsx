@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Activity, Bot, LogOut, RefreshCw, Search, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, Bot, Eye, LogOut, RefreshCw, RotateCcw, Search, ShieldCheck, Users, X } from 'lucide-react';
+import { startViewAs } from '../utils/viewAs';
 
 type Role = 'super_admin' | 'operator' | 'customer';
-type Tab = 'overview' | 'customers' | 'ai' | 'sync' | 'audit';
+type Tab = 'overview' | 'customers' | 'sandbox' | 'ai' | 'sync' | 'audit';
 
 interface Me { id: number; email: string; name: string; role: Role }
 interface Overview {
@@ -50,6 +51,8 @@ const ACTION_LABEL: Record<string, string> = {
   customer_plan: 'Mudou o plano',
   customer_suspend: 'Suspendeu um cliente',
   customer_reactivate: 'Reativou um cliente',
+  view_as_start: 'Entrou em modo "ver como cliente"',
+  sandbox_reset: 'Repôs os dados de uma sandbox',
 };
 
 const fmtDate = (v: string | null | undefined, withTime = false) =>
@@ -97,6 +100,7 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Visão geral', icon: <ShieldCheck className="h-4 w-4" /> },
     { id: 'customers', label: 'Clientes', icon: <Users className="h-4 w-4" /> },
+    { id: 'sandbox', label: 'Ver como cliente', icon: <Eye className="h-4 w-4" /> },
     { id: 'ai', label: 'Uso da IA', icon: <Bot className="h-4 w-4" /> },
     { id: 'sync', label: 'Sincronizações', icon: <RefreshCw className="h-4 w-4" /> },
     { id: 'audit', label: 'Registo de ações', icon: <Activity className="h-4 w-4" /> },
@@ -134,6 +138,7 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
         {tab === 'overview' && <OverviewTab api={api} />}
         {tab === 'customers' && <CustomersTab api={api} />}
+        {tab === 'sandbox' && <SandboxTab api={api} />}
         {tab === 'ai' && <AiTab api={api} />}
         {tab === 'sync' && <SyncTab api={api} />}
         {tab === 'audit' && <AuditTab api={api} />}
@@ -352,6 +357,70 @@ const CustomerDrawer: React.FC<{ api: Api; id: number; onClose: () => void; onCh
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+interface SandboxList {
+  sandboxes: { key: string; label: string; description: string; plan: string; userId: number | null; establishments: number; reviews: number }[];
+  aiToday: number;
+  aiLimit: number;
+}
+
+const SandboxTab: React.FC<{ api: Api }> = ({ api }) => {
+  const { data, error, reload } = useLoad(() => api<SandboxList>('/sandboxes'), []);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  if (!data) return <Loading error={error} />;
+
+  const enter = async (key: string) => {
+    setBusy(key); setMsg(null);
+    try {
+      const r = await api<{ userId: number; label: string }>(`/sandboxes/${key}/enter`, {});
+      startViewAs({ userId: r.userId, label: r.label, key });
+    } catch (e: any) {
+      setMsg({ ok: false, text: e.message });
+      setBusy(null);
+    }
+  };
+  const reset = async (key: string, label: string) => {
+    if (!window.confirm(`Repor os dados da sandbox "${label}"? Tudo o que fizeste nela é apagado.`)) return;
+    setBusy(key); setMsg(null);
+    try {
+      await api(`/sandboxes/${key}/reset`, {});
+      setMsg({ ok: true, text: `Sandbox "${label}" reposta.` });
+      reload();
+    } catch (e: any) {
+      setMsg({ ok: false, text: e.message });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-600 dark:text-slate-300">
+        Abre a aplicação de cliente com dados simulados, como cada tipo de cliente a vê. Pagamentos, publicações nas plataformas,
+        ligações reais e envio de convites ficam desligados. Gerações de IA hoje: <strong>{data.aiToday}</strong> de {data.aiLimit}.
+      </p>
+      {msg && <div className={`text-sm ${msg.ok ? 'text-emerald-700' : 'text-red-600'}`}>{msg.text}</div>}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {data.sandboxes.map((s) => (
+          <div key={s.key} className={`${card} flex flex-col p-4`}>
+            <div className="font-semibold">{s.label}</div>
+            <div className="mt-1 flex-1 text-sm text-slate-500">{s.description}</div>
+            <div className="mt-2 text-xs text-slate-500">
+              {s.userId === null ? 'Conta em falta' : s.establishments === 0 && s.key !== 'membro' ? 'Sem dados (criados ao entrar)' : `${s.establishments} estabelecimento(s) · ${s.reviews} reviews`}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button disabled={busy !== null || s.userId === null} onClick={() => enter(s.key)}
+                className={`${btn} flex items-center gap-1 bg-brand-600 text-white hover:bg-brand-700`}><Eye className="h-4 w-4" />Ver como</button>
+              <button disabled={busy !== null || s.userId === null} onClick={() => reset(s.key, s.label)}
+                className={`${btn} flex items-center gap-1 border border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800`}><RotateCcw className="h-4 w-4" />Repor dados</button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

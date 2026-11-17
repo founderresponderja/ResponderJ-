@@ -4,6 +4,10 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
 import { SubscriptionProvider } from './hooks/useSubscription';
 import './index.css';
+import { installViewAsFetch } from './utils/viewAs';
+
+// Modo "Ver como cliente": tem de estar ativo antes de qualquer pedido à API.
+installViewAsFetch();
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 

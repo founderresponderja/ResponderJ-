@@ -29,6 +29,8 @@ export const reviewSyncService = {
     };
 
     for (const row of rows) {
+      // Ligações das contas-sandbox são fictícias: nunca chamar APIs reais.
+      if ((row.meta as any)?.mode === "sandbox") continue;
       const platform = row.platform as PlatformName;
       if (grouped[platform]) grouped[platform].push(row);
     }
