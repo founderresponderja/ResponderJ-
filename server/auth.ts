@@ -95,6 +95,11 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
             console.warn(`[auth] Email ${email} is linked to another Clerk id; refusing ${clerkUserId}.`);
             return false;
           }
+          if ((existing as any).isSandbox) {
+            // Contas-sandbox nunca têm login próprio.
+            console.warn(`[auth] refusing to link Clerk ${clerkUserId} to sandbox account ${email}.`);
+            return false;
+          }
           user = existing.clerkUserId ? existing : await storage.setUserClerkId(existing.id, clerkUserId);
         } else {
           // Trial dura 7 dias a partir do primeiro login.
@@ -141,13 +146,60 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
   };
 
   ensureAuth()
-    .then((isAuthed) => {
+    .then(async (isAuthed) => {
       if (!isAuthed) {
         return res.status(401).json({ message: "Sessão expirada ou inválida." });
       }
+      const blocked = await applyViewAs(req);
+      if (blocked) return res.status(blocked.status).json({ message: blocked.message, code: blocked.code });
       next();
     })
     .catch(() => res.status(401).json({ message: "Sessão expirada ou inválida." }));
+}
+
+// ---------------------------------------------------------------------------
+// "Ver como cliente" (backoffice): um operador envia X-View-As: <id da sandbox>
+// e o pedido corre como essa conta-sandbox. Nunca funciona com clientes reais.
+// ---------------------------------------------------------------------------
+const SANDBOX_BLOCKED: { method?: string; pattern: RegExp; what: string }[] = [
+  { pattern: /^\/api\/billing\/(create-checkout-session|subscription|portal|cancel)/, what: "pagamentos" },
+  { method: "POST", pattern: /^\/api\/platforms\/(connect|disconnect|sync)/, what: "ligações a plataformas reais" },
+  { method: "GET", pattern: /^\/api\/platforms\/sync\//, what: "sincronização com plataformas reais" },
+  { method: "POST", pattern: /^\/api\/inbox\/(sync|\d+\/publish|\d+\/unpublish)/, what: "sincronizar ou publicar nas plataformas" },
+  { method: "POST", pattern: /^\/api\/agency\/(invite-member|delegate-admin)/, what: "envio de convites" },
+  { method: "POST", pattern: /^\/api\/invitations\//, what: "convites" },
+];
+const SANDBOX_AI_PATHS = [/^\/api\/generate-response/, /^\/api\/responses\/\d+\/regenerate/, /^\/api\/reviews-ai\/generate/];
+
+async function applyViewAs(req: any): Promise<{ status: number; message: string; code: string } | null> {
+  const raw = req.headers?.["x-view-as"];
+  if (!raw) return null;
+  const path = String(req.originalUrl || req.url || "").split("?")[0];
+  if (path.startsWith("/api/backoffice")) return null; // o backoffice corre sempre como o próprio operador
+  const operator = req.user;
+  if (!(operator?.isAdmin || operator?.isSuperAdmin)) {
+    return { status: 403, message: "Modo de teste reservado a operadores.", code: "VIEW_AS_FORBIDDEN" };
+  }
+  const target = await storage.getUser(Number(raw));
+  if (!target || !(target as any).isSandbox) {
+    return { status: 403, message: "Só é possível ver como contas-sandbox.", code: "VIEW_AS_NOT_SANDBOX" };
+  }
+  req.operator = operator;
+  req.viewAsSandbox = true;
+  req.user = target;
+
+  const method = String(req.method || "GET").toUpperCase();
+  const hit = SANDBOX_BLOCKED.find((rule) => (!rule.method || rule.method === method) && rule.pattern.test(path));
+  if (hit) {
+    return { status: 403, message: `Indisponível em modo de teste: ${hit.what}.`, code: "SANDBOX_BLOCKED" };
+  }
+  if (method === "POST" && SANDBOX_AI_PATHS.some((p) => p.test(path))) {
+    const { sandboxGenerationsToday, SANDBOX_DAILY_AI_LIMIT } = await import("./services/sandbox.js");
+    if ((await sandboxGenerationsToday()) >= SANDBOX_DAILY_AI_LIMIT) {
+      return { status: 429, message: `Limite diário de ${SANDBOX_DAILY_AI_LIMIT} gerações de IA nas sandboxes atingido.`, code: "SANDBOX_AI_LIMIT" };
+    }
+  }
+  return null;
 }
 
 export function requireFeature(feature: keyof (typeof PLAN_CAPABILITIES)["trial"]) {

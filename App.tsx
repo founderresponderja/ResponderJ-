@@ -9,6 +9,7 @@ import PricingPage from './components/PricingPage';
 import { createCheckoutSession, redirectToCheckout } from './services/subscriptionService';
 import { useSubscription } from './hooks/useSubscription';
 import { PlanId } from './types';
+import { getViewAs, stopViewAs } from './utils/viewAs';
 import BlogPage, { blogArticles } from './components/BlogPage';
 
 // Lazy loading components for performance
@@ -188,7 +189,7 @@ function App() {
   // (A aplicação de cliente fica para o modo "ver como cliente", com contas-sandbox.)
   useEffect(() => {
     if (!isSignedIn || subscription.isInitialLoading) return;
-    if (subscription.role !== 'customer' && currentView === 'app') {
+    if (subscription.role !== 'customer' && currentView === 'app' && !getViewAs()) {
       window.history.replaceState({}, '', '/admin');
       setCurrentView('admin');
     }
@@ -389,6 +390,12 @@ function App() {
       </Suspense>
 
       <SofiaChat lang={currentLang} />
+      {getViewAs() && (
+        <div className="fixed inset-x-0 top-0 z-[10001] flex items-center justify-center gap-3 bg-amber-400 px-4 py-2 text-sm font-medium text-amber-950 shadow">
+          <span>Modo de teste: a ver como <strong>{getViewAs()!.label}</strong>. Dados simulados; pagamentos, publicações e ligações reais estão desligados.</span>
+          <button onClick={stopViewAs} className="rounded-md bg-amber-950 px-3 py-1 text-xs font-semibold text-amber-50 hover:bg-amber-900">Voltar ao backoffice</button>
+        </div>
+      )}
       <Toaster position="top-right" richColors closeButton />
     </div>
   );

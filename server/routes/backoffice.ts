@@ -26,7 +26,7 @@ router.get("/me", async (req: any, res) => {
 
 // Visão geral: números reais de clientes (exclui operadores).
 router.get("/overview", async (_req, res) => {
-  const customer = sql`coalesce(${users.isAdmin}, false) = false and coalesce(${users.isSuperAdmin}, false) = false`;
+  const customer = sql`coalesce(${users.isAdmin}, false) = false and coalesce(${users.isSuperAdmin}, false) = false and ${users.isSandbox} = false`;
   const [totals] = await db
     .select({
       customers: sql<number>`count(*)::int`,
@@ -71,7 +71,7 @@ router.get("/audit", async (_req, res) => {
 // Clientes
 // ---------------------------------------------------------------------------
 const PLANS = ["trial", "starter", "pro", "agency"] as const;
-const isCustomerSql = sql`coalesce(${users.isAdmin}, false) = false and coalesce(${users.isSuperAdmin}, false) = false`;
+const isCustomerSql = sql`coalesce(${users.isAdmin}, false) = false and coalesce(${users.isSuperAdmin}, false) = false and ${users.isSandbox} = false`;
 
 router.get("/customers", async (req: any, res) => {
   const q = String(req.query.q || "").trim();
@@ -117,7 +117,7 @@ async function loadCustomer(req: any, res: any) {
     res.status(404).json({ message: "Cliente não encontrado." });
     return null;
   }
-  if (isOperator(user)) {
+  if (isOperator(user) || user.isSandbox) {
     // Operadores geridos só no quadro de operadores (super administrador).
     res.status(403).json({ message: "Esta conta é de um operador." });
     return null;
@@ -241,11 +241,12 @@ router.get("/ai-usage", async (_req, res) => {
     select to_char(d, 'YYYY-MM-DD') as day, coalesce(count(r.id), 0)::int as generations
     from generate_series(current_date - interval '29 days', current_date, interval '1 day') d
     left join ${responses} r on r.created_at >= d and r.created_at < d + interval '1 day'
+      and r.user_id not in (select id from ${users} where is_sandbox)
     group by d order by d`);
   const top = await db.execute(sql`
     select u.id, u.email, count(r.id)::int as generations, coalesce(sum(r.credits_used), 0)::int as credits
     from ${responses} r join ${users} u on u.id = r.user_id
-    where r.created_at > now() - interval '30 days'
+    where r.created_at > now() - interval '30 days' and not u.is_sandbox
     group by u.id, u.email order by generations desc limit 10`);
   const byModel = await db.execute(sql`
     select coalesce(ai_model, 'desconhecido') as model, count(*)::int as generations
@@ -277,7 +278,7 @@ router.get("/sync", async (_req, res) => {
     })
     .from(socialPlatformConnections)
     .leftJoin(users, eq(users.id, socialPlatformConnections.userId))
-    .where(sql`${socialPlatformConnections.status} <> 'disconnected'`)
+    .where(sql`${socialPlatformConnections.status} <> 'disconnected' and coalesce(${socialPlatformConnections.meta}->>'mode', '') <> 'sandbox'`)
     .orderBy(desc(socialPlatformConnections.lastSyncAt))
     .limit(300);
   res.json(rows.map((r) => {
@@ -285,6 +286,52 @@ router.get("/sync", async (_req, res) => {
     const last = m.lastSync ?? (typeof m.ok === "boolean" ? m : null);
     return { ...r, meta: undefined, lastOk: last ? !!last.ok : null, lastError: last?.error ?? null, lastImported: last?.imported ?? null };
   }));
+});
+
+// ---------------------------------------------------------------------------
+// Sandboxes ("Ver como cliente")
+// ---------------------------------------------------------------------------
+router.get("/sandboxes", async (_req, res) => {
+  const { SANDBOXES, getSandboxUser, sandboxGenerationsToday, SANDBOX_DAILY_AI_LIMIT } = await import("../services/sandbox.js");
+  const list = await Promise.all(SANDBOXES.map(async (s) => {
+    const u = await getSandboxUser(s.key);
+    let counts = { establishments: 0, reviews: 0 };
+    if (u) {
+      const [row] = await db.select({
+        establishments: sql<number>`count(distinct ${establishments.id})::int`,
+        reviews: sql<number>`(select count(*)::int from reviews r join establishments e2 on e2.id = r.establishment_id where e2.user_id = ${u.id})`,
+      }).from(establishments).where(eq(establishments.userId, u.id));
+      counts = row ?? counts;
+    }
+    return { key: s.key, label: s.label, description: s.description, plan: s.plan, userId: u?.id ?? null, ...counts };
+  }));
+  res.json({ sandboxes: list, aiToday: await sandboxGenerationsToday(), aiLimit: SANDBOX_DAILY_AI_LIMIT });
+});
+
+router.post("/sandboxes/:key/enter", async (req: any, res) => {
+  const { SANDBOXES, ensureSandboxSeeded } = await import("../services/sandbox.js");
+  const def = SANDBOXES.find((s) => s.key === req.params.key);
+  if (!def) return res.status(404).json({ message: "Sandbox desconhecida." });
+  const user = await ensureSandboxSeeded(def.key);
+  if (!user) return res.status(500).json({ message: "Conta-sandbox em falta." });
+  await recordAdminAction(req, "view_as_start", { targetUserId: user.id, details: { sandbox: def.key } });
+  res.json({ userId: user.id, label: def.label });
+});
+
+router.post("/sandboxes/:key/reset", async (req: any, res) => {
+  const { SANDBOXES, resetSandbox, getSandboxUser } = await import("../services/sandbox.js");
+  const def = SANDBOXES.find((s) => s.key === req.params.key);
+  if (!def) return res.status(404).json({ message: "Sandbox desconhecida." });
+  try {
+    // O membro depende da agência: repor um repõe os dois.
+    await resetSandbox(def.key === "membro" ? "agencia" : def.key);
+    const user = await getSandboxUser(def.key);
+    await recordAdminAction(req, "sandbox_reset", { targetUserId: user?.id ?? null, details: { sandbox: def.key } });
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error("[backoffice] sandbox reset failed:", def.key, error?.message);
+    res.status(500).json({ message: `Não foi possível repor a sandbox: ${error?.message}` });
+  }
 });
 
 export default router;

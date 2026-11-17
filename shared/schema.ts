@@ -27,6 +27,8 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").default(false),
   isSuperAdmin: boolean("is_super_admin").default(false),
   isAgencyOwner: boolean("is_agency_owner").default(false),
+  // Conta-sandbox do modo "Ver como cliente" (migrations/20261117_06_sandboxes.sql).
+  isSandbox: boolean("is_sandbox").default(false).notNull(),
   emailVerified: boolean("email_verified").default(false),
   
   // Relations
