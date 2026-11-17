@@ -4,7 +4,8 @@ import { createServer } from "http";
 import { registerRoutes, setupAuthRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
 
-import { securityHeaders, csrfProtection } from "./middleware/security.js";
+import { securityHeaders } from "./middleware/security.js";
+import { originCheck } from "./middleware/origin-check.js";
 import { legalComplianceHeaders, secureCookieMiddleware, gdprAuditLog } from "./middleware/gdpr-compliance.js";
 import { domainManager } from "./config/domains.js";
 import { wsNotificationService } from "./services/websocket-notification-service.js";
@@ -34,7 +35,7 @@ const app = express();
   
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
@@ -57,7 +58,7 @@ const app = express();
 // Fix: Added any cast to bypass type mismatch errors with middleware overloads
 (app as any).use(gdprAuditLog as RequestHandler);
 // Fix: Added any cast to bypass type mismatch errors with middleware overloads
-(app as any).use(csrfProtection as RequestHandler);
+(app as any).use(originCheck as RequestHandler);
 
 // 3. Logger optimized for production
 // Fix: Added any cast to bypass type mismatch errors with middleware overloads

@@ -1,8 +1,6 @@
 
 import { ReviewData } from "../types.js";
 import { useAuth } from "@clerk/clerk-react";
-import { getCsrfToken } from "../utils/api";
-export { getCsrfToken };
 
 export interface BusinessContext {
   businessName?: string;
@@ -36,14 +34,9 @@ export const generateResponse = async (
   clerkToken?: string | null,
   reviewId?: number,
 ): Promise<AIResponse> => {
-  const csrfToken = await getCsrfToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
-  
-  if (csrfToken) {
-    headers['x-csrf-token'] = csrfToken;
-  }
   if (clerkToken) {
     headers['Authorization'] = `Bearer ${clerkToken}`;
   }

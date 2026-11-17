@@ -19,16 +19,11 @@ export {
   apiRateLimit,
   adminRateLimit,
   generateRateLimit,
-  securityHeaders,
-  csrfProtection
+  securityHeaders
 } from './security.js';
 
-// CSRF Protection
-export {
-  protectCSRF,
-  getCSRFToken,
-  addCSRFToken
-} from './csrf.js';
+// CSRF Protection (RJ-1.6: verificação de origem)
+export { originCheck } from './origin-check.js';
 
 // Database Protection
 export { protectDatabaseQueries } from './sql-injection-protection.js';

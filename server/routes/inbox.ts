@@ -5,7 +5,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { establishments, responses, reviews, socialPlatformConnections } from "../../shared/schema.js";
 import { requireAuth } from "../auth.js";
-import { protectCSRF } from "../middleware/csrf.js";
 import { GoogleReviewsService } from "../services/google-reviews-service.js";
 import { reviewSyncService } from "../services/review-sync-service.js";
 
@@ -113,7 +112,7 @@ router.get("/", requireAuth, async (req: any, res) => {
 });
 
 // POST /api/inbox/sync
-router.post("/sync", requireAuth, protectCSRF, async (req: any, res) => {
+router.post("/sync", requireAuth, async (req: any, res) => {
   try {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -127,7 +126,7 @@ router.post("/sync", requireAuth, protectCSRF, async (req: any, res) => {
 });
 
 // POST /api/inbox/manual — registar review manualmente (sem sync)
-router.post("/manual", requireAuth, protectCSRF, async (req: any, res) => {
+router.post("/manual", requireAuth, async (req: any, res) => {
   try {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -225,7 +224,7 @@ router.post("/manual", requireAuth, protectCSRF, async (req: any, res) => {
 });
 
 // POST /api/inbox/:reviewId/publish
-router.post("/:reviewId/publish", requireAuth, protectCSRF, async (req: any, res) => {
+router.post("/:reviewId/publish", requireAuth, async (req: any, res) => {
   try {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -307,7 +306,7 @@ router.post("/:reviewId/publish", requireAuth, protectCSRF, async (req: any, res
 });
 
 // POST /api/inbox/:reviewId/unpublish
-router.post("/:reviewId/unpublish", requireAuth, protectCSRF, async (req: any, res) => {
+router.post("/:reviewId/unpublish", requireAuth, async (req: any, res) => {
   try {
     const userId = resolveUserId(req);
     if (!userId) return res.status(401).json({ message: "Unauthorized" });

@@ -9,7 +9,6 @@ import {
   adminRateLimit, 
   generateRateLimit 
 } from "./middleware/security.js";
-import { getCSRFToken, addCSRFToken } from "./middleware/csrf.js";
 import { protectDatabaseQueries } from "./middleware/sql-injection-protection.js";
 import { 
   legalComplianceHeaders,
@@ -117,7 +116,6 @@ export async function registerRoutes(app: any): Promise<void> {
     next();
   };
   
-  app.get('/api/csrf-token', addCSRFToken, getCSRFToken);
   app.post('/api/cookie-consent', updateCookieConsent);
   app.get('/api/cookie-configurations', getCookieConfigurations);
   

@@ -181,7 +181,6 @@ const apiPathWhitelistPrefixes = [
   '/api/leads',
   '/api/automation',
   '/api/ai-training',
-  '/api/csrf-token',
 ];
 void apiPathWhitelistPrefixes;
 

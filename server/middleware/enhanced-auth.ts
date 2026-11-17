@@ -128,19 +128,3 @@ export const requirePremium = (req: any, res: any, next: any) => {
   next();
 };
 
-/**
- * 🔄 Helper para validar token CSRF em requests específicas
- */
-export const validateCSRF = (req: any, res: any, next: any) => {
-  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
-    const token = req.headers['x-csrf-token'];
-    if (!token) {
-      return res.status(403).json({ 
-        message: "Token CSRF necessário",
-        code: "CSRF_TOKEN_REQUIRED"
-      });
-    }
-  }
-  
-  next();
-};
