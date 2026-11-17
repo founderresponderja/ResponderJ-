@@ -55,7 +55,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       badgePrefix: "Novo:",
       badgeText: "Algoritmo SEO Local 2026 Ativo",
       learnMore: "Saber Mais",
-      stats: ["Poupadas / semana", "Resposta Automática", "Plataformas Integradas", "Rating Médio Clientes"],
+      stats: ["Propostas de resposta por review", "Línguas", "Ligação direta", "Teste grátis, sem cartão"],
       howTitle: "Automação Inteligente",
       howDesc: "4 passos simples para automatizar a sua comunicação digital e dominar o SEO local.",
       featuresTitle: "Tudo o que precisa para crescer",
@@ -78,7 +78,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       badgePrefix: "New:",
       badgeText: "Local SEO Algorithm 2026 Active",
       learnMore: "Learn More",
-      stats: ["Saved / week", "Automated Response", "Integrated Platforms", "Average Client Rating"],
+      stats: ["Reply drafts per review", "Languages", "Direct connection", "Free trial, no card"],
       howTitle: "Smart Automation",
       howDesc: "4 simple steps to automate your digital communication and dominate local SEO.",
       featuresTitle: "Everything you need to grow",
@@ -101,7 +101,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       badgePrefix: "Nuevo:",
       badgeText: "Algoritmo SEO Local 2026 Activo",
       learnMore: "Saber Más",
-      stats: ["Ahorradas / semana", "Respuesta Automática", "Plataformas Integradas", "Rating Medio Clientes"],
+      stats: ["Propuestas de respuesta por reseña", "Idiomas", "Conexión directa", "Prueba gratis, sin tarjeta"],
       howTitle: "Automatización Inteligente",
       howDesc: "4 pasos simples para automatizar tu comunicación digital y dominar el SEO local.",
       featuresTitle: "Todo lo que necesitas para crecer",
@@ -141,10 +141,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
         badge: "IA Gemini 2.5",
       },
       {
-        title: "Integração Multi-Plataforma",
-        description: "Conecte-se automaticamente com todas as principais redes sociais e plataformas de avaliação num único dashboard.",
-        details: ["Google My Business e Maps", "Facebook e Instagram", "TripAdvisor e Booking.com", "TheFork e Zomato"],
-        badge: "15+ Plataformas",
+        title: "Google e as outras plataformas",
+        description: "Ligação direta ao Google Business Profile: as reviews entram sozinhas. Para Booking, TripAdvisor, Facebook e outras, cole a review e copie a resposta gerada.",
+        details: ["Google Business Profile: sincronização automática", "Booking, TripAdvisor e Facebook: colar e responder", "Todas as reviews num só lugar", "Ligação direta a mais plataformas: em breve"],
+        badge: "Google ligado",
       },
       {
         title: "Analytics e Relatórios SEO",
@@ -167,10 +167,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
         badge: "Gemini 2.5 AI",
       },
       {
-        title: "Multi-Platform Integration",
-        description: "Connect all major social networks and review platforms in a single dashboard.",
-        details: ["Google My Business & Maps", "Facebook & Instagram", "TripAdvisor & Booking.com", "TheFork & Zomato"],
-        badge: "15+ Platforms",
+        title: "Google and other platforms",
+        description: "Direct connection to Google Business Profile: reviews come in on their own. For Booking, TripAdvisor, Facebook and others, paste the review and copy the generated reply.",
+        details: ["Google Business Profile: automatic sync", "Booking, TripAdvisor and Facebook: paste and reply", "All reviews in one place", "Direct connection to more platforms: coming soon"],
+        badge: "Google connected",
       },
       {
         title: "SEO Analytics & Reports",
@@ -193,10 +193,10 @@ const LandingPage: React.FC<LandingPageProps> = ({
         badge: "IA Gemini 2.5",
       },
       {
-        title: "Integración Multi-Plataforma",
-        description: "Conecta las principales redes sociales y plataformas de reseñas en un solo panel.",
-        details: ["Google My Business y Maps", "Facebook e Instagram", "TripAdvisor y Booking.com", "TheFork y Zomato"],
-        badge: "15+ Plataformas",
+        title: "Google y otras plataformas",
+        description: "Conexión directa con Google Business Profile: las reseñas llegan solas. Para Booking, TripAdvisor, Facebook y otras, pega la reseña y copia la respuesta generada.",
+        details: ["Google Business Profile: sincronización automática", "Booking, TripAdvisor y Facebook: pegar y responder", "Todas las reseñas en un solo lugar", "Conexión directa con más plataformas: próximamente"],
+        badge: "Google conectado",
       },
       {
         title: "Analítica e Informes SEO",
@@ -215,19 +215,19 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
   const stepsByLang = {
     pt: [
-      { step: "1", title: "Conectar Plataformas", desc: "Sincronize Google, Facebook e TripAdvisor em segundos." },
+      { step: "1", title: "Ligar o Google", desc: "Ligue o Google Business Profile em segundos. Reviews de outras plataformas podem ser coladas." },
       { step: "2", title: "Configurar Tom da Marca", desc: "Defina a personalidade da sua IA para respostas autênticas." },
       { step: "3", title: "Ativar Automação", desc: "A IA deteta reviews e sugere as melhores respostas instantaneamente." },
       { step: "4", title: "Dominar o Ranking", desc: "Veja a sua reputação e SEO local subirem no dashboard." },
     ],
     en: [
-      { step: "1", title: "Connect Platforms", desc: "Sync Google, Facebook and TripAdvisor in seconds." },
+      { step: "1", title: "Connect Google", desc: "Connect Google Business Profile in seconds. Reviews from other platforms can be pasted in." },
       { step: "2", title: "Set Your Brand Tone", desc: "Define your AI personality for authentic replies." },
       { step: "3", title: "Enable Automation", desc: "AI detects reviews and suggests the best responses instantly." },
       { step: "4", title: "Dominate Rankings", desc: "Track your reputation and local SEO growth on the dashboard." },
     ],
     es: [
-      { step: "1", title: "Conectar Plataformas", desc: "Sincroniza Google, Facebook y TripAdvisor en segundos." },
+      { step: "1", title: "Conectar Google", desc: "Conecta Google Business Profile en segundos. Las reseñas de otras plataformas se pueden pegar." },
       { step: "2", title: "Configurar Tono de Marca", desc: "Define la personalidad de tu IA para respuestas auténticas." },
       { step: "3", title: "Activar Automatización", desc: "La IA detecta reseñas y sugiere mejores respuestas al instante." },
       { step: "4", title: "Dominar el Ranking", desc: "Sigue tu reputación y SEO local en el panel." },
@@ -336,10 +336,11 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-800 pt-12 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
             {[
-                { val: "15h+", label: copy.stats[0] },
-                { val: "24/7", label: copy.stats[1] },
-                { val: "15+", label: copy.stats[2] },
-                { val: "4.9/5", label: copy.stats[3] },
+                // RJ-4.5: antes "15h+ poupadas", "15+ plataformas" e "4.9/5 de rating" — números sem base.
+                { val: "3", label: copy.stats[0] },
+                { val: "PT · EN · ES", label: copy.stats[1] },
+                { val: "Google", label: copy.stats[2] },
+                { val: lang === "en" ? "7 days" : lang === "es" ? "7 días" : "7 dias", label: copy.stats[3] },
             ].map((stat, i) => (
                 <div key={i} className="text-center group cursor-default">
                     <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-brand-600 transition-colors">{stat.val}</p>

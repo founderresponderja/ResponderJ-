@@ -42,14 +42,14 @@ export const PLANS: Record<PlanKey, PlanDefinition> = {
     monthlyResponses: 50, maxPlatforms: 2, maxEstablishments: 1, users: 1,
     stripePriceEnv: ["STRIPE_PRICE_ID_STARTER", "STRIPE_STARTER_PRICE_ID"],
     features: { hasAnalytics: true, hasAdvancedAnalytics: false, hasAgentTraining: false, hasAutoResponse: false, hasClientManagement: false, hasWhiteLabel: false },
-    marketing: { subtitle: "50 respostas IA, 1 utilizador", bullets: ["50 respostas IA/mês", "1 estabelecimento, até 2 plataformas", "1 utilizador"], highlight: true },
+    marketing: { subtitle: "50 respostas IA, 1 utilizador", bullets: ["50 respostas IA/mês", "1 estabelecimento ligado ao Google", "1 utilizador"], highlight: true },
   },
   pro: {
     key: "pro", label: "Profissional", priceEur: 49.99,
     monthlyResponses: 150, maxPlatforms: 5, maxEstablishments: 1, users: 1,
     stripePriceEnv: ["STRIPE_PRICE_ID_PRO", "STRIPE_PRO_PRICE_ID"],
     features: { hasAnalytics: true, hasAdvancedAnalytics: true, hasAgentTraining: true, hasAutoResponse: true, hasClientManagement: false, hasWhiteLabel: false },
-    marketing: { subtitle: "150 respostas IA, suporte prioritário", bullets: ["150 respostas IA/mês", "1 estabelecimento, até 5 plataformas", "1 utilizador", "Suporte prioritário"] },
+    marketing: { subtitle: "150 respostas IA, suporte prioritário", bullets: ["150 respostas IA/mês", "1 estabelecimento ligado ao Google", "1 utilizador", "Suporte prioritário"] },
   },
   agency: {
     key: "agency", label: "Agência", priceEur: 149.99,

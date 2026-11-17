@@ -372,12 +372,12 @@ const AutomationRules: React.FC = () => {
                     onChange={(e) => setNewRule({...newRule, platform: e.target.value})}
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500 transition-colors"
                   >
+                    {/* RJ-4.5: só o Google sincroniza; nas outras a regra aplica-se às reviews adicionadas à mão. */}
                     <option value="google">Google</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="tripadvisor">TripAdvisor</option>
-                    <option value="booking">Booking.com</option>
-                    <option value="thefork">TheFork</option>
+                    <option value="facebook">Facebook (reviews adicionadas à mão)</option>
+                    <option value="instagram">Instagram (reviews adicionadas à mão)</option>
+                    <option value="tripadvisor">TripAdvisor (reviews adicionadas à mão)</option>
+                    <option value="booking">Booking.com (reviews adicionadas à mão)</option>
                   </select>
                 </div>
                 <div>
