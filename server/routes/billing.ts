@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { BillingService } from "../services/billing-service.js";
 import { requireAuth } from "../auth.js";
 import { storage } from "../storage.js";
+import { decideWebhookReplay } from "../services/billing-logic.js";
 import Stripe from "stripe";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
@@ -208,8 +209,7 @@ export function registerBillingRoutes(app: any) {
         .returning({ id: stripeEvents.id });
       if (!claimed) {
         const [prev] = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id));
-        const stuck = prev?.status === "processing" && Date.now() - new Date(prev.receivedAt).getTime() > 5 * 60000;
-        if (prev?.status === "processed" || (prev?.status === "processing" && !stuck)) {
+        if (decideWebhookReplay(prev) === "skip") {
           console.log(`[webhook] duplicate ${event.type} ${event.id} (${prev?.status}); skipped`);
           return res.json({ received: true, duplicate: true });
         }
@@ -230,6 +230,16 @@ export function registerBillingRoutes(app: any) {
         case 'checkout.session.completed': {
           const session = event.data.object as Stripe.Checkout.Session;
           try {
+            // RJ-6.3: liga o cliente Stripe ao utilizador que fez o checkout (client_reference_id).
+            // Sem isto o primeiro pagamento não encontrava o utilizador e o plano não era aplicado.
+            const refUserId = Number(session.client_reference_id);
+            const sessionCustomer = typeof session.customer === "string" ? session.customer : (session.customer as any)?.id;
+            if (sessionCustomer && Number.isInteger(refUserId) && refUserId > 0) {
+              const refUser = await storage.getUser(refUserId);
+              if (refUser && !refUser.stripeCustomerId) {
+                await storage.updateUserStripeCustomerId(refUserId, sessionCustomer);
+              }
+            }
             if (session.subscription) {
               const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
               await BillingService.syncSubscriptionToDatabase(subscription, { resetCreditsOnPlanChange: true });
@@ -352,12 +362,25 @@ export function registerBillingRoutes(app: any) {
         baseUrl,
       });
 
+      // RJ-6.3: quem já é cliente Stripe (ex.: voltou a subscrever) usa o mesmo cliente,
+      // para o pagamento chegar à conta certa e não se criarem clientes duplicados.
+      const existingCustomerId = (await storage.getUser(req.user?.id).catch(() => undefined))?.stripeCustomerId || null;
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
-        customer_email: email,
+        ...(existingCustomerId ? { customer: existingCustomerId } : { customer_email: email }),
+        // RJ-6.3: identificam o utilizador quando o Stripe avisa do pagamento (webhook).
+        client_reference_id: String(req.user?.id || ""),
         metadata: {
+          userId: String(req.user?.id || ""),
           clerkUserId: clerkUserId || "",
           planId: planId || "",
+        },
+        subscription_data: {
+          metadata: {
+            userId: String(req.user?.id || ""),
+            clerkUserId: clerkUserId || "",
+            planId: planId || "",
+          },
         },
         line_items: priceId
           ? [{ price: priceId, quantity: 1 }]

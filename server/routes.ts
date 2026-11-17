@@ -1,5 +1,6 @@
 
 import type { Express } from "express";
+import { acceptCost, buildAcceptUpdate } from "./services/billing-logic.js";
 import { storage } from "./storage.js";
 import { setupAuth, requireAuth, requireFeature } from "./auth.js";
 import { 
@@ -772,48 +773,32 @@ export async function registerRoutes(app: any): Promise<void> {
         return res.status(403).json({ message: "Não autorizado" });
       }
 
-      if (response.approvalStatus !== 'pending' && response.approvalStatus !== 'edited') {
+      if ((response.approvalStatus !== 'pending' && response.approvalStatus !== 'edited') || response.approvedAt) {
         return res.status(409).json({
           message: `Resposta já está em estado '${response.approvalStatus}'`
         });
       }
 
-      const creditCost = response.creditsUsed || 1;
+      const creditCost = acceptCost(response.creditsUsed);
+      const { update: updateFields } = buildAcceptUpdate(response as any, req.body?.responseText);
 
-      const deductResult = await storage.deductUserCreditsAtomic(userId, creditCost);
-      if (!deductResult.ok) {
-        return res.status(400).json({
-          message: "Créditos insuficientes",
-          creditsRemaining: deductResult.creditsRemaining,
-        });
-      }
-
-      const editedText = typeof req.body?.responseText === 'string'
-        ? req.body.responseText.trim()
-        : null;
-
-      const isEdited = !!(editedText && editedText !== response.responseText);
-
-      const updateFields: any = {
-        approvalStatus: isEdited ? 'edited' : 'approved',
-        approvedAt: new Date(),
-      };
-
-      if (isEdited) {
-        updateFields.responseText = editedText;
-        updateFields.originalResponseText = response.originalResponseText || response.responseText;
-        updateFields.editCount = (response.editCount || 0) + 1;
-      }
-
-      const updated = await storage.updateAiResponse(responseId, updateFields);
-
-      await storage.createCreditTransaction({
-        userId,
-        amount: -creditCost,
-        type: 'usage',
+      // RJ-6.3: estado, débito e movimento numa só transação (antes eram 3 passos soltos e
+      // dois pedidos em paralelo cobravam duas vezes a mesma resposta).
+      const result = await storage.acceptResponseAndCharge({
+        responseId,
+        userId: Number(userId),
+        cost: creditCost,
+        update: updateFields,
         description: `Resposta aceite (${response.responseType || 'unknown'})`,
-        relatedResponseId: responseId,
       });
+      if (!result.ok) {
+        if (result.reason === "insufficient_credits") {
+          return res.status(400).json({ message: "Créditos insuficientes", creditsRemaining: result.creditsRemaining });
+        }
+        return res.status(409).json({ message: "Esta resposta já foi aceite ou descartada." });
+      }
+      const updated = result.response;
+      const deductResult = { creditsRemaining: result.creditsRemaining };
 
       return res.json({
         id: updated.id,

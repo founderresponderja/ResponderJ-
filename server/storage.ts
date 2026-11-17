@@ -13,7 +13,7 @@ import {
   oauthStates, OAuthState, InsertOAuthState
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, ilike, or, and, desc, sql, gte, lt } from "drizzle-orm";
+import { eq, ilike, or, and, desc, sql, gte, lt, isNull } from "drizzle-orm";
 
 export interface IStorage {
   
@@ -70,6 +70,12 @@ export interface IStorage {
   addCreditsToUser(userId: number | string, amount: number, description: string): Promise<void>;
   updateUserCredits(userId: number | string, credits: number): Promise<void>;
   deductUserCreditsAtomic(userId: number | string, amount: number): Promise<{ ok: boolean; creditsRemaining: number }>;
+  acceptResponseAndCharge(input: {
+    responseId: number; userId: number; cost: number; update: Record<string, any>; description: string;
+  }): Promise<
+    | { ok: true; response: Response; creditsRemaining: number }
+    | { ok: false; reason: "not_acceptable" | "insufficient_credits"; creditsRemaining?: number }
+  >;
   getUserCreditBalance(userId: number | string): Promise<number>;
   getUserSubscription(userId: number | string): Promise<Subscription | undefined>;
   updateUserStripeInfo(userId: number | string, info: { customerId?: string, subscriptionId?: string }): Promise<void>;
@@ -441,6 +447,67 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserCredits(userId: number | string, credits: number): Promise<void> {
     await db.update(users).set({ credits }).where(eq(users.id, Number(userId)));
+  }
+
+  /**
+   * RJ-6.3: aceitar uma resposta e cobrar o crédito numa só transação.
+   * 1) muda o estado só se a resposta ainda estiver pendente/editada (trava duplo clique e
+   *    pedidos em paralelo: antes os dois passavam a verificação e cobravam 2 créditos);
+   * 2) desconta o crédito só se houver saldo;
+   * 3) regista o movimento.
+   * Se algum passo falhar, nada fica gravado.
+   */
+  async acceptResponseAndCharge(input: {
+    responseId: number; userId: number; cost: number; update: Record<string, any>; description: string;
+  }): Promise<
+    | { ok: true; response: Response; creditsRemaining: number }
+    | { ok: false; reason: "not_acceptable" | "insufficient_credits"; creditsRemaining?: number }
+  > {
+    class Abort extends Error { constructor(public reason: "not_acceptable" | "insufficient_credits") { super(reason); } }
+    try {
+      return await db.transaction(async (tx) => {
+        const [claimed] = await tx.update(responses)
+          .set(input.update)
+          .where(and(
+            eq(responses.id, input.responseId),
+            eq(responses.userId, input.userId),
+            or(eq(responses.approvalStatus, "pending"), eq(responses.approvalStatus, "edited")),
+            // approvedAt só é preenchido aqui: marca que a resposta já foi cobrada. "edited" também
+            // quer dizer "texto editado antes de aceitar", por isso o estado sozinho não chega.
+            isNull(responses.approvedAt),
+          ))
+          .returning();
+        if (!claimed) throw new Abort("not_acceptable");
+
+        const [charged] = await tx.update(users)
+          .set({
+            credits: sql`${users.credits} - ${input.cost}`,
+            creditsUsedThisPeriod: sql`COALESCE(${users.creditsUsedThisPeriod}, 0) + ${input.cost}`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(users.id, input.userId), gte(users.credits, input.cost)))
+          .returning({ creditsRemaining: users.credits });
+        if (!charged) throw new Abort("insufficient_credits");
+
+        await tx.insert(creditTransactions).values({
+          userId: input.userId,
+          amount: -input.cost,
+          type: "usage",
+          description: input.description,
+          relatedResponseId: input.responseId,
+        } as any);
+
+        return { ok: true as const, response: claimed, creditsRemaining: Number(charged.creditsRemaining) };
+      });
+    } catch (error) {
+      if (error instanceof Abort) {
+        const creditsRemaining = error.reason === "insufficient_credits"
+          ? await this.getUserCreditBalance(input.userId).catch(() => undefined)
+          : undefined;
+        return { ok: false, reason: error.reason, creditsRemaining };
+      }
+      throw error;
+    }
   }
 
   async deductUserCreditsAtomic(

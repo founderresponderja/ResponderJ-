@@ -1,5 +1,6 @@
 
 import { Router } from "express";
+import { acceptCost } from "../services/billing-logic.js";
 import { eq, and, desc, isNotNull, ne } from "drizzle-orm";
 import { db } from "../db.js";
 import { reviews, responses, establishments, users, socialPlatformConnections } from "../../shared/schema.js";
@@ -271,12 +272,30 @@ router.post("/responses/:id/approve", requireAuth, async (req: any, res) => {
       .limit(1);
     if (!existing) return res.status(404).json({ message: "Resposta não encontrada" });
 
-    const updated = await storage.updateAiResponse(responseId, {
-      isSelected: true,
-      approvalStatus: existing.editCount && existing.editCount > 0 ? "edited" : "approved",
+    // RJ-6.3: aprovar é aceitar, e aceitar custa um crédito (antes aprovava e deixava publicar
+    // sem cobrar). Se já foi cobrada, só marca como escolhida.
+    if (existing.approvedAt) {
+      const updated = await storage.updateAiResponse(responseId, { isSelected: true });
+      return res.json({ success: true, response: updated });
+    }
+    const result = await storage.acceptResponseAndCharge({
+      responseId,
+      userId,
+      cost: acceptCost(existing.creditsUsed),
+      update: {
+        isSelected: true,
+        approvalStatus: existing.editCount && existing.editCount > 0 ? "edited" : "approved",
+        approvedAt: new Date(),
+      },
+      description: `Resposta aceite (${existing.responseType || "unknown"})`,
     });
-
-    res.json({ success: true, response: updated });
+    if (!result.ok) {
+      if (result.reason === "insufficient_credits") {
+        return res.status(400).json({ message: "Créditos insuficientes", creditsRemaining: result.creditsRemaining });
+      }
+      return res.status(409).json({ message: "Esta resposta já não pode ser aprovada." });
+    }
+    res.json({ success: true, response: result.response, creditsRemaining: result.creditsRemaining });
   } catch (error) {
     console.error("Approve response error:", error);
     res.status(500).json({ message: "Erro ao aprovar resposta" });

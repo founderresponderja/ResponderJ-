@@ -272,7 +272,9 @@ router.post("/:reviewId/publish", requireAuth, async (req: any, res) => {
       ))
       .limit(1);
     if (!response) return res.status(404).json({ message: "Resposta não encontrada" });
-    if (response.approvalStatus !== "approved" && response.approvalStatus !== "edited") {
+    // RJ-6.3: só se publica uma resposta aceite (e cobrada). "edited" sozinho também quer dizer
+    // "editada mas ainda não aceite", e assim publicava-se sem gastar crédito.
+    if ((response.approvalStatus !== "approved" && response.approvalStatus !== "edited") || !response.approvedAt) {
       return res.status(400).json({ message: "Resposta ainda não aprovada" });
     }
     if (response.isPublished) {
