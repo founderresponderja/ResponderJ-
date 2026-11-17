@@ -53,6 +53,7 @@ import errorRoutes from "./routes/errors.js";
 import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
 import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 import accountRoutes from "./routes/account.js";
+import consentRoutes from "./routes/consents.js";
 import incidentRoutes from "./routes/incidents.js";
 
 import { db } from "./db.js";
@@ -97,6 +98,8 @@ export async function registerRoutes(app: any): Promise<void> {
   app.use("/api/platforms", platformIntegrationsRoutes);
   // RJ-7.1: exportação e apagamento dos dados pessoais (RGPD).
   app.use("/api/account", accountRoutes);
+  // RJ-7.2: registo de consentimentos (termos, privacidade, cookies) com a versão aceite.
+  app.use("/api/consents", consentRoutes);
   // RJ-5.6: reporte de erros.
   app.use("/api/incidents", incidentRoutes);
   

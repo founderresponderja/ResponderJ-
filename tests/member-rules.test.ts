@@ -19,6 +19,7 @@ test("membros trabalham nas reviews, respostas e clientes", () => {
 test("backoffice e convites correm sempre como o próprio membro", () => {
   assert.ok(memberKeepsOwnIdentity("/api/backoffice/me"));
   assert.ok(memberKeepsOwnIdentity("/api/invitations/abc/accept"));
+  assert.ok(memberKeepsOwnIdentity("/api/consents/accept"));
   assert.ok(!memberKeepsOwnIdentity("/api/inbox"));
 });
 

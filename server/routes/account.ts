@@ -57,6 +57,11 @@ router.get("/export", requireAuth, async (req: any, res) => {
       ? await db.select().from(incidentAttachments).where(inArray(incidentAttachments.incidentId, myIncidents.map((i) => i.id)))
       : [];
 
+    // RJ-7.2: registo de consentimentos (o IP só existe como impressão).
+    const { rows: consentRows } = await db.execute(sql`
+      SELECT kind, version, granted, choices, source, created_at FROM consent_records
+      WHERE user_id = ${userId} ORDER BY created_at`).catch(() => ({ rows: [] as any[] })) as { rows: any[] };
+
     const clean = (rows: any[]) => rows.map((r) => stripSecrets(r));
     const exportData = {
       about: {
@@ -81,6 +86,7 @@ router.get("/export", requireAuth, async (req: any, res) => {
       agencyInvitationsReceived: clean(invitationsReceived),
       qualityFeedback: clean(feedback),
       referrals: clean(referralsMade),
+      consents: consentRows,
       errorReports: myIncidents.map((i) => ({
         ...i,
         attachments: myAttachments.filter((a) => a.incidentId === i.id),

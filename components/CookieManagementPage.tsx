@@ -14,6 +14,23 @@ import {
 import { Switch } from './ui/Switch';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 
+// RJ-7.2: regista as escolhas no servidor. Com sessão ligada à conta; sem sessão, a um id anónimo do navegador.
+async function recordCookieConsent(choices: Record<string, boolean>) {
+  try {
+    let anonId = localStorage.getItem('rj-anon-id');
+    if (!anonId) {
+      anonId = (crypto as any).randomUUID ? (crypto as any).randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2);
+      localStorage.setItem('rj-anon-id', anonId as string);
+    }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const token = await (window as any).Clerk?.session?.getToken?.();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    await fetch('/api/consents/cookies', { method: 'POST', headers, body: JSON.stringify({ ...choices, anonId }) });
+  } catch {
+    // o registo local continua a valer; não bloquear a página
+  }
+}
+
 interface CookieManagementPageProps {
   onBack: () => void;
 }
@@ -74,6 +91,8 @@ const CookieManagementPage: React.FC<CookieManagementPageProps> = ({ onBack }) =
     const date = new Date().toISOString();
     localStorage.setItem("cookie-consent", JSON.stringify(consent));
     localStorage.setItem("cookie-consent-date", date);
+    // RJ-7.2: fica também no registo de consentimentos do servidor (prova, com a versão da política).
+    void recordCookieConsent(consent);
     
     setLastUpdated(date);
     showNotification('success', 'As suas preferências de cookies foram atualizadas com sucesso.');
