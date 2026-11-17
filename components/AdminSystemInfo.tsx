@@ -73,7 +73,7 @@ const SYSTEM_SPECS: SystemSpec[] = [
     technologies: ["React 18", "TypeScript", "Vite", "Tailwind CSS", "Shadcn/ui", "Framer Motion"],
     architecture: "SPA (Single Page Application) com SSR parcial",
     hosting: "Replit Cloud Platform",
-    security: ["HTTPS/TLS 1.3", "CSP Headers", "XSS Protection", "CSRF Tokens", "Rate Limiting"],
+    security: ["HTTPS/TLS 1.3", "CSP Headers", "XSS Protection", "CSRF (verificação de origem)", "Rate Limiting"],
     performance: {
       loadTime: "< 1.2s",
       throughput: "10.000 req/min",

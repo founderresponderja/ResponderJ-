@@ -35,14 +35,6 @@ export const cookieConfigurations: CookieConfig[] = [
     description: 'Estritamente necessário para autenticação'
   },
   {
-    name: 'csrf-token',
-    category: 'essential',
-    purpose: 'Proteção contra ataques CSRF',
-    duration: '1 hora',
-    provider: 'Responder Já',
-    description: 'Necessário para segurança da aplicação'
-  },
-  {
     name: 'cookie-consent',
     category: 'essential',
     purpose: 'Armazena as preferências de consentimento',

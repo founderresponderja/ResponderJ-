@@ -1,7 +1,7 @@
 
 /**
  * MIDDLEWARE DE SEGURANÇA AVANÇADA - RESPONDER JÁ
- * Implementa headers de segurança, proteção CSRF, e validação de entrada
+ * Implementa headers de segurança e validação de entrada (CSRF: ver origin-check.ts)
  */
 
 import { Request, Response, NextFunction } from 'express';
@@ -9,7 +9,6 @@ import crypto from 'crypto';
 import process from 'process';
 import { Buffer } from 'buffer';
 import { domainManager } from '../config/domains.js';
-import { protectCSRF } from './csrf.js';
 
 // Rate limiting store
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -22,8 +21,6 @@ export const clearRateLimit = () => {
   }
 };
 
-// CSRF token store (em produção, usar Redis)
-const csrfTokenStore = new Map<string, string>();
 
 // 🔒 CABEÇALHOS DE SEGURANÇA MULTI-DOMÍNIO COM DOMAIN MANAGER
 const getAllowedDomains = () => {
@@ -95,91 +92,6 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   (res as any).removeHeader('Server');
 
   next();
-};
-
-// CSRF Protection middleware - HARDENED VERSION
-export const csrfProtection = (req: any, res: any, next: any) => {
-  // Skip para métodos GET, HEAD, OPTIONS
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    return next();
-  }
-
-  // Skip apenas endpoints específicos seguros.
-  //
-  // /api/billing/ (prefixo inteiro): Todos os endpoints de billing já
-  // exigem autenticação via Clerk JWT (requireAuth) ou validação de
-  // assinatura do Stripe (webhook). O CSRF seria redundante e já bloqueou
-  // checkouts em produção quando o token stateless do fast-path não casou
-  // com a sessão Express.
-  const exemptPaths = [
-    '/api/suggestions', // Formulário público
-    '/api/auth/user',   // Auth check
-    '/api/login',       // OpenID flow
-    '/api/callback',    // OpenID callback
-    '/api/auth/register', // Registo
-    '/api/auth/login',   // Login directo
-    '/api/admin/downloads', // Downloads administrativos
-    '/api/billing/',        // Todos os endpoints de billing (Clerk JWT / Stripe signature)
-    '/api/generate-response',
-    '/api/reviews-ai/'
-  ];
-  
-  // Debug para downloads
-  if (req.path.startsWith('/api/admin/downloads')) {
-    console.log(`🔓 CSRF BYPASS para downloads: ${req.method} ${req.path}`);
-    return next();
-  }
-  
-  if (exemptPaths.includes(req.path) || exemptPaths.some(path => req.path.startsWith(path))) {
-    return next();
-  }
-
-  // ✅ EXCEPÇÃO PARA EMAILS DE TESTE (evitar gastar budget)
-  const testEmails = [
-    'test@example.com',
-    'user@test.com', 
-    'admin@test.com',
-    'demo@responderja.com'
-  ];
-  
-  const requestEmail = req.body?.email || req.query?.email;
-  if (requestEmail && typeof requestEmail === 'string' && testEmails.includes(requestEmail.toLowerCase())) {
-    console.log(`🔧 CSRF excepção aplicada para email de teste: ${requestEmail}`);
-    return next();
-  }
-
-  const token = req.headers['x-csrf-token'] as string;
-  const sessionId = req.sessionID || (req as any).session?.id;
-
-  if (!token || !sessionId) {
-    return res.status(403).json({ 
-      message: 'CSRF token necessário',
-      code: 'CSRF_TOKEN_REQUIRED'
-    });
-  }
-
-  const storedToken = csrfTokenStore.get(sessionId);
-  if (!storedToken || !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(storedToken))) {
-    return res.status(403).json({ 
-      message: 'CSRF token inválido',
-      code: 'CSRF_TOKEN_INVALID'
-    });
-  }
-
-  next();
-};
-
-// Generate CSRF token
-export const generateCSRFToken = (sessionId: string): string => {
-  const token = crypto.randomBytes(32).toString('hex');
-  csrfTokenStore.set(sessionId, token);
-  
-  // Cleanup expired tokens (após 1 hora)
-  setTimeout(() => {
-    csrfTokenStore.delete(sessionId);
-  }, 60 * 60 * 1000);
-  
-  return token;
 };
 
 // Rate limiting middleware - HARDENED VERSION  
@@ -443,10 +355,8 @@ export const applySecurity = (req: any, res: any, next: any) => {
   securityLogger(req, res, () => {
     securityHeaders(req, res, () => {
       sanitizeInput(req, res, () => {
-        sqlInjectionProtection(req, res, () => {
-          // Aplicar CSRF com exceções mínimas
-          protectCSRF(req, res, next);
-        });
+        // RJ-1.6: a proteção CSRF passou para originCheck (middleware/origin-check.ts).
+        sqlInjectionProtection(req, res, next);
       });
     });
   });
