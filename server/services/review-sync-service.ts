@@ -69,7 +69,8 @@ export const reviewSyncService = {
             FOUR: 4,
             FIVE: 5,
           };
-          await db.insert(reviews).values({
+          // A regra única (RJ-1.4) trava repetidas se duas sincronizações correrem ao mesmo tempo.
+          const insertedRows = await db.insert(reviews).values({
             establishmentId: connection.establishmentId,
             platform: "google",
             externalId: reviewExternalId,
@@ -79,8 +80,8 @@ export const reviewSyncService = {
             language: "pt",
             sentiment: null,
             reviewDate: review.createTime ? new Date(review.createTime) : new Date(),
-          });
-          inserted++;
+          }).onConflictDoNothing().returning({ id: reviews.id });
+          if (insertedRows.length > 0) inserted++;
         }
 
         await this.markSynced(connection.id, {

@@ -157,6 +157,7 @@ export const reviews = pgTable("reviews", {
 }, (table) => {
   return {
     estIdIdx: index("review_establishment_id_idx").on(table.establishmentId),
+    externalUnique: uniqueIndex("reviews_establishment_platform_external_unique").on(table.establishmentId, table.platform, table.externalId),
   };
 });
 
