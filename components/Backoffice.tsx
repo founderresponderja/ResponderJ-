@@ -455,12 +455,20 @@ const OperatorsTab: React.FC<{ api: Api; meId: number }> = ({ api, meId }) => {
   const [toId, setToId] = useState<number | ''>('');
   const [confirmEmail, setConfirmEmail] = useState('');
   const [code, setCode] = useState('');
+  const [tmsg, setTmsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   if (!data) return <Loading error={error} />;
   const run = async (fn: () => Promise<unknown>, okText: string) => {
     setBusy(true); setMsg(null);
     try { await fn(); setMsg({ ok: true, text: okText }); reload(); }
     catch (e: any) { setMsg({ ok: false, text: e.message }); reload(); }
+    finally { setBusy(false); }
+  };
+  // Mensagens da transferência aparecem junto ao formulário da transferência.
+  const runT = async (fn: () => Promise<unknown>, okText: string) => {
+    setBusy(true); setTmsg(null);
+    try { await fn(); setTmsg({ ok: true, text: okText }); reload(); }
+    catch (e: any) { setTmsg({ ok: false, text: e.message }); reload(); }
     finally { setBusy(false); }
   };
   const candidates = data.operators.filter((o) => o.role === 'operator' && o.isActive && o.linked);
@@ -516,7 +524,7 @@ const OperatorsTab: React.FC<{ api: Api; meId: number }> = ({ api, meId }) => {
         <div className="flex items-center gap-2 font-medium"><Crown className="h-4 w-4 text-amber-500" />Transferir a função de super administrador</div>
         {!t && (
           <>
-            <p className="text-slate-500">Duas confirmações: recebes um código no teu email; depois o operador escolhido recebe outro código e tem 24 horas para aceitar. Passas a operador quando ele aceitar.</p>
+            <p className="text-slate-500">Duas confirmações: primeiro recebes um código no teu email (não no do operador); depois o operador escolhido recebe outro código e tem 24 horas para aceitar. Passas a operador quando ele aceitar.</p>
             <div className="flex flex-wrap gap-2">
               <select value={toId} onChange={(e) => setToId(e.target.value ? Number(e.target.value) : '')} className="rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
                 <option value="">Escolher operador…</option>
@@ -524,28 +532,29 @@ const OperatorsTab: React.FC<{ api: Api; meId: number }> = ({ api, meId }) => {
               </select>
               <input value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} placeholder="Escreve o email dele para confirmar"
                 className="min-w-[240px] flex-1 rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800" />
-              <button disabled={busy || !toId || !data.mailer} onClick={() => run(() => api('/operators/transfer', { toUserId: toId, confirmEmail }), 'Enviámos um código para o teu email.')}
+              <button disabled={busy || !toId || !data.mailer} onClick={() => runT(() => api('/operators/transfer', { toUserId: toId, confirmEmail }), 'Enviámos um código para o TEU email (o do super administrador). Introdu-lo aqui.')}
                 className={`${btn} bg-amber-500 text-white hover:bg-amber-600`}>Iniciar transferência</button>
             </div>
             {candidates.length === 0 && <p className="text-xs text-slate-500">Só aparecem operadores ativos que já entraram na aplicação pelo menos uma vez.</p>}
           </>
         )}
+        {tmsg && <div className={`rounded-lg p-3 ${tmsg.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{tmsg.text}</div>}
         {t && t.status === 'awaiting_from' && (
           <>
             <p>Transferência para <strong>{target?.email}</strong>. Introduz o código que recebeste no teu email (válido 15 minutos).</p>
             <div className="flex gap-2">
               <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} placeholder="000000"
                 className="w-32 rounded-lg border border-slate-300 px-3 py-2 tracking-widest dark:border-slate-700 dark:bg-slate-800" />
-              <button disabled={busy || code.length !== 6} onClick={() => run(() => api(`/operators/transfer/${t.id}/confirm`, { code }), `Código confirmado. ${target?.email} recebeu o código dele.`).then(() => setCode(''))}
+              <button disabled={busy || code.length !== 6} onClick={() => runT(() => api(`/operators/transfer/${t.id}/confirm`, { code }), `Código confirmado. ${target?.email} recebeu o código dele.`).then(() => setCode(''))}
                 className={`${btn} bg-amber-500 text-white hover:bg-amber-600`}>Confirmar</button>
-              <button disabled={busy} onClick={() => run(() => api(`/operators/transfer/${t.id}/cancel`, {}), 'Transferência cancelada.')} className={`${btn} border border-slate-300 dark:border-slate-700`}>Cancelar</button>
+              <button disabled={busy} onClick={() => runT(() => api(`/operators/transfer/${t.id}/cancel`, {}), 'Transferência cancelada.')} className={`${btn} border border-slate-300 dark:border-slate-700`}>Cancelar</button>
             </div>
           </>
         )}
         {t && t.status === 'awaiting_to' && (
           <div className="flex flex-wrap items-center gap-2">
             <p>À espera que <strong>{target?.email}</strong> aceite (até {fmtDate(t.expiresAt, true)}).</p>
-            <button disabled={busy} onClick={() => run(() => api(`/operators/transfer/${t.id}/cancel`, {}), 'Transferência cancelada.')} className={`${btn} border border-slate-300 dark:border-slate-700`}>Cancelar</button>
+            <button disabled={busy} onClick={() => runT(() => api(`/operators/transfer/${t.id}/cancel`, {}), 'Transferência cancelada.')} className={`${btn} border border-slate-300 dark:border-slate-700`}>Cancelar</button>
           </div>
         )}
       </div>
