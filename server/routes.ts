@@ -56,8 +56,8 @@ import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
 import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 
 import { db } from "./db.js";
-import { users, establishments, reviews, responses, socialPlatformConnections } from "../shared/schema.js";
-import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
+import { users, establishments, reviews, responses, socialPlatformConnections, agencyMembers } from "../shared/schema.js";
+import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 
 import Stripe from "stripe";
 import crypto from "crypto";
@@ -224,9 +224,37 @@ export async function registerRoutes(app: any): Promise<void> {
   app.patch('/api/agency/members/:memberId', requireAuth, requireFeature("hasClientManagement"), isAgencyOwnerMiddleware, async (req: any, res: any) => {
     try {
       const { memberId } = req.params;
-      const updates = req.body;
-      
-      const updatedMember = await storage.updateAgencyMember(memberId, updates);
+      const user = req.user;
+      if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
+
+      // The member must belong to the caller's agency (RJ-1.7).
+      const [member] = await db.select().from(agencyMembers).where(and(
+        eq(agencyMembers.id, Number(memberId)),
+        eq(agencyMembers.agencyId, Number(user.agencyId)),
+      )).limit(1);
+      if (!member) return res.status(404).json({ message: "Membro não encontrado" });
+
+      // Only these fields may be changed; agencyId/userId are never taken from the request.
+      const body = req.body || {};
+      const updates: Record<string, any> = {};
+      if (body.role !== undefined) {
+        if (!["admin", "member"].includes(String(body.role))) {
+          return res.status(400).json({ message: "Função inválida" });
+        }
+        updates.role = String(body.role);
+      }
+      if (body.status !== undefined) {
+        if (!["active", "pending", "suspended"].includes(String(body.status))) {
+          return res.status(400).json({ message: "Estado inválido" });
+        }
+        updates.status = String(body.status);
+      }
+      if (body.permissions !== undefined) {
+        updates.permissions = typeof body.permissions === "string" ? body.permissions : JSON.stringify(body.permissions);
+      }
+      if (Object.keys(updates).length === 0) return res.json(member);
+
+      const updatedMember = await storage.updateAgencyMember(member.id, updates);
       res.json(updatedMember);
     } catch (e: any) {
       res.status(500).json({ message: e.message || "Erro ao atualizar membro" });
@@ -884,7 +912,7 @@ export async function registerRoutes(app: any): Promise<void> {
   });
 
   // Calendar productivity endpoints
-  app.get('/api/leads', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
+  app.get('/api/leads', requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const search = String(req.query.search || "").toLowerCase();
       const status = String(req.query.status || "");
@@ -904,7 +932,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/leads', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
+  app.post('/api/leads', requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const payload = req.body || {};
       if (!payload.companyName?.trim()) return res.status(400).json({ message: "companyName obrigatório" });
@@ -927,7 +955,7 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.patch('/api/leads/:id/status', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
+  app.patch('/api/leads/:id/status', requireAuth, requireAdmin, async (req: any, res: any) => {
     try {
       const id = Number(req.params.id);
       const nextStatus = String(req.body?.status || 'novo');
@@ -941,7 +969,13 @@ export async function registerRoutes(app: any): Promise<void> {
   app.get('/api/leads/suggestions/from-reviews', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
+      // Only the caller's own establishments (RJ-1.7): this used to read every customer's reviews.
+      const ownEstablishments = await db.select({ id: establishments.id }).from(establishments)
+        .where(eq(establishments.userId, userId));
+      const establishmentIds = ownEstablishments.map((e) => e.id);
+      if (establishmentIds.length === 0) return res.json({ suggestions: [] });
       const positiveReviews = await db.select().from(reviews).where(and(
+        inArray(reviews.establishmentId, establishmentIds),
         eq(reviews.sentiment, 'positive'),
         gte(reviews.createdAt, new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)),
       )).orderBy(desc(reviews.createdAt)).limit(100);
@@ -1043,9 +1077,9 @@ export async function registerRoutes(app: any): Promise<void> {
     setupAdminManagementRoutes(app);
     setupTechnicalSpecsRoutes(app);
     const adminSocialMediaRoutes = (await import("./routes/admin-social-media.js")).default;
-    app.use("/api/admin/social-media", adminSocialMediaRoutes);
+    app.use("/api/admin/social-media", requireAuth, requireAdmin, adminSocialMediaRoutes);
     const reportsRoutes = (await import("./routes/reports.js")).default;
-    app.use("/api/admin/reports", reportsRoutes);
+    app.use("/api/admin/reports", requireAuth, requireAdmin, reportsRoutes);
     
     const aiTrainingRoutes = (await import("./routes/ai-training.js")).default;
     app.use("/api/ai-training", aiTrainingRoutes);
