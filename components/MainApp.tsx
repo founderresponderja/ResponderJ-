@@ -21,6 +21,7 @@ import {
   Building2,
   Lock,
   Inbox as InboxIcon,
+  ShieldCheck,
 } from 'lucide-react';
 
 import InboxPage from './Inbox';
@@ -44,6 +45,7 @@ const PlatformList = lazy(() => import('./PlatformList'));
 const AccountingPage = lazy(() => import('./AccountingPage'));
 const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
+const PrivacyDataPage = lazy(() => import('./PrivacyDataPage'));
 // RJ-5.3: CRM retirado da app de cliente (ideia futura). Equipa ligada ao plano Agência.
 const AgencyTeamManagement = lazy(() => import('./AgencyTeamManagement'));
 const AgencyOverviewPage = lazy(() => import('./AgencyOverviewPage'));
@@ -104,7 +106,7 @@ const MainApp: React.FC<MainAppProps> = ({
   const { signOut } = useClerk();
   const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'accounting' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy'>('overview');
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
   const [agencyClients, setAgencyClients] = useState<AgencyClient[]>([]);
@@ -355,6 +357,7 @@ const MainApp: React.FC<MainAppProps> = ({
           {isAgencyPlan && <NavButton tab="agency" icon={Building2} label="Agency" />}
           {isAgencyPlan && <NavButton tab="team" icon={Users} label="Equipa" />}
           <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />
+          <NavButton tab="privacy" icon={ShieldCheck} label="Privacidade e dados" />
         </div>
 
         <div className="p-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
@@ -523,6 +526,7 @@ const MainApp: React.FC<MainAppProps> = ({
               {activeTab === 'business-profile' && <BusinessProfilePage />}
               {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
               {activeTab === 'pricing' && <BillingPage lang={lang} />}
+              {activeTab === 'privacy' && <PrivacyDataPage />}
               {activeTab === 'accounting' && <AccountingPage />}
             </div>
           </Suspense>
