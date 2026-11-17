@@ -187,7 +187,7 @@ function useLoad<T>(loader: () => Promise<T>, deps: unknown[]) {
 const Loading: React.FC<{ error: string | null }> = ({ error }) =>
   error ? <div className="text-sm text-red-600">{error}</div> : <div className="text-sm text-slate-500">A carregar…</div>;
 
-const OverviewTab: React.FC<{ api: Api }> = ({ api }) => {
+const OverviewTab = ({ api }: { api: Api }) => {
   const { data, error } = useLoad(() => api<Overview>('/overview'), []);
   if (!data) return <Loading error={error} />;
   return (
@@ -212,7 +212,7 @@ const OverviewTab: React.FC<{ api: Api }> = ({ api }) => {
   );
 };
 
-const CustomersTab: React.FC<{ api: Api }> = ({ api }) => {
+const CustomersTab = ({ api }: { api: Api }) => {
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [plan, setPlan] = useState('');
@@ -268,7 +268,7 @@ const CustomersTab: React.FC<{ api: Api }> = ({ api }) => {
   );
 };
 
-const CustomerDrawer: React.FC<{ api: Api; id: number; onClose: () => void; onChanged: () => void }> = ({ api, id, onClose, onChanged }) => {
+const CustomerDrawer = ({ api, id, onClose, onChanged }: { api: Api; id: number; onClose: () => void; onChanged: () => void }) => {
   const { data, error, reload } = useLoad(() => api<CustomerDetail>(`/customers/${id}`), [id]);
   const [delta, setDelta] = useState('');
   const [plan, setPlan] = useState('starter');
@@ -389,7 +389,7 @@ interface SandboxList {
   aiLimit: number;
 }
 
-const SandboxTab: React.FC<{ api: Api }> = ({ api }) => {
+const SandboxTab = ({ api }: { api: Api }) => {
   const { data, error, reload } = useLoad(() => api<SandboxList>('/sandboxes'), []);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -458,7 +458,7 @@ interface OperatorsData {
   operators: OperatorRow[];
 }
 
-const OperatorsTab: React.FC<{ api: Api; meId: number }> = ({ api, meId }) => {
+const OperatorsTab = ({ api, meId }: { api: Api; meId: number }) => {
   const { data, error, reload } = useLoad(() => api<OperatorsData>('/operators'), []);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -573,7 +573,7 @@ const OperatorsTab: React.FC<{ api: Api; meId: number }> = ({ api, meId }) => {
   );
 };
 
-const IncomingTransfer: React.FC<{ api: Api }> = ({ api }) => {
+const IncomingTransfer = ({ api }: { api: Api }) => {
   const { data, reload } = useLoad(() => api<{ transfer: { id: number; fromEmail: string | null; expiresAt: string } | null }>('/operators/transfer/incoming'), []);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -609,7 +609,7 @@ const IncomingTransfer: React.FC<{ api: Api }> = ({ api }) => {
   );
 };
 
-const AiTab: React.FC<{ api: Api }> = ({ api }) => {
+const AiTab = ({ api }: { api: Api }) => {
   const { data, error } = useLoad(() => api<AiUsage>('/ai-usage'), []);
   if (!data) return <Loading error={error} />;
   const total = data.daily.reduce((s, d) => s + Number(d.generations), 0);
@@ -651,7 +651,7 @@ const AiTab: React.FC<{ api: Api }> = ({ api }) => {
   );
 };
 
-const SyncTab: React.FC<{ api: Api }> = ({ api }) => {
+const SyncTab = ({ api }: { api: Api }) => {
   const { data, error } = useLoad(() => api<SyncRow[]>('/sync'), []);
   const runs = useLoad(() => api<{ createdAt: string; details: any }[]>('/cron-runs'), []);
   if (!data) return <Loading error={error} />;
@@ -701,7 +701,7 @@ const SyncTab: React.FC<{ api: Api }> = ({ api }) => {
   );
 };
 
-const AuditTab: React.FC<{ api: Api }> = ({ api }) => {
+const AuditTab = ({ api }: { api: Api }) => {
   const { data, error } = useLoad(() => api<AuditRow[]>('/audit'), []);
   if (!data) return <Loading error={error} />;
   return (

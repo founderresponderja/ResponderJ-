@@ -12,6 +12,14 @@ import {
   invoices, invoiceItems, invoiceSettings, qualityFeedback, InsertQualityFeedback, QualityFeedback,
   oauthStates, OAuthState, InsertOAuthState
 } from "../shared/schema.js";
+
+// Um só tipo de resultado (o projeto compila sem strictNullChecks, onde uniões discriminadas não estreitam).
+export interface AcceptChargeResult {
+  ok: boolean;
+  response?: Response;
+  creditsRemaining?: number;
+  reason?: "not_acceptable" | "insufficient_credits";
+}
 import { db } from "./db.js";
 import { eq, ilike, or, and, desc, sql, gte, lt, isNull } from "drizzle-orm";
 
@@ -72,10 +80,7 @@ export interface IStorage {
   deductUserCreditsAtomic(userId: number | string, amount: number): Promise<{ ok: boolean; creditsRemaining: number }>;
   acceptResponseAndCharge(input: {
     responseId: number; userId: number; cost: number; update: Record<string, any>; description: string;
-  }): Promise<
-    | { ok: true; response: Response; creditsRemaining: number }
-    | { ok: false; reason: "not_acceptable" | "insufficient_credits"; creditsRemaining?: number }
-  >;
+  }): Promise<AcceptChargeResult>;
   getUserCreditBalance(userId: number | string): Promise<number>;
   getUserSubscription(userId: number | string): Promise<Subscription | undefined>;
   updateUserStripeInfo(userId: number | string, info: { customerId?: string, subscriptionId?: string }): Promise<void>;
@@ -459,10 +464,7 @@ export class DatabaseStorage implements IStorage {
    */
   async acceptResponseAndCharge(input: {
     responseId: number; userId: number; cost: number; update: Record<string, any>; description: string;
-  }): Promise<
-    | { ok: true; response: Response; creditsRemaining: number }
-    | { ok: false; reason: "not_acceptable" | "insufficient_credits"; creditsRemaining?: number }
-  > {
+  }): Promise<AcceptChargeResult> {
     class Abort extends Error { constructor(public reason: "not_acceptable" | "insufficient_credits") { super(reason); } }
     try {
       return await db.transaction(async (tx) => {
@@ -497,14 +499,14 @@ export class DatabaseStorage implements IStorage {
           relatedResponseId: input.responseId,
         } as any);
 
-        return { ok: true as const, response: claimed, creditsRemaining: Number(charged.creditsRemaining) };
+        return { ok: true, response: claimed, creditsRemaining: Number(charged.creditsRemaining) } as AcceptChargeResult;
       });
     } catch (error) {
       if (error instanceof Abort) {
         const creditsRemaining = error.reason === "insufficient_credits"
           ? await this.getUserCreditBalance(input.userId).catch(() => undefined)
           : undefined;
-        return { ok: false, reason: error.reason, creditsRemaining };
+        return { ok: false, reason: error.reason, creditsRemaining } as AcceptChargeResult;
       }
       throw error;
     }

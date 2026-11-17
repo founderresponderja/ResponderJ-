@@ -63,6 +63,14 @@ export interface SubscriptionSnapshot {
   currentPeriodEnd?: number | null;
 }
 
+// Um só tipo de resultado (sem strictNullChecks, uniões discriminadas não estreitam).
+export interface SubscriptionSyncResult {
+  skip: boolean;
+  update?: Record<string, any>;
+  planChanged?: boolean;
+  creditsReset?: boolean;
+}
+
 /**
  * O que gravar no utilizador quando chega uma subscrição.
  * - Mesma subscrição, mesmo plano e mesmo período: nada a fazer (evento repetido).
@@ -76,9 +84,7 @@ export function computeSubscriptionSync(
   planId: PaidPlan,
   options: { resetCreditsOnPlanChange?: boolean } = {},
   now: Date = new Date(),
-):
-  | { skip: true }
-  | { skip: false; update: Record<string, any>; planChanged: boolean; creditsReset: boolean } {
+): SubscriptionSyncResult {
   const periodStart = sub.currentPeriodStart
     ? new Date(sub.currentPeriodStart * 1000)
     : user.currentPeriodStart ? new Date(user.currentPeriodStart) : undefined;
@@ -100,6 +106,7 @@ export function computeSubscriptionSync(
   ) {
     return { skip: true };
   }
+
 
   const update: Record<string, any> = {
     selectedPlan: planId,

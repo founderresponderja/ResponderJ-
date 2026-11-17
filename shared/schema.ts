@@ -616,13 +616,14 @@ export const insertAutomationRuleSchema = createInsertSchema(automationRules);
 export const insertQualityFeedbackSchema = createInsertSchema(qualityFeedback);
 
 // Auth Specific Schemas
-export const registerUserSchema = insertUserSchema.pick({
-  email: true,
-  password: true,
-  firstName: true,
-  lastName: true,
-  companyName: true,
-  nif: true,
+// Esquema explícito (o .pick() sobre o esquema gerado não compilava com esta versão do drizzle-zod).
+export const registerUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  companyName: z.string().optional(),
+  nif: z.string().optional(),
 });
 
 export const loginUserSchema = z.object({
