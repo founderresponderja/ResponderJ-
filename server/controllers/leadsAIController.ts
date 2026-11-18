@@ -1,11 +1,12 @@
 
 import type { Request, Response } from "express";
+import { lazyGenAI } from "../services/genai-client.js";
 import { z } from "zod";
 import { storage } from "../storage.js";
 import { GoogleGenAI, Type } from "@google/genai";
 import { ControllerUtils } from "../utils/ControllerUtils.js";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
 // Schema de validação para pesquisa AI
 const aiSearchSchema = z.object({

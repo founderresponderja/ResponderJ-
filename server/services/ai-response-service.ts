@@ -5,6 +5,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "../../shared/schema.js";
 import { normalizeGeneration } from "./ai-normalize.js";
 import { withTimeout } from "../utils/timeout.js";
+import { getGenAI } from "./genai-client.js";
 
 // RJ-0.4 (decisão de 17/11/2026): o Gemini é o único fornecedor de IA.
 // Modelo de reserva: gemini-1.5-flash já foi descontinuado pela Google; passa a gemini-2.5-flash-lite
@@ -14,8 +15,8 @@ const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-f
 // RJ-8.3: limites de tempo (a função da Vercel tem 30 s no total).
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 17000;
 const GEMINI_FALLBACK_TIMEOUT_MS = Number(process.env.GEMINI_FALLBACK_TIMEOUT_MS) || 9000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
-const geminiClient = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+// Cliente único: AI Studio (pré-pago) ou Agent Platform (pós-pago), conforme as variáveis na Vercel.
+const geminiClient = getGenAI();
 
 export interface ReviewResponseRequest {
   userId?: number;
@@ -84,7 +85,7 @@ const PLATFORM_CONFIGS: Record<string, any> = {
 export const aiResponseService = {
   async callGemini(messages: Array<{ role: "system" | "user"; content: string }>, temperature = 0.7, asJson: boolean | Record<string, any> = false): Promise<GeminiResponseLike> {
     if (!geminiClient) {
-      throw new Error("GEMINI_API_KEY/API_KEY is not configured.");
+      throw new Error("IA não configurada (GEMINI_PROVIDER e credenciais na Vercel).");
     }
 
     const systemMessage = messages.find((m) => m.role === "system")?.content || "";
@@ -144,7 +145,7 @@ export const aiResponseService = {
     asJson: boolean | Record<string, any> = false,
   ): Promise<string> {
     if (!geminiClient) {
-      throw new Error("AI provider not configured. Set GEMINI_API_KEY.");
+      throw new Error("IA não configurada (GEMINI_PROVIDER e credenciais na Vercel).");
     }
     const geminiData = await this.callGemini(messages, temperature, asJson);
     return geminiData.text?.trim() || "";

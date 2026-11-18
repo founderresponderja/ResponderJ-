@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { lazyGenAI } from "./genai-client.js";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
 export const aiTrainingService = {
   async performCompleteAnalysis(limit: number) {

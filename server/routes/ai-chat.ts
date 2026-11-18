@@ -1,11 +1,12 @@
 
 import { Router } from "express";
+import { lazyGenAI } from "../services/genai-client.js";
 import { GoogleGenAI } from "@google/genai";
 import { rateLimitMiddleware } from "../performance-optimizations.js";
 
 const router = Router();
 // Initialize Gemini with API Key from environment
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
+const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
 // Knowledge base and persona definition for Sofia
 const SOFIA_SYSTEM_INSTRUCTION = `
