@@ -195,49 +195,7 @@ export const sanitizeInput = (req: any, res: any, next: any) => {
 };
 
 // SQL injection prevention middleware
-export const sqlInjectionProtection = (req: any, res: any, next: any) => {
-  const sqlPatterns = [
-    /(\s|^)(union|select|insert|update|delete|drop|create|alter|exec|execute)\s/i,
-    /(\s|^)(or|and)\s+\d+\s*=\s*\d+/i,
-    /(\s|^)(or|and)\s+['"]\s*['"]/i,
-    /(\s|^)\d+\s*;\s*(update|delete|drop|insert)/i,
-    /(\-\-)|(\#)|\/\*.*\*\//i,
-    /(\s|^)(xp_|sp_)/i,
-    /(\s|^)(benchmark|sleep)\s*\(/i,
-    /(\s|^)(load_file|into\s+outfile)/i
-  ];
-
-  const checkValue = (value: any, path: string = ''): boolean => {
-    if (typeof value === 'string') {
-      for (const pattern of sqlPatterns) {
-        if (pattern.test(value)) {
-          console.error(`🚨 SQL Injection attempt detected: ${pattern} in ${path}: ${value}`);
-          return true;
-        }
-      }
-    } else if (typeof value === 'object' && value !== null) {
-      for (const key in value) {
-        if (checkValue(value[key], `${path}.${key}`)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-
-  // Check body, query, and params
-  if (checkValue(req.body, 'body') || 
-      checkValue(req.query, 'query') || 
-      checkValue(req.params, 'params')) {
-    
-    return res.status(400).json({
-      message: 'Input inválido detectado',
-      code: 'INVALID_INPUT'
-    });
-  }
-
-  next();
-};
+// sqlInjectionProtection removido (falsos positivos; ver server/routes.ts).
 
 // Helper functions for secure logging
 const sanitizeUrl = (url: string): string => {
@@ -356,7 +314,7 @@ export const applySecurity = (req: any, res: any, next: any) => {
     securityHeaders(req, res, () => {
       sanitizeInput(req, res, () => {
         // RJ-1.6: a proteção CSRF passou para originCheck (middleware/origin-check.ts).
-        sqlInjectionProtection(req, res, next);
+        next();
       });
     });
   });
