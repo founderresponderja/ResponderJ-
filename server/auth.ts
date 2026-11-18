@@ -109,6 +109,10 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
           const trialEnd = new Date(now);
           trialEnd.setDate(trialEnd.getDate() + TRIAL_DURATION_DAYS);
 
+          // O primeiro carregamento faz vários pedidos ao mesmo tempo e todos tentavam criar a conta:
+          // o segundo falhava (email repetido) e esse pedido dava erro. Agora quem perde a corrida
+          // lê a conta que o outro acabou de criar.
+          let created = true;
           user = await storage.createUser({
             clerkUserId,
             email,
@@ -123,12 +127,21 @@ export function requireAuth(req: any, res: any, next: NextFunction) {
             currentPeriodStart: now,
             currentPeriodEnd: trialEnd,
             creditsUsedThisPeriod: 0,
-          } as any);
+          } as any).catch(async (createError: any) => {
+            const again = await storage.getUserByEmail(email);
+            if (again && (!again.clerkUserId || again.clerkUserId === clerkUserId)) {
+              created = false;
+              return again.clerkUserId ? again : await storage.setUserClerkId(again.id, clerkUserId);
+            }
+            throw createError;
+          });
           // RJ-3.3: email de boas-vindas na criação da conta (não bloqueia o login se falhar).
-          if (user) {
-            import("./services/onboarding-email.js")
+          if (user && created) {
+            const welcome = import("./services/onboarding-email.js")
               .then(({ onboardingEmailService }) => onboardingEmailService.sendWelcome(user))
               .catch((e: any) => console.warn("[auth] welcome email failed:", e?.message));
+            // A Vercel congela a função depois da resposta: manter viva até o email sair.
+            import("./services/error-tracking.js").then(({ keepAlive }) => keepAlive(welcome)).catch(() => undefined);
           }
         }
       }
