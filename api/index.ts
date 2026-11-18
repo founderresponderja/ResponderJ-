@@ -100,7 +100,7 @@ async function initApp() {
 
     // Erros do navegador (sem sessão obrigatória; limitado por IP).
     const clientErrorHits = new Map<string, { n: number; t: number }>();
-    app.post("/api/client-errors", (req: any, res: any) => {
+    app.post("/api/client-errors", async (req: any, res: any) => {
       const ip = String(req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim();
       const now = Date.now();
       const hit = clientErrorHits.get(ip);
@@ -109,7 +109,8 @@ async function initApp() {
       let body = req.body;
       if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = {}; } }
       const e = sanitizeClientError(body || {});
-      recordAppError({ source: "client", kind: e.kind, message: e.message, path: e.path, sample: { stack: e.stack, userAgent: e.userAgent } });
+      // Grava antes de responder: depois da resposta a Vercel congela a função.
+      await recordAppError({ source: "client", kind: e.kind, message: e.message, path: e.path, sample: { stack: e.stack, userAgent: e.userAgent } });
       res.status(204).end();
     });
 
@@ -117,9 +118,9 @@ async function initApp() {
     await registerRoutes(app);
 
     // Exceções que chegam ao fim da cadeia (next(err)).
-    app.use((err: any, req: any, res: any, _next: any) => {
+    app.use(async (err: any, req: any, res: any, _next: any) => {
       res.locals.errorRecorded = true;
-      recordAppError({
+      await recordAppError({
         source: "server",
         kind: "exception",
         message: String(err?.message || err || "erro"),
@@ -208,7 +209,7 @@ export default async function handler(req: Request, res: Response) {
       // Antes o erro ficava escondido: agora fica nos registos da Vercel e na Saúde técnica (RJ-8.2).
       const detail = String(error?.message || error || "Chat error").slice(0, 500);
       console.error(`[sofia] erro da IA (${genAIConfig().description}, modelo ${mainModel()}): ${detail}`);
-      import("../server/services/error-tracking.js")
+      await import("../server/services/error-tracking.js")
         .then(({ recordAppError }) => recordAppError({ source: "server", kind: "exception", message: `Sofia: ${detail}`, path: "/api/ai/chat" }))
         .catch(() => undefined);
       return res.status(500).json({ error: "Chat error" });
