@@ -23,5 +23,5 @@ export function recordAppError(input: {
       sample = EXCLUDED.sample,
       last_user_id = coalesce(EXCLUDED.last_user_id, app_errors.last_user_id),
       -- Voltou a acontecer depois de marcado como visto: reabre.
-      resolved_at = NULL`).catch((e: any) => console.warn("[error-tracking] record failed:", e?.message));
+      resolved_at = NULL`).catch((e: any) => console.warn("[error-tracking] record failed:", e?.cause?.message || e?.message));
 }

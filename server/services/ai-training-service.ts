@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { lazyGenAI } from "./genai-client.js";
+import { lazyGenAI, mainModel } from "./genai-client.js";
 
 const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
@@ -45,7 +45,7 @@ export const aiTrainingService = {
              Return strictly a JSON array of strings.`;
 
              const result = await ai.models.generateContent({
-                 model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+                 model: mainModel(),
                  contents: prompt,
                  config: {
                      responseMimeType: 'application/json',

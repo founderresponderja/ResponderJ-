@@ -6,13 +6,13 @@ import { db } from "../db.js";
 import { incidents, incidentAttachments, incidentEvents, users } from "../../shared/schema.js";
 import { sendMail } from "./mailer.js";
 import { withTimeout } from "../utils/timeout.js";
-import { getGenAI } from "./genai-client.js";
+import { getGenAI, mainModel, thinkingConfigFor } from "./genai-client.js";
 import {
   CATEGORIES, SEVERITIES, CATEGORY_LABEL, SLA_BUSINESS_DAYS, normalizeClassification, dueDateFor,
   ackEmail, resolvedEmail, type Severity,
 } from "./incident-logic.js";
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL = mainModel();
 
 export interface NewIncidentInput {
   userId: number | null;
@@ -52,6 +52,7 @@ ${description.slice(0, 4000)}`;
       contents: prompt,
       config: {
         temperature: 0.1,
+        ...thinkingConfigFor(GEMINI_MODEL),
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,

@@ -1,6 +1,6 @@
 
 import type { Request, Response } from "express";
-import { lazyGenAI } from "../services/genai-client.js";
+import { lazyGenAI, mainModel } from "../services/genai-client.js";
 import { z } from "zod";
 import { storage } from "../storage.js";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -139,7 +139,7 @@ async function generateAILeads({ region, businessType, platforms, limit }: any) 
 
   try {
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: mainModel(),
       contents: prompt,
       config: {
         responseMimeType: 'application/json',

@@ -4,6 +4,8 @@
 
 A app aceita os dois modos. Escolhe-se por variáveis na Vercel, sem mexer no código.
 
+> **Atualização de 18/11/2026.** A chave da Agent Platform (Opção 1) fica sempre presa à região us-central1. Os modelos atuais (Gemini 3.x) não existem nessa região, e os Gemini 2.5 foram retirados a 20/10/2026. Por isso, **a forma a usar é a Opção 2 (conta de serviço)**: permite escolher a região, que por omissão é europe-west3 (Frankfurt, na UE). Quando há conta de serviço configurada, a app usa-a mesmo que exista a chave. O modelo por omissão é `gemini-3.5-flash`. Um `GEMINI_MODEL` com um nome Gemini 2.5 é trocado automaticamente pelo modelo atual.
+
 ## Opção 1: chave da Agent Platform (mais simples)
 
 1. **Google Cloud console**: escolher (ou criar) o projeto da Amplia. Em **Billing**, confirmar que o projeto está ligado a uma conta de faturação (**Link a billing account**).
@@ -26,7 +28,7 @@ Usar se a Opção 1 der problemas.
 4. **Vercel** (Production):
    - `GEMINI_PROVIDER` = `agent-platform`
    - `GOOGLE_CLOUD_PROJECT` = o ID do projeto
-   - `GOOGLE_CLOUD_LOCATION` = `europe-west1` (dados processados na UE)
+   - `GOOGLE_CLOUD_LOCATION` = `europe-west3` (Frankfurt, dados processados na UE; é o valor por omissão)
    - `GOOGLE_SERVICE_ACCOUNT_JSON` = o conteúdo do ficheiro JSON (texto ou base64)
 5. **Redeploy**. Em `/api/health`, `"ai"` deve dizer **"Agent Platform (conta de serviço, …)"**.
 
@@ -39,5 +41,5 @@ Em **Billing → Budgets & alerts**, criar um orçamento mensal com alertas por 
 ## Notas
 
 - Se `GEMINI_PROVIDER=agent-platform` estiver definido mas faltarem credenciais, a app **não** volta à chave pré-paga: indica "IA não configurada". Assim não se fica sem perceber qual serviço está a ser usado.
-- O modelo continua a vir de `GEMINI_MODEL` (por omissão `gemini-2.5-flash`), com `GEMINI_FALLBACK_MODEL` como reserva. Os dois existem na Agent Platform.
+- O modelo vem de `GEMINI_MODEL` (por omissão `gemini-3.5-flash`), com `GEMINI_FALLBACK_MODEL` como reserva. Nos modelos Gemini 3, a app pede o nível de pensamento baixo, para respostas rápidas.
 - O código está em `server/services/genai-config.ts` (escolha do modo) e `server/services/genai-client.ts` (cliente único).

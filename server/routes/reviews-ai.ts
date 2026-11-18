@@ -1,5 +1,6 @@
 
 import { Router } from "express";
+import { mainModel } from "../services/genai-client.js";
 import { acceptCost } from "../services/billing-logic.js";
 import { eq, and, desc, isNotNull, ne } from "drizzle-orm";
 import { db } from "../db.js";
@@ -103,7 +104,7 @@ router.post("/generate-responses", requireAuth, async (req: any, res) => {
         product,
         location,
         creditsUsed: 1,
-        aiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        aiModel: mainModel(),
         approvalStatus: "pending",
         isSelected: false,
         isPublished: false,

@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import { lazyGenAI } from "../services/genai-client.js";
+import { lazyGenAI, mainModel, thinkingConfigFor } from "../services/genai-client.js";
 import { GoogleGenAI } from "@google/genai";
 import { rateLimitMiddleware } from "../performance-optimizations.js";
 
@@ -53,12 +53,13 @@ router.post("/chat", rateLimitMiddleware(20, 60000), async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: mainModel(),
       contents: prompt,
       config: {
         systemInstruction: SOFIA_SYSTEM_INSTRUCTION,
         temperature: 0.7,
-        maxOutputTokens: 300, // Limit for quick chat responses
+        maxOutputTokens: 1024,
+        ...thinkingConfigFor(mainModel()),
       }
     });
 

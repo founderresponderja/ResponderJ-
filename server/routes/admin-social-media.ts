@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { lazyGenAI } from "../services/genai-client.js";
+import { lazyGenAI, mainModel } from "../services/genai-client.js";
 import { requireAuth } from "../auth.js";
 import { GoogleGenAI, Type } from "@google/genai";
 import { randomUUID } from "crypto";
@@ -193,7 +193,7 @@ router.post('/generate-hashtags', requireAuth, async (req, res) => {
 
     // Usar Gemini para gerar hashtags relevantes
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: mainModel(),
       contents: `Analisa o conteúdo fornecido e gera 5-8 hashtags relevantes em português para redes sociais (Facebook e Instagram). 
 
 Critérios:
