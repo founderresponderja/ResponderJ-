@@ -162,6 +162,11 @@ const MainApp: React.FC<MainAppProps> = ({
   const normalizedPlan = normalizePlan(subscription.planId);
   const planCapabilities = PLAN_CAPABILITIES[normalizedPlan];
   const isAgencyPlan = planCapabilities.hasClientManagement;
+  // RJ-5.5: membro da equipa a trabalhar na conta da agência. Pagamentos são do dono;
+  // a gestão da equipa é do dono e dos administradores. O servidor já bloqueava; o ecrã também.
+  const teamMember = subscription.teamMember || null;
+  const canSeeBilling = !teamMember;
+  const canManageTeam = !teamMember || teamMember.role === 'admin';
 
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
@@ -357,8 +362,8 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="business-profile" icon={Store} label={nav.menu.profile} />
           <NavButton tab="platforms" icon={List} label={nav.menu.platforms} />
           {isAgencyPlan && <NavButton tab="agency" icon={Building2} label="Agency" />}
-          {isAgencyPlan && <NavButton tab="team" icon={Users} label="Equipa" />}
-          <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />
+          {isAgencyPlan && canManageTeam && <NavButton tab="team" icon={Users} label="Equipa" />}
+          {canSeeBilling && <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />}
           <NavButton tab="privacy" icon={ShieldCheck} label="Privacidade e dados" />
           <NavButton icon={Bug} label="Reportar um erro" onClick={() => setReportOpen(true)} />
         </div>
@@ -524,11 +529,17 @@ const MainApp: React.FC<MainAppProps> = ({
                   onGenerateFromReview={handleGenerateFromReview}
                 />
               )}
-              {activeTab === 'team' && isAgencyPlan && <AgencyTeamManagement />}
+              {activeTab === 'team' && isAgencyPlan && canManageTeam && <AgencyTeamManagement />}
               {activeTab === 'platforms' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'business-profile' && <BusinessProfilePage />}
               {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
-              {activeTab === 'pricing' && <BillingPage lang={lang} />}
+              {activeTab === 'pricing' && canSeeBilling && <BillingPage lang={lang} />}
+              {activeTab === 'pricing' && !canSeeBilling && (
+                <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <h2 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white">Planos e pagamentos</h2>
+                  <p>Está a trabalhar na conta de <strong>{teamMember?.agencyName || 'uma agência'}</strong>. O plano, os créditos e os pagamentos são geridos pelo dono da agência.</p>
+                </div>
+              )}
               {activeTab === 'privacy' && <PrivacyDataPage />}
             </div>
           </Suspense>

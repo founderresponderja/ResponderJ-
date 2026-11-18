@@ -255,7 +255,9 @@ export async function registerRoutes(app: any): Promise<void> {
 
       const cleanEmail = String(email || "").trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return res.status(400).json({ message: "Email inválido" });
-      const safeRole = role === "admin" ? "admin" : "member";
+      // Os convites são sempre para "membro"; tornar alguém administrador faz-se depois, na lista da equipa.
+      void role;
+      const safeRole = "member";
 
       // RJ-2.4: limite de utilizadores do plano (shared/plans.ts), contando o dono.
       const { PLANS } = await import("../shared/plans.js");
