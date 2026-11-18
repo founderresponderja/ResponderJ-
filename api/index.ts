@@ -203,9 +203,13 @@ export default async function handler(req: Request, res: Response) {
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
-      return res.status(500).json({
-        error: error?.message || "Chat error",
-      });
+      // Antes o erro ficava escondido: agora fica nos registos da Vercel e na Saúde técnica (RJ-8.2).
+      const detail = String(error?.message || error || "Chat error").slice(0, 500);
+      console.error(`[sofia] erro da IA (${genAIConfig().description}, modelo ${process.env.GEMINI_MODEL || "gemini-2.5-flash"}): ${detail}`);
+      import("../server/services/error-tracking.js")
+        .then(({ recordAppError }) => recordAppError({ source: "server", kind: "exception", message: `Sofia: ${detail}`, path: "/api/ai/chat" }))
+        .catch(() => undefined);
+      return res.status(500).json({ error: "Chat error" });
     }
   }
 
