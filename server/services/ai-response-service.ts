@@ -5,6 +5,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "../../shared/schema.js";
 import { normalizeGeneration } from "./ai-normalize.js";
 import { withTimeout } from "../utils/timeout.js";
+import { customerNameInstruction } from "./customer-name.js";
 import { getGenAI, mainModel, fallbackModel, thinkingConfigFor } from "./genai-client.js";
 
 // RJ-0.4 (decisão de 17/11/2026): o Gemini é o único fornecedor de IA.
@@ -18,6 +19,7 @@ const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 17000;
 const GEMINI_FALLBACK_TIMEOUT_MS = Number(process.env.GEMINI_FALLBACK_TIMEOUT_MS) || 9000;
 // Cliente único: AI Studio (pré-pago) ou Agent Platform (pós-pago), conforme as variáveis na Vercel.
 const geminiClient = getGenAI();
+
 
 export interface ReviewResponseRequest {
   userId?: number;
@@ -402,7 +404,7 @@ export const aiResponseService = {
       ${establishmentContext?.responseGuidelines ? `Guidelines: ${establishmentContext.responseGuidelines}` : ''}
       ${extraInstructions ? `Extra instructions: ${extraInstructions}` : ""}
 
-      Customer Name: ${dynamicFields?.customerName || 'Customer'}
+      ${customerNameInstruction(dynamicFields?.customerName)}
       SEO Local Keywords (include naturally when appropriate): ${seoKeywords.join(", ")}
       ${patternText ? `Learned style preferences (apply the one matching the sentiment):\n      ${patternText}` : ""}
 
@@ -481,8 +483,11 @@ export const aiResponseService = {
     extraInstructions?: string;
     businessContext?: any;
     responseType?: string;
+    /** Nome de quem escreveu a review (vem da review sincronizada). */
+    customerName?: string | null;
   }) {
       const variations = await this.generateReviewResponses({
+        dynamicFields: { customerName: params.customerName || undefined },
         userId: params.businessContext?.userId,
         reviewText: params.comment,
         platform: params.platform,
