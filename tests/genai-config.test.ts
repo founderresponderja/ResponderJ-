@@ -27,7 +27,7 @@ test("Agent Platform com conta de serviço em JSON ou base64", () => {
     const c = resolveGenAIConfig({ GEMINI_PROVIDER: "agent-platform", GOOGLE_CLOUD_PROJECT: "proj", GOOGLE_SERVICE_ACCOUNT_JSON: raw });
     assert.equal(c.configured, true);
     assert.equal(c.options.project, "proj");
-    assert.equal(c.options.location, "europe-west1");
+    assert.equal(c.options.location, "europe-west3");
     assert.equal(c.options.googleAuthOptions.credentials.client_email, sa.client_email);
     assert.ok(!c.description.includes("PRIVATE"));
   }
@@ -41,4 +41,24 @@ test("Agent Platform pedido mas sem credenciais: não cai para o pré-pago", () 
 
 test("GOOGLE_GENAI_USE_VERTEXAI=true também ativa a Agent Platform", () => {
   assert.equal(resolveGenAIConfig({ GOOGLE_GENAI_USE_VERTEXAI: "true", AGENT_PLATFORM_API_KEY: "ap" }).provider, "agent-platform");
+});
+
+import { resolveModel, thinkingConfigFor, DEFAULT_MODEL } from "../server/services/genai-config.ts";
+
+test("conta de serviço tem prioridade sobre a chave e a região por omissão é Frankfurt", () => {
+  const c = resolveGenAIConfig({ GEMINI_PROVIDER: "agent-platform", AGENT_PLATFORM_API_KEY: "ap", GOOGLE_CLOUD_PROJECT: "p", GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify(sa) });
+  assert.equal(c.options.location, "europe-west3");
+  assert.equal(c.options.apiKey, undefined);
+});
+
+test("na Agent Platform, nomes Gemini 2.5 (retirados) passam ao modelo atual", () => {
+  assert.equal(resolveModel("gemini-2.5-flash", "agent-platform"), DEFAULT_MODEL);
+  assert.equal(resolveModel("", "agent-platform"), DEFAULT_MODEL);
+  assert.equal(resolveModel("gemini-3.6-flash", "agent-platform"), "gemini-3.6-flash");
+  assert.equal(resolveModel("gemini-2.5-flash", "ai-studio"), "gemini-2.5-flash");
+});
+
+test("pensamento em nível baixo só nos modelos Gemini 3", () => {
+  assert.deepEqual(thinkingConfigFor("gemini-3.5-flash"), { thinkingConfig: { thinkingLevel: "LOW" } });
+  assert.deepEqual(thinkingConfigFor("gemini-2.5-flash"), {});
 });

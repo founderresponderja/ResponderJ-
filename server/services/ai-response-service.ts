@@ -5,13 +5,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "../../shared/schema.js";
 import { normalizeGeneration } from "./ai-normalize.js";
 import { withTimeout } from "../utils/timeout.js";
-import { getGenAI } from "./genai-client.js";
+import { getGenAI, mainModel, fallbackModel, thinkingConfigFor } from "./genai-client.js";
 
 // RJ-0.4 (decisão de 17/11/2026): o Gemini é o único fornecedor de IA.
 // Modelo de reserva: gemini-1.5-flash já foi descontinuado pela Google; passa a gemini-2.5-flash-lite
 // (sem data de desligamento anunciada em 22/10/2026). Ambos configuráveis na Vercel.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.5-flash-lite";
+// 18/11/2026: os Gemini 2.5 saíram da Agent Platform; o modelo vem de genai-client (por omissão gemini-3.5-flash).
+const GEMINI_MODEL = mainModel();
+const GEMINI_FALLBACK_MODEL = fallbackModel();
 // RJ-8.3: limites de tempo (a função da Vercel tem 30 s no total).
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 17000;
 const GEMINI_FALLBACK_TIMEOUT_MS = Number(process.env.GEMINI_FALLBACK_TIMEOUT_MS) || 9000;
@@ -95,6 +96,7 @@ export const aiResponseService = {
     const config = asJson
       ? {
           temperature,
+          ...thinkingConfigFor(GEMINI_MODEL),
           responseMimeType: "application/json",
           responseSchema: typeof asJson === "object" ? asJson : {
             type: Type.OBJECT,
@@ -115,6 +117,7 @@ export const aiResponseService = {
         }
       : {
           temperature,
+          ...thinkingConfigFor(GEMINI_MODEL),
         };
 
     try {

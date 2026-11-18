@@ -10,6 +10,23 @@
 //         ou em base64) e, opcionalmente, GOOGLE_CLOUD_LOCATION (por omissão europe-west1).
 export type GenAIProvider = "ai-studio" | "agent-platform";
 
+// Frankfurt (UE). O Gemini 3.5 Flash existe em europe-west3; europe-west2 é Londres (fora da UE).
+export const DEFAULT_LOCATION = "europe-west3";
+// Os modelos Gemini 2.5 foram retirados da Agent Platform a 20/10/2026.
+export const DEFAULT_MODEL = "gemini-3.5-flash";
+
+/** Modelo a usar. Na Agent Platform, um nome Gemini 2.5 (já retirado) passa ao modelo atual. */
+export function resolveModel(requested: string | undefined, provider: GenAIProvider, fallback = DEFAULT_MODEL): string {
+  const name = String(requested || "").trim() || fallback;
+  if (provider === "agent-platform" && /^gemini-(1\.|2\.)/.test(name)) return DEFAULT_MODEL;
+  return name;
+}
+
+/** Os modelos Gemini 3 "pensam" antes de responder; nível baixo para respostas curtas e rápidas. */
+export function thinkingConfigFor(model: string): Record<string, any> {
+  return /^gemini-3/.test(model) ? { thinkingConfig: { thinkingLevel: "LOW" } } : {};
+}
+
 export interface GenAIConfig {
   provider: GenAIProvider;
   configured: boolean;
@@ -41,12 +58,10 @@ export function resolveGenAIConfig(env: Record<string, string | undefined> = pro
     || ["true", "1"].includes(String(env.GOOGLE_GENAI_USE_VERTEXAI || "").toLowerCase());
 
   if (useAgentPlatform) {
-    const apiKey = String(env.AGENT_PLATFORM_API_KEY || "").trim();
-    if (apiKey) {
-      return { provider: "agent-platform", configured: true, options: { vertexai: true, apiKey }, description: "Agent Platform (chave)" };
-    }
+    // A conta de serviço vem primeiro: é a única forma de escolher a região. A chave (API key)
+    // fica presa a us-central1, onde os modelos Gemini 3 não existem (18/11/2026).
     const project = String(env.GOOGLE_CLOUD_PROJECT || "").trim();
-    const location = String(env.GOOGLE_CLOUD_LOCATION || "europe-west1").trim();
+    const location = String(env.GOOGLE_CLOUD_LOCATION || DEFAULT_LOCATION).trim();
     const credentials = parseServiceAccount(env.GOOGLE_SERVICE_ACCOUNT_JSON);
     if (project && credentials) {
       return {
@@ -60,6 +75,10 @@ export function resolveGenAIConfig(env: Record<string, string | undefined> = pro
         },
         description: `Agent Platform (conta de serviço, ${project}, ${location})`,
       };
+    }
+    const apiKey = String(env.AGENT_PLATFORM_API_KEY || "").trim();
+    if (apiKey) {
+      return { provider: "agent-platform", configured: true, options: { vertexai: true, apiKey }, description: "Agent Platform (chave)" };
     }
     return { provider: "agent-platform", configured: false, options: {}, description: "Agent Platform sem credenciais" };
   }

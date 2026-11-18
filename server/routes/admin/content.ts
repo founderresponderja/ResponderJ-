@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-import { lazyGenAI } from "../../services/genai-client.js";
+import { lazyGenAI, mainModel } from "../../services/genai-client.js";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Note: requireAuth will be handled by the main routes.ts file
@@ -287,7 +287,7 @@ router.post('/text-check', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model: mainModel(),
       contents: prompt,
       config: {
         responseMimeType: "application/json",

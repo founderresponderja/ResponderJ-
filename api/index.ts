@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { GoogleGenAI } from "@google/genai";
 import { ensureDatabaseConnection } from "../server/db.js";
 import { retryOnce, withTimeout } from "../server/utils/timeout.js";
-import { lazyGenAI, isGenAIConfigured, genAIConfig } from "../server/services/genai-client.js";
+import { lazyGenAI, isGenAIConfigured, genAIConfig, mainModel, thinkingConfigFor } from "../server/services/genai-client.js";
 
 // RJ-8.3: a app é montada de novo em cada tentativa de arranque. Antes, se o arranque falhasse
 // (ex.: base de dados a acordar), a promessa falhada ficava guardada e TODOS os pedidos seguintes
@@ -163,7 +163,7 @@ export default async function handler(req: Request, res: Response) {
       database,
       databaseMs: Date.now() - t,
       appReady: initialized,
-      ai: genAIConfig().description,
+      ai: `${genAIConfig().description} · ${mainModel()}`,
       initMs,
       instanceAgeS: Math.round((Date.now() - instanceStartedAt) / 1000),
       time: new Date().toISOString(),
@@ -189,12 +189,14 @@ export default async function handler(req: Request, res: Response) {
 
       const prompt = `${chatContext}\nUser: ${message}\nSofia:`;
       const response = await withTimeout(ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        model: mainModel(),
         contents: prompt,
         config: {
           systemInstruction: SOFIA_SYSTEM_INSTRUCTIONS[lang],
           temperature: 0.7,
-          maxOutputTokens: 350,
+          // Os modelos Gemini 3 contam o "pensamento" nos tokens de saída: margem maior.
+          maxOutputTokens: 1024,
+          ...thinkingConfigFor(mainModel()),
         },
       }), 20000, "Sofia");
 
@@ -205,7 +207,7 @@ export default async function handler(req: Request, res: Response) {
     } catch (error: any) {
       // Antes o erro ficava escondido: agora fica nos registos da Vercel e na Saúde técnica (RJ-8.2).
       const detail = String(error?.message || error || "Chat error").slice(0, 500);
-      console.error(`[sofia] erro da IA (${genAIConfig().description}, modelo ${process.env.GEMINI_MODEL || "gemini-2.5-flash"}): ${detail}`);
+      console.error(`[sofia] erro da IA (${genAIConfig().description}, modelo ${mainModel()}): ${detail}`);
       import("../server/services/error-tracking.js")
         .then(({ recordAppError }) => recordAppError({ source: "server", kind: "exception", message: `Sofia: ${detail}`, path: "/api/ai/chat" }))
         .catch(() => undefined);

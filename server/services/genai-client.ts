@@ -1,12 +1,21 @@
 // Um só sítio onde se cria o cliente do Gemini (AI Studio ou Agent Platform; ver genai-config.ts).
 import { GoogleGenAI } from "@google/genai";
-import { resolveGenAIConfig } from "./genai-config.js";
+import { resolveGenAIConfig, resolveModel, thinkingConfigFor } from "./genai-config.js";
 
 let cached: GoogleGenAI | null = null;
 
 export function genAIConfig() {
   return resolveGenAIConfig();
 }
+
+/** Modelo principal (GEMINI_MODEL) e de reserva (GEMINI_FALLBACK_MODEL), já ajustados ao serviço. */
+export function mainModel(): string {
+  return resolveModel(process.env.GEMINI_MODEL, resolveGenAIConfig().provider);
+}
+export function fallbackModel(): string {
+  return resolveModel(process.env.GEMINI_FALLBACK_MODEL, resolveGenAIConfig().provider, mainModel());
+}
+export { thinkingConfigFor };
 
 export function isGenAIConfigured(): boolean {
   return resolveGenAIConfig().configured;

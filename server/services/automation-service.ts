@@ -1,4 +1,5 @@
 import { db } from "../db.js";
+import { mainModel } from "./genai-client.js";
 import { reviews, responses, establishments, users } from "../../shared/schema.js";
 import { eq, isNull } from "drizzle-orm";
 import { storage } from "../storage.js";
@@ -163,7 +164,7 @@ export const automationService = {
             language: row.language || "pt",
             responseType: "auto_reply",
             creditsUsed: 1,
-            aiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+            aiModel: mainModel(),
             customerName: row.author_name,
             approvalStatus: "pending",
             isPublished: false,

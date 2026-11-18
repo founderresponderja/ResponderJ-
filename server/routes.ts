@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { genAIConfig } from "./services/genai-client.js";
+import { genAIConfig, mainModel } from "./services/genai-client.js";
 import { acceptCost, buildAcceptUpdate } from "./services/billing-logic.js";
 import { storage } from "./storage.js";
 import { setupAuth, requireAuth, requireFeature } from "./auth.js";
@@ -610,7 +610,7 @@ export async function registerRoutes(app: any): Promise<void> {
     try {
       const userId = req.user?.id;
       const { platform, originalMessage, tone, businessProfileId, responseType, extraInstructions } = req.body;
-      const effectiveGeminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+      const effectiveGeminiModel = mainModel();
       console.log("[generate-response] request", {
         userId,
         platform,
@@ -764,7 +764,7 @@ export async function registerRoutes(app: any): Promise<void> {
         stack: process.env.NODE_ENV !== "production" ? error?.stack : undefined,
         debug: {
           ai: genAIConfig().description,
-          geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          geminiModel: mainModel(),
         },
       });
     }
