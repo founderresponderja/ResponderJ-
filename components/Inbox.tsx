@@ -41,6 +41,7 @@ interface InboxItem {
   is_published: boolean | null;
   published_at: string | null;
   approval_status: string | null;
+  attempts_count?: number | null;
   response_tone: string | null;
   response_language: string | null;
 }
@@ -98,7 +99,8 @@ function inboxItemToReviewData(
     createdAt: new Date(item.created_at),
     responseId: item.response_id ?? undefined,
     approvalStatus: (item.approval_status as 'pending' | 'approved' | 'edited' | 'discarded' | undefined) ?? undefined,
-    attemptsCount: 1,
+    // Antes estava fixo em 1: o botão mostrava sempre "Refazer (1/3)".
+    attemptsCount: Number(item.attempts_count) || 1,
   };
 }
 

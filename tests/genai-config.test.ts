@@ -62,3 +62,4 @@ test("pensamento em nível baixo só nos modelos Gemini 3", () => {
   assert.deepEqual(thinkingConfigFor("gemini-3.5-flash"), { thinkingConfig: { thinkingLevel: "LOW" } });
   assert.deepEqual(thinkingConfigFor("gemini-2.5-flash"), {});
 });
+

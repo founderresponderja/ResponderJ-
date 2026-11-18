@@ -84,7 +84,7 @@ router.get("/", requireAuth, async (req: any, res) => {
 
     const lateralJoin = sql`
       LEFT JOIN LATERAL (
-        SELECT id, response_text, is_published, published_at, approval_status, tone, language
+        SELECT id, response_text, is_published, published_at, approval_status, tone, language, attempts_count
         FROM responses
         WHERE review_id = r.id
         ORDER BY created_at DESC, id DESC
@@ -107,6 +107,7 @@ router.get("/", requireAuth, async (req: any, res) => {
         resp.is_published    AS is_published,
         resp.published_at    AS published_at,
         resp.approval_status AS approval_status,
+        resp.attempts_count  AS attempts_count,
         resp.tone            AS response_tone,
         resp.language        AS response_language,
         r.establishment_id   AS establishment_id,

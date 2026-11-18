@@ -629,13 +629,14 @@ export async function registerRoutes(app: any): Promise<void> {
       const reviewIdRaw = req.body.reviewId;
       let reviewIdInt: number | undefined;
       let reviewEstablishment: any = null;
+      let reviewAuthorName: string | null = null;
       if (reviewIdRaw != null) {
         reviewIdInt = Number(reviewIdRaw);
         if (!Number.isInteger(reviewIdInt) || reviewIdInt <= 0) {
           return res.status(400).json({ message: "reviewId inválido" });
         }
         const [owned] = await db
-          .select({ establishment: establishments })
+          .select({ establishment: establishments, authorName: reviews.authorName })
           .from(reviews)
           .innerJoin(establishments, eq(reviews.establishmentId, establishments.id))
           .where(and(eq(reviews.id, reviewIdInt), eq(establishments.userId, Number(userId))))
@@ -644,6 +645,7 @@ export async function registerRoutes(app: any): Promise<void> {
           return res.status(404).json({ message: "Review não encontrada" });
         }
         reviewEstablishment = owned.establishment;
+        reviewAuthorName = owned.authorName || null;
         const [existing] = await db
           .select({ id: responses.id })
           .from(responses)
@@ -677,7 +679,8 @@ export async function registerRoutes(app: any): Promise<void> {
         tone: tone || "profissional",
         extraInstructions,
         businessContext,
-        responseType: responseType || "resposta"
+        responseType: responseType || "resposta",
+        customerName: reviewAuthorName,
       });
       console.log("[generate-response] aiResult received", {
         hasResponse: !!aiResult?.response,
@@ -917,7 +920,16 @@ export async function registerRoutes(app: any): Promise<void> {
         });
       }
 
+      // Nome de quem escreveu a review, para a nova versão também o usar.
+      let regenAuthorName: string | null = null;
+      if (response.reviewId) {
+        const [rv] = await db.select({ authorName: reviews.authorName }).from(reviews)
+          .where(eq(reviews.id, Number(response.reviewId))).limit(1);
+        regenAuthorName = rv?.authorName || null;
+      }
+
       const aiResult = await aiResponseService.generateResponse({
+        customerName: regenAuthorName,
         comment: response.originalMessage,
         platform: 'google',
         tone: response.tone || 'profissional',
