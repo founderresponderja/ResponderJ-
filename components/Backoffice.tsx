@@ -739,7 +739,17 @@ const HealthTab = ({ api }: { api: Api }) => {
   const [showResolved, setShowResolved] = useState(false);
   const { data, error, reload } = useLoad(() => api<AppErrorRow[]>(`/app-errors${showResolved ? '?resolved=1' : ''}`), [showResolved]);
   const [open, setOpen] = useState<number | null>(null);
-  const resolve = async (id: number) => { await api(`/app-errors/${id}/resolve`, {}); reload(); };
+  const [actionError, setActionError] = useState<string | null>(null);
+  const resolve = async (id: number) => {
+    setActionError(null);
+    try {
+      await api(`/app-errors/${id}/resolve`, {});
+      reload();
+    } catch (e: any) {
+      // Antes a falha ficava em silêncio e a linha simplesmente não desaparecia.
+      setActionError(`Não foi possível marcar como visto: ${e?.message || 'erro desconhecido'}`);
+    }
+  };
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -747,6 +757,7 @@ const HealthTab = ({ api }: { api: Api }) => {
       </p>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={showResolved} onChange={(e) => setShowResolved(e.target.checked)} /> Mostrar também os vistos</label>
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {actionError && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{actionError}</div>}
       <div className={`${card} overflow-x-auto`}>
         <table className="w-full text-sm">
           <thead className="text-left text-xs uppercase text-slate-500">
@@ -765,7 +776,7 @@ const HealthTab = ({ api }: { api: Api }) => {
                   </td>
                   <td className="p-3 font-mono">{e.count}</td>
                   <td className="p-3 text-xs">{fmtDate(e.last_seen, true)}<div className="text-slate-500">desde {fmtDate(e.first_seen)}</div></td>
-                  <td className="p-3">{!e.resolved_at && <button onClick={() => resolve(e.id)} className={`${btn} border`}>Marcar como visto</button>}</td>
+                  <td className="p-3">{!e.resolved_at && <button type="button" onClick={() => resolve(Number(e.id))} className={`${btn} border`}>Marcar como visto</button>}</td>
                 </tr>
                 {open === e.id && (
                   <tr><td colSpan={5} className="bg-slate-50 p-3 dark:bg-slate-800"><pre className="whitespace-pre-wrap text-xs">{JSON.stringify(e.sample, null, 2)}</pre></td></tr>
