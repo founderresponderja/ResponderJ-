@@ -58,7 +58,8 @@ const AgencyTeamManagement: React.FC = () => {
 
   // Forms
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  // Os convites são sempre para membro (o papel de administrador atribui-se depois).
+  const inviteRole = 'member' as const;
   
   const [delegateMemberId, setDelegateMemberId] = useState('');
   const [delegateType, setDelegateType] = useState<'temporary' | 'permanent'>('temporary');
@@ -363,17 +364,6 @@ const AgencyTeamManagement: React.FC = () => {
                   placeholder="membro@exemplo.com"
                 />
                 <p className="text-xs text-slate-500 mt-1">O novo membro receberá um convite por email.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Função</label>
-                <select 
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as any)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                >
-                  <option value="member">Membro</option>
-                  <option value="admin">Administrador</option>
-                </select>
               </div>
               <div className="flex gap-3 pt-2">
                 <button 
