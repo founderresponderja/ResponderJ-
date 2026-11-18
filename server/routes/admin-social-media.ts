@@ -1,10 +1,11 @@
 import { Router } from "express";
+import { lazyGenAI } from "../services/genai-client.js";
 import { requireAuth } from "../auth.js";
 import { GoogleGenAI, Type } from "@google/genai";
 import { randomUUID } from "crypto";
 
 const router = Router();
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
 // Interface para contas de redes sociais
 interface SocialMediaAccount {

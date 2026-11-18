@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { GoogleGenAI } from "@google/genai";
 import { ensureDatabaseConnection } from "../server/db.js";
 import { retryOnce, withTimeout } from "../server/utils/timeout.js";
+import { lazyGenAI, isGenAIConfigured, genAIConfig } from "../server/services/genai-client.js";
 
 // RJ-8.3: a app é montada de novo em cada tentativa de arranque. Antes, se o arranque falhasse
 // (ex.: base de dados a acordar), a promessa falhada ficava guardada e TODOS os pedidos seguintes
@@ -12,7 +13,7 @@ let initialized = false;
 let initializing: Promise<void> | null = null;
 let initMs: number | null = null;
 const instanceStartedAt = Date.now();
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
+const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
 type ChatLanguage = "pt" | "en" | "es";
 
@@ -162,6 +163,7 @@ export default async function handler(req: Request, res: Response) {
       database,
       databaseMs: Date.now() - t,
       appReady: initialized,
+      ai: genAIConfig().description,
       initMs,
       instanceAgeS: Math.round((Date.now() - instanceStartedAt) / 1000),
       time: new Date().toISOString(),
@@ -175,7 +177,7 @@ export default async function handler(req: Request, res: Response) {
       if (!message) {
         return res.status(400).json({ error: "Message is required" });
       }
-      if (!process.env.GEMINI_API_KEY && !process.env.API_KEY) {
+      if (!isGenAIConfigured()) {
         return res.status(503).json({ error: "AI provider not configured" });
       }
 

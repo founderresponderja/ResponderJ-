@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { isGenAIConfigured } from "../services/genai-client.js";
 import { requireAuth, requireAdmin } from "../auth.js";
 import process from "process";
 
@@ -33,7 +34,7 @@ export function registerAdminSystemRoutes(app: any) {
     // Environment check (sensitive, admin only)
     app.get("/api/admin/system/env-check", requireAuth, requireAdmin, (req: any, res: any) => {
         res.json({
-            hasGemini: !!process.env.GEMINI_API_KEY,
+            hasGemini: isGenAIConfigured(),
             hasStripe: !!process.env.STRIPE_SECRET_KEY,
             hasSendGrid: !!process.env.SENDGRID_API_KEY,
             hasDb: !!process.env.DATABASE_URL

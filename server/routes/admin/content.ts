@@ -1,11 +1,12 @@
 
 import { Router } from "express";
+import { lazyGenAI } from "../../services/genai-client.js";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Note: requireAuth will be handled by the main routes.ts file
 
 const router = Router();
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = lazyGenAI; // cliente único (AI Studio ou Agent Platform)
 
 // Mock data para demonstração - seria substituído por dados reais de uma base de dados
 const mockPages = [

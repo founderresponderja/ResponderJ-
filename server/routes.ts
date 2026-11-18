@@ -1,5 +1,6 @@
 
 import type { Express } from "express";
+import { genAIConfig } from "./services/genai-client.js";
 import { acceptCost, buildAcceptUpdate } from "./services/billing-logic.js";
 import { storage } from "./storage.js";
 import { setupAuth, requireAuth, requireFeature } from "./auth.js";
@@ -613,8 +614,7 @@ export async function registerRoutes(app: any): Promise<void> {
       console.log("[generate-response] request", {
         userId,
         platform,
-        keyExists: !!process.env.GEMINI_API_KEY,
-        hasFallbackApiKey: !!process.env.API_KEY,
+        ai: genAIConfig().description,
         geminiModel: effectiveGeminiModel,
       });
 
@@ -763,8 +763,7 @@ export async function registerRoutes(app: any): Promise<void> {
         error: error?.message || "unknown_error",
         stack: process.env.NODE_ENV !== "production" ? error?.stack : undefined,
         debug: {
-          keyExists: !!process.env.GEMINI_API_KEY,
-          hasFallbackApiKey: !!process.env.API_KEY,
+          ai: genAIConfig().description,
           geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         },
       });

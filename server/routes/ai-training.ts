@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { isGenAIConfigured } from "../services/genai-client.js";
 import { requireAuth, requireFeature } from "../auth.js";
 import { aiTrainingService } from "../services/ai-training-service.js";
 
@@ -175,7 +176,7 @@ router.get("/quick-analysis", requireAuth, requireFeature("hasAgentTraining"), a
 router.get("/status", requireAuth, requireFeature("hasAgentTraining"), async (req: any, res) => {
   try {
     // RJ-0.4: o fornecedor de IA é o Gemini (antes verificava a chave do OpenAI, que não existe).
-    const hasAi = !!(process.env.GEMINI_API_KEY || process.env.API_KEY);
+    const hasAi = isGenAIConfigured();
     
     res.json({
       success: true,

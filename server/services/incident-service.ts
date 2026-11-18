@@ -6,6 +6,7 @@ import { db } from "../db.js";
 import { incidents, incidentAttachments, incidentEvents, users } from "../../shared/schema.js";
 import { sendMail } from "./mailer.js";
 import { withTimeout } from "../utils/timeout.js";
+import { getGenAI } from "./genai-client.js";
 import {
   CATEGORIES, SEVERITIES, CATEGORY_LABEL, SLA_BUSINESS_DAYS, normalizeClassification, dueDateFor,
   ackEmail, resolvedEmail, type Severity,
@@ -26,10 +27,9 @@ export interface NewIncidentInput {
 
 /** Uma chamada ao Gemini: categoria, gravidade, resumo e razão. Falha -> média / outro. */
 export async function classifyIncident(subject: string | null | undefined, description: string) {
-  const key = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!key) return { ...normalizeClassification({}), classified: false };
+  const client = getGenAI();
+  if (!client) return { ...normalizeClassification({}), classified: false };
   try {
-    const client = new GoogleGenAI({ apiKey: key });
     const categories = CATEGORIES.map((c) => `${c} (${CATEGORY_LABEL[c]})`).join(", ");
     const prompt = `
 You triage bug reports for "Responder Já", a SaaS that syncs customer reviews (Google) and writes AI replies.
