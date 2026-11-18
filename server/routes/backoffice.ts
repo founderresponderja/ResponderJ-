@@ -30,9 +30,19 @@ router.get("/app-errors", async (req: any, res) => {
 });
 
 router.post("/app-errors/:id/resolve", async (req: any, res) => {
-  await db.execute(sql`UPDATE app_errors SET resolved_at = now() WHERE id = ${Number(req.params.id)}`);
-  await recordAdminAction(req, "app_error_resolved", { details: { id: Number(req.params.id) } });
-  res.json({ ok: true });
+  const id = Number(req.params.id);
+  try {
+    const { rows } = await db.execute(sql`UPDATE app_errors SET resolved_at = now() WHERE id = ${id} RETURNING id`);
+    console.log(`[saude-tecnica] erro ${id} marcado como visto por ${req.user?.email}: ${rows.length} linha(s)`);
+    if (!rows.length) return res.status(404).json({ message: "Erro técnico não encontrado." });
+    // O registo de auditoria não pode impedir a marcação.
+    await recordAdminAction(req, "app_error_resolved", { details: { id } }).catch((e: any) =>
+      console.warn("[saude-tecnica] auditoria falhou:", e?.message));
+    res.json({ ok: true });
+  } catch (error: any) {
+    console.error("[saude-tecnica] marcar como visto falhou:", error?.cause?.message || error?.message);
+    res.status(500).json({ message: "Não foi possível marcar como visto." });
+  }
 });
 
 // Inbox de erros e indicadores (RJ-5.6, ver backoffice-incidents.ts).
