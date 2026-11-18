@@ -11,7 +11,6 @@ import {
   adminRateLimit, 
   generateRateLimit 
 } from "./middleware/security.js";
-import { protectDatabaseQueries } from "./middleware/sql-injection-protection.js";
 import { 
   legalComplianceHeaders,
   updateCookieConsent, 
@@ -92,7 +91,10 @@ export async function setupAuthRoutes(app: any): Promise<void> {
 
 export async function registerRoutes(app: any): Promise<void> {
   app.use(legalComplianceHeaders);
-  app.use(protectDatabaseQueries);
+  // Filtro de "SQL injection" por padrões de texto removido a 18/11/2026: bloqueava pedidos
+  // legítimos (o regresso da autorização Google com "--" no código; reviews com "#", aspas ou
+  // palavras como "update"). A proteção real é usar sempre consultas com parâmetros (Drizzle),
+  // sem nunca juntar texto do utilizador ao SQL — confirmado no código.
   
   // SOFIA AI CHAT ROUTE
   app.use("/api/ai", sofiaChatRoutes);
