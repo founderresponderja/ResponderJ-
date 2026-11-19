@@ -25,7 +25,7 @@ function declarations(audience: SofiaAudience): any[] {
       limit: I("Quantas mostrar (1 a 10, por omissão 5)."), only_negative: { type: "BOOLEAN", description: "Só 1 e 2 estrelas." } } } },
     navigate: { description: "Propor abrir um separador da app (a pessoa confirma com um clique).", parameters: { type: "OBJECT", properties: {
       destination: S("Separador.", { enum: Object.keys(destinationsFor(audience)) }) }, required: ["destination"] } },
-    list_incidents: { description: "Lista de erros reportados pelos clientes (backoffice).", parameters: { type: "OBJECT", properties: {
+    list_incidents: { description: "Lista de erros reportados (backoffice), já com a descrição do cliente e o motivo da classificação da IA: chega para analisar e propor reclassificações sem abrir cada erro.", parameters: { type: "OBJECT", properties: {
       filter: S("active = por resolver (omissão); overdue = fora do prazo; all = todos.", { enum: ["active", "overdue", "all"] }),
       severity: S("Filtrar por gravidade.", { enum: [...SEVERITIES] }) } } },
     get_incident: { description: "Detalhe de um erro reportado e o seu histórico.", parameters: { type: "OBJECT", properties: { incident_id: I("N.º do erro.") }, required: ["incident_id"] } },
@@ -110,15 +110,16 @@ async function listIncidents(_ctx: SofiaContext, args: any) {
     : sql`i.status <> 'resolved'`;
   const sev = (SEVERITIES as readonly string[]).includes(args?.severity) ? sql`AND i.severity = ${args.severity}` : sql``;
   const { rows } = await db.execute(sql`
-    SELECT i.id, i.subject, i.ai_summary, i.category, i.severity, i.status, i.due_at, i.created_at, i.reporter_email,
-           u.email AS assigned_email
+    SELECT i.id, i.subject, i.ai_summary, i.ai_reason, i.description, i.category, i.severity, i.status, i.due_at, i.created_at,
+           i.reporter_email, u.email AS assigned_email
     FROM incidents i LEFT JOIN users u ON u.id = i.assigned_to
     WHERE ${cond} ${sev}
     ORDER BY CASE WHEN i.status = 'resolved' THEN 1 ELSE 0 END, i.due_at ASC LIMIT 15`);
   return {
     warning: UNTRUSTED,
     incidents: rows.map((r: any) => ({
-      id: r.id, summary: clip(r.ai_summary || r.subject, 200), category: r.category, severity: r.severity, status: r.status,
+      id: r.id, summary: clip(r.ai_summary || r.subject, 200), description: clip(r.description, 400),
+      aiReason: clip(r.ai_reason, 200), category: r.category, severity: r.severity, status: r.status,
       dueAt: r.due_at, overdue: r.status !== "resolved" && new Date(r.due_at).getTime() < Date.now(),
       createdAt: r.created_at, reporter: r.reporter_email, assignedTo: r.assigned_email,
     })),

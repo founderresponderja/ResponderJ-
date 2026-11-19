@@ -247,7 +247,7 @@ const SofiaChat: React.FC<SofiaChatProps> = ({ lang = 'pt' }) => {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
-        content: i18n.connectionError,
+        content: (error as any)?.message && !(String((error as any).message).includes('Network')) ? `${(error as any).message} 🔌` : i18n.connectionError,
         timestamp: new Date()
       }]);
     } finally {
