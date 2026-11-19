@@ -125,6 +125,19 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
     ] : []),
   ];
 
+  // RJ-5.7: a Sofia pode abrir separadores e, depois de uma ação confirmada, o separador atual recarrega.
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const onNav = (e: any) => {
+      const d = e?.detail || {};
+      if (d.view === 'backoffice' && tabs.some((t) => t.id === d.tab)) setTab(d.tab as Tab);
+    };
+    const onChanged = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('sofia:navigate', onNav);
+    window.addEventListener('sofia:changed', onChanged);
+    return () => { window.removeEventListener('sofia:navigate', onNav); window.removeEventListener('sofia:changed', onChanged); };
+  }, [tabs.length]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -153,7 +166,7 @@ const Backoffice: React.FC<BackofficeProps> = ({ onLogout }) => {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main key={refreshKey} className="mx-auto max-w-6xl px-6 py-8">
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
         {me && me.role !== 'super_admin' && <IncomingTransfer api={api} />}
         {tab === 'overview' && <OverviewTab api={api} />}

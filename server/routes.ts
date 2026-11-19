@@ -54,6 +54,7 @@ import sofiaChatRoutes from "./routes/ai-chat.js"; // NEW IMPORT
 import platformIntegrationsRoutes from "./routes/platform-integrations.js";
 import accountRoutes from "./routes/account.js";
 import consentRoutes from "./routes/consents.js";
+import sofiaRoutes from "./routes/sofia.js";
 import incidentRoutes from "./routes/incidents.js";
 
 import { db } from "./db.js";
@@ -103,6 +104,8 @@ export async function registerRoutes(app: any): Promise<void> {
   app.use("/api/account", accountRoutes);
   // RJ-7.2: registo de consentimentos (termos, privacidade, cookies) com a versão aceite.
   app.use("/api/consents", consentRoutes);
+  // RJ-5.7: Sofia dentro da app (com sessão, ferramentas por perfil e avisos).
+  app.use("/api/sofia", sofiaRoutes);
   // RJ-5.6: reporte de erros.
   app.use("/api/incidents", incidentRoutes);
   

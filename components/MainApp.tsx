@@ -165,6 +165,22 @@ const MainApp: React.FC<MainAppProps> = ({
   // RJ-5.5: membro da equipa a trabalhar na conta da agência. Pagamentos são do dono;
   // a gestão da equipa é do dono e dos administradores. O servidor já bloqueava; o ecrã também.
   const teamMember = subscription.teamMember || null;
+
+  // RJ-5.7: a Sofia pode abrir separadores (só os que este perfil vê).
+  useEffect(() => {
+    const allowed = new Set(['overview', 'inbox', 'analytics', 'platforms', 'business-profile', 'privacy']);
+    const onNav = (e: any) => {
+      const d = e?.detail || {};
+      if (d.view !== 'app') return;
+      const ok = allowed.has(d.tab)
+        || (d.tab === 'pricing' && !teamMember)
+        || ((d.tab === 'agency') && planCapabilities.hasClientManagement)
+        || (d.tab === 'team' && planCapabilities.hasClientManagement && (!teamMember || teamMember.role === 'admin'));
+      if (ok) setActiveTab(d.tab);
+    };
+    window.addEventListener('sofia:navigate', onNav);
+    return () => window.removeEventListener('sofia:navigate', onNav);
+  }, [teamMember, planCapabilities.hasClientManagement]);
   const canSeeBilling = !teamMember;
   const canManageTeam = !teamMember || teamMember.role === 'admin';
 
