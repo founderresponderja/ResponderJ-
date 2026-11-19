@@ -1,5 +1,6 @@
 // RJ-7.1: os dados pessoais do titular (RGPD).
 // GET  /api/account/export  -> todos os dados da conta num ficheiro JSON (artigos 15.º e 20.º)
+//      ?format=html          -> os mesmos dados numa página legível
 // POST /api/account/delete  -> apagamento efetivo da conta e dos dados (artigo 17.º)
 //
 // Corre sempre como a própria pessoa (um membro de equipa não passa a ser o dono da agência
@@ -17,7 +18,7 @@ import {
   agencies, agencyMembers, agencyInvitations, qualityFeedback, referrals, adminAuditLog,
   incidents, incidentAttachments,
 } from "../../shared/schema.js";
-import { stripSecrets, deletionBlockedReason, confirmationMatches, isStripeMissing } from "../services/account-logic.js";
+import { stripSecrets, deletionBlockedReason, confirmationMatches, isStripeMissing, renderExportHtml } from "../services/account-logic.js";
 
 const router = Router();
 
@@ -98,8 +99,17 @@ router.get("/export", requireAuth, async (req: any, res) => {
       ip: String(req.headers?.["x-forwarded-for"] || req.ip || "").split(",")[0].trim() || null,
     }).catch((e: any) => console.warn("[account] audit export failed:", e?.message));
 
-    res.setHeader("Content-Disposition", `attachment; filename="responder-ja-dados-${new Date().toISOString().slice(0, 10)}.json"`);
-    res.json(exportData);
+    const day = new Date().toISOString().slice(0, 10);
+    if (req.query.format === "html") {
+      // Versão legível (abre bem no telemóvel); mesmos dados.
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="responder-ja-dados-${day}.html"`);
+      return res.send(renderExportHtml(exportData));
+    }
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="responder-ja-dados-${day}.json"`);
+    // Com indentação: legível num editor de texto.
+    res.send(JSON.stringify(exportData, null, 2));
   } catch (error: any) {
     console.error("[account] export failed:", error?.message);
     res.status(500).json({ message: "Não foi possível exportar os dados." });

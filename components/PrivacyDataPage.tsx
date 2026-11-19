@@ -15,17 +15,17 @@ const PrivacyDataPage: React.FC = () => {
   const [confirmEmail, setConfirmEmail] = useState('');
   const accountEmail = user?.primaryEmailAddress?.emailAddress || '';
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'html' | 'json') => {
     setExporting(true);
     try {
       const headers = await buildAuthHeaders({ getToken });
-      const res = await fetch('/api/account/export', { headers });
+      const res = await fetch(`/api/account/export${format === 'html' ? '?format=html' : ''}`, { headers });
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || 'Falha na exportação');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `responder-ja-dados-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `responder-ja-dados-${new Date().toISOString().slice(0, 10)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
       notifySuccess('Os seus dados foram descarregados.');
@@ -74,14 +74,24 @@ const PrivacyDataPage: React.FC = () => {
             Um ficheiro com todos os dados da sua conta: perfil, negócios, reviews, respostas, regras, créditos e equipa.
             Por segurança, não inclui os acessos às plataformas ligadas.
           </p>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
-          >
-            {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            Descarregar (JSON)
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => handleExport('html')}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+            >
+              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              Descarregar (fácil de ler)
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <Download size={16} />
+              Descarregar (JSON, para outros serviços)
+            </button>
+          </div>
         </CardContent>
       </Card>
 
