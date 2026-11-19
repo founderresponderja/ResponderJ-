@@ -22,7 +22,7 @@ O que o código faz:
 
 | Função | Limite (vercel.json) | Notas |
 |---|---|---|
-| `api/index.ts` (toda a API) | 30 s | Se passar, a Vercel corta e devolve `504` sem mensagem |
+| `api/index.ts` (toda a API) | 60 s (era 30 s até 19/11/2026; subiu por causa da Sofia, que faz várias voltas ao modelo) | Se passar, a Vercel corta e devolve `504` sem mensagem |
 | `api/cron/sync-reviews.ts` | 60 s | Sincroniza, cria respostas automáticas e envia emails, com prazo interno de 55 s |
 
 Para nunca chegar ao corte, cada chamada externa tem um limite próprio:

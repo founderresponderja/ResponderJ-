@@ -53,7 +53,9 @@ ${knowledgeFor(ctx.audience)}`;
 
 router.post("/chat", requireAuth, async (req: any, res) => {
   const started = Date.now();
-  const deadline = started + 24000; // a função da Vercel tem 30 s
+  // A função da Vercel tem 60 s (vercel.json). Cada volta ao modelo demora vários segundos e uma
+  // análise pode precisar de 3 ou 4 voltas (listar → detalhar → propor → responder).
+  const deadline = started + 50000;
   const ai = getGenAI();
   if (!ai) return res.status(503).json({ error: "IA não configurada." });
   const ctx = contextFor(req);
@@ -71,8 +73,8 @@ router.post("/chat", requireAuth, async (req: any, res) => {
 
   try {
     for (let step = 0; step < 5; step++) {
-      const left = remainingMs(deadline);
-      if (left < 2000) break;
+      const left = Math.min(remainingMs(deadline), 25000);
+      if (left < 4000) break;
       const response: any = await withTimeout(ai.models.generateContent({
         model,
         contents,
@@ -113,10 +115,20 @@ router.post("/chat", requireAuth, async (req: any, res) => {
       contents.push({ role: "user", parts });
     }
     return res.json({
-      response: proposals.length ? "Deixei a proposta abaixo para confirmar." : "Demorei demasiado a responder. Pode tentar outra vez, com um pedido mais curto?",
+      response: proposals.length ? "Deixei as propostas abaixo para confirmar." : "Demorei demasiado a responder. Pode tentar outra vez, com um pedido mais curto?",
       proposals, tools: usedTools,
     });
   } catch (error: any) {
+    // Se o tempo acabar depois de já haver propostas, entregá-las em vez de dar erro.
+    if (error?.name === "TimeoutError") {
+      console.warn(`[sofia-app] tempo esgotado (${ctx.audience}, ${model}) após ${Date.now() - started} ms; ferramentas: ${usedTools.join(", ")}`);
+      return res.json({
+        response: proposals.length
+          ? "A análise demorou mais do que o previsto, mas deixei abaixo as propostas que já tinha preparado."
+          : "A análise está a demorar mais do que o previsto. Experimente pedir por partes (por exemplo, só os erros críticos ou um erro de cada vez).",
+        proposals, tools: usedTools,
+      });
+    }
     const detail = String(error?.message || error).slice(0, 500);
     console.error(`[sofia-app] erro (${ctx.audience}, ${model}): ${detail}`);
     await recordAppError({ source: "server", kind: "exception", message: `Sofia (app): ${detail}`, path: "/api/sofia/chat", userId: Number(req.user?.id) || null });
