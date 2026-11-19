@@ -33,3 +33,29 @@ test("um membro de equipa exporta e apaga os seus próprios dados, não os da ag
   assert.ok(memberKeepsOwnIdentity("/api/account/export"));
   assert.ok(memberKeepsOwnIdentity("/api/account/delete"));
 });
+
+import { renderExportHtml, escapeHtml } from "../server/services/account-logic.ts";
+
+test("exportação: campos técnicos internos não saem", () => {
+  const out = stripSecrets({ email: "a@b.pt", emailVerificationToken: null, passwordResetToken: "x", passwordResetExpires: null, clerkUserId: "user_1" } as any);
+  assert.deepEqual(Object.keys(out), ["email"]);
+});
+
+test("versão legível: português, secções, datas e texto escapado", () => {
+  const html = renderExportHtml({
+    about: { exportedAt: "2026-11-18T16:43:23.744Z", legalBasis: "RGPD" },
+    account: { email: "ana@x.pt", firstName: "Ana", isActive: true, isAdmin: false },
+    reviews: [{ authorName: "<script>alert(1)</script>", rating: 5 }],
+    consents: [{ kind: "terms", version: "2026-04-10", granted: true, created_at: "2026-11-18 16:41:48.789971+00" }],
+    responses: [],
+  });
+  assert.match(html, /<html lang="pt-PT">/);
+  assert.match(html, /A sua conta/);
+  assert.match(html, /Termos e Condições/);
+  assert.match(html, /18\/11\/2026/);
+  assert.match(html, /Sem dados\./);
+  assert.ok(!html.includes("<script>alert"));
+  assert.ok(!html.includes("Is Admin"));
+  assert.ok(!html.includes(">user<"));
+  assert.equal(escapeHtml(`<a href="x">'`), "&lt;a href=&quot;x&quot;&gt;&#39;");
+});
