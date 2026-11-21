@@ -17,11 +17,11 @@ export const emailSequenceService = {
         subject: "Bem-vindo ao Responder Já!",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #0ea5e9;">Olá ${user.firstName},</h1>
+            <h1 style="color: #0F5F66;">Olá ${user.firstName},</h1>
             <p>Bem-vindo à plataforma que vai revolucionar a sua gestão de reviews.</p>
             <p>A sua conta foi criada e o período de teste de 7 dias começou.</p>
             <br>
-            <a href="${dashboardUrl}" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aceder ao Dashboard</a>
+            <a href="${dashboardUrl}" style="background-color: #0F5F66; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Aceder ao Dashboard</a>
           </div>
         `
     });

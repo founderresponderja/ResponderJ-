@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Platform, Tone, Language as AppLanguage, ReviewData } from '../types';
-import { Star, Send, Loader2, RefreshCw, Briefcase, Smile, Heart, HeartHandshake, Sparkles, MessageSquarePlus } from 'lucide-react';
+import { Star, Send, Loader2, RefreshCw, Briefcase, Smile, Heart, HeartHandshake, MessageSquarePlus, Laugh } from 'lucide-react';
 import { translations, Language } from '../utils/translations';
 
 interface ReviewFormProps {
@@ -51,7 +51,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
       case Tone.FRIENDLY: return <Smile size={16} />;
       case Tone.GRATEFUL: return <Heart size={16} />;
       case Tone.APOLOGETIC: return <HeartHandshake size={16} />;
-      case Tone.WITTY: return <Sparkles size={16} />;
+      case Tone.WITTY: return <Laugh size={16} />;
       default: return <Briefcase size={16} />;
     }
   };

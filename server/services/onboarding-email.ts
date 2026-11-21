@@ -14,7 +14,7 @@ export const onboardingEmailService = {
           <p>Para começar, ligue o seu Google Business Profile em "Plataformas" ou adicione uma review na Caixa de entrada.</p>
           <p><strong>Dica rápida:</strong> Configure o "Perfil de Negócio" para que a IA conheça o tom da sua marca.</p>
           <br>
-          <a href="${dashboardUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Ir para Dashboard</a>
+          <a href="${dashboardUrl}" style="background: #0F5F66; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">Ir para Dashboard</a>
         </div>
       `
     });

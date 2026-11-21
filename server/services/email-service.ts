@@ -97,7 +97,7 @@ export class EmailService {
     const subject = `Bem-vindo ao Responder Já, ${data.contactName}!`;
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h1 style="color: #4f46e5;">Olá ${data.contactName},</h1>
+        <h1 style="color: #0F5F66;">Olá ${data.contactName},</h1>
         <p>Obrigado pelo interesse da <strong>${data.companyName}</strong> na Responder Já.</p>
         <p>Estamos aqui para ajudar a automatizar as suas respostas a reviews e melhorar a sua reputação online.</p>
         <br>
@@ -133,21 +133,21 @@ export class EmailService {
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <div style="background: #0A3A3F; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1>✨ Resposta Automática Gerada!</h1>
                 <p>Para ${platform}</p>
             </div>
-            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+            <div style="background: #FAF8F5; padding: 30px; border-radius: 0 0 10px 10px;">
                 <p>Olá ${userName},</p>
                 <p>O Responder Já detetou uma nova avaliação e publicou a seguinte resposta automaticamente:</p>
                 
-                <div style="background: white; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 5px; font-style: italic;">
+                <div style="background: white; border-left: 4px solid #0F5F66; padding: 20px; margin: 20px 0; border-radius: 5px; font-style: italic;">
                     "${responsePreview}"
                 </div>
                 
                 <p style="font-size: 12px; color: #666;">Pode editar ou apagar esta resposta no painel da plataforma.</p>
                 <div style="text-align: center; margin-top: 20px;">
-                  <a href="https://responderja.com/dashboard" style="display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">Aceder ao Dashboard</a>
+                  <a href="https://responderja.com/dashboard" style="display: inline-block; background: #0F5F66; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">Aceder ao Dashboard</a>
                 </div>
             </div>
         </div>
@@ -162,10 +162,10 @@ export class EmailService {
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <div style="background: #0A3A3F; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1>💰 Créditos Adicionados!</h1>
             </div>
-            <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px;">
+            <div style="background: #FAF8F5; padding: 30px; border-radius: 0 0 10px 10px;">
                 <p>Olá ${userName},</p>
                 <p>Foram adicionados <strong>${credits} créditos</strong> à sua conta com sucesso.</p>
             </div>

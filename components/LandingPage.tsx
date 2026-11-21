@@ -1,25 +1,7 @@
 
 import React from 'react';
-import { 
-  BarChart3, 
-  Clock, 
-  CheckCircle2, 
-  ArrowRight, 
-  ShieldCheck, 
-  Sun, 
-  Moon, 
-  Info, 
-  Zap, 
-  Share2, 
-  MessageSquare, 
-  Globe, 
-  Smartphone, 
-  TrendingUp,
-  Award,
-  Sparkles,
-  Bot,
-  Hash
-} from 'lucide-react';
+import { BarChart3, Clock, CheckCircle2, ArrowRight, ShieldCheck, Sun, Moon, Info, Zap, Share2, MessageSquare, Globe, Smartphone, TrendingUp, Award, Bot, Hash } from 'lucide-react';
+import { AiMark as Sparkles } from './Logo';
 import { translations, Language } from '../utils/translations';
 import { Theme } from '../App';
 import PricingSection from './PricingSection';

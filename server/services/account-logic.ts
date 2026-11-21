@@ -169,12 +169,12 @@ export function renderExportHtml(data: Record<string, any>): string {
 <html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Os seus dados no Responder Já</title>
 <style>
-body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a;max-width:900px;margin:0 auto;padding:24px;line-height:1.45}
-h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px;color:#0369a1}.count{color:#64748b;font-weight:400}
-.meta{color:#475569;font-size:14px}.empty{color:#94a3b8;font-size:14px;margin:0}
-table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:top}
-thead th,.kv th{background:#f1f5f9;font-weight:600}.kv th{width:40%}.scroll{overflow-x:auto}
-.note{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 12px;font-size:13px;color:#075985;margin-top:12px}
+body{font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#1B1A1C;max-width:900px;margin:0 auto;padding:24px;line-height:1.45}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px;color:#0369a1}.count{color:#6E675E;font-weight:400}
+.meta{color:#45403A;font-size:14px}.empty{color:#A39B8F;font-size:14px;margin:0}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #E8E3DA;padding:6px 8px;text-align:left;vertical-align:top}
+thead th,.kv th{background:#F4F1EC;font-weight:600}.kv th{width:40%}.scroll{overflow-x:auto}
+.note{background:#EAF3F2;border:1px solid #A8D3D2;border-radius:8px;padding:10px 12px;font-size:13px;color:#075985;margin-top:12px}
 </style></head><body>
 <h1>Os seus dados no Responder Já</h1>
 <p class="meta">Exportado em ${escapeHtml(exportedAt)} · ${escapeHtml(data?.about?.legalBasis || "")}</p>

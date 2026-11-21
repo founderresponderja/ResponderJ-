@@ -1,15 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  X, 
-  Send, 
-  Minus, 
-  Sparkles, 
-  Loader2,
-  CheckCircle2,
-  ArrowRight,
-  Bell,
-} from 'lucide-react';
+import { X, Send, Minus, Loader2, CheckCircle2, ArrowRight, Bell } from 'lucide-react';
+import { AiMark as Sparkles } from './Logo';
 import { useAuth } from '@clerk/clerk-react';
 import { buildAuthHeaders } from '../utils/api';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/Avatar';

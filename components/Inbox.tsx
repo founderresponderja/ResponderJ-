@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle, AlertTriangle, CheckCircle, ExternalLink, Send, Sparkles, X, Star } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, AlertCircle, AlertTriangle, CheckCircle, ExternalLink, Send, X, Star } from 'lucide-react';
+import { AiMark as Sparkles } from './Logo';
 import { translations, Language } from '../utils/translations';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';

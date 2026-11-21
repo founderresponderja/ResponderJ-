@@ -250,7 +250,7 @@ export function generateApiKeyGuideHTML(): string {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background: #f8f9fa;
+            background: #FAF8F5;
         }
         .container {
             background: white;
@@ -262,12 +262,12 @@ export function generateApiKeyGuideHTML(): string {
             text-align: center;
             margin-bottom: 40px;
             padding-bottom: 20px;
-            border-bottom: 3px solid #007bff;
+            border-bottom: 3px solid #0F5F66;
         }
         .logo {
             font-size: 2.5em;
             font-weight: bold;
-            color: #007bff;
+            color: #0F5F66;
             margin-bottom: 10px;
         }
         .subtitle {
@@ -277,14 +277,14 @@ export function generateApiKeyGuideHTML(): string {
         .api-guide {
             margin: 30px 0;
             padding: 25px;
-            border-left: 4px solid #007bff;
-            background: #f8f9fa;
+            border-left: 4px solid #0F5F66;
+            background: #FAF8F5;
             border-radius: 5px;
         }
         .api-title {
             font-size: 1.4em;
             font-weight: bold;
-            color: #007bff;
+            color: #0F5F66;
             margin-bottom: 10px;
         }
         .api-service {
@@ -305,9 +305,9 @@ export function generateApiKeyGuideHTML(): string {
             margin-bottom: 15px;
         }
         .priority.critical { background: #dc3545; color: white; }
-        .priority.important { background: #ffc107; color: black; }
+        .priority.important { background: #F2B13D; color: black; }
         .priority.corporate { background: #17a2b8; color: white; }
-        .priority.optional { background: #6c757d; color: white; }
+        .priority.optional { background: #6E675E; color: white; }
         .steps {
             margin: 15px 0;
         }
@@ -319,15 +319,15 @@ export function generateApiKeyGuideHTML(): string {
             line-height: 1.5;
         }
         .notes {
-            background: #fff3cd;
+            background: #FCEDCC;
             padding: 15px;
             border-radius: 5px;
             margin: 15px 0;
-            border-left: 4px solid #ffc107;
+            border-left: 4px solid #F2B13D;
         }
         .notes h4 {
             margin-top: 0;
-            color: #856404;
+            color: #7A4B16;
         }
         .notes ul {
             margin-bottom: 0;
@@ -336,12 +336,12 @@ export function generateApiKeyGuideHTML(): string {
             margin: 15px 0;
         }
         .links h4 {
-            color: #007bff;
+            color: #0F5F66;
             margin-bottom: 10px;
         }
         .links a {
             display: block;
-            color: #007bff;
+            color: #0F5F66;
             text-decoration: none;
             margin: 5px 0;
             word-break: break-all;
@@ -350,18 +350,18 @@ export function generateApiKeyGuideHTML(): string {
             text-decoration: underline;
         }
         .summary {
-            background: #e7f3ff;
+            background: #EAF3F2;
             padding: 20px;
             border-radius: 5px;
             margin: 30px 0;
-            border-left: 4px solid #007bff;
+            border-left: 4px solid #0F5F66;
         }
         .summary h3 {
-            color: #007bff;
+            color: #0F5F66;
             margin-top: 0;
         }
         .category-header {
-            background: #007bff;
+            background: #0F5F66;
             color: white;
             padding: 15px;
             margin: 30px 0 0 0;

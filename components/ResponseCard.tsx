@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ReviewData } from '../types';
-import {
-  Copy, Check, MessageSquare, CircleAlert, Heart, SquarePen, Save, X,
-  RefreshCw, Smile, Meh, Frown, Sparkles, ThumbsUp, Trash2, ShieldCheck
-} from 'lucide-react';
+import { Copy, Check, MessageSquare, CircleAlert, Heart, SquarePen, Save, X, RefreshCw, Smile, Meh, Frown, ThumbsUp, Trash2, ShieldCheck } from 'lucide-react';
+import { AiMark as Sparkles } from './Logo';
 import { translations, Language } from '../utils/translations';
 
 interface ResponseCardProps {
