@@ -61,8 +61,11 @@ router.get("/mine", requireAuth, async (req: any, res) => {
 // Email: o Resend recebe o email e avisa este endereço (webhook assinado).
 // O corpo e os anexos não vêm no aviso: vão-se buscar à API do Resend.
 // ---------------------------------------------------------------------------
+// Ler emails recebidos exige uma chave com "Full access". A chave de envio
+// (RESEND_API_KEY, "Sending access") não chega; usa-se RESEND_INBOUND_API_KEY.
 async function resendGet(path: string) {
-  const res = await fetch(`https://api.resend.com${path}`, { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } });
+  const key = process.env.RESEND_INBOUND_API_KEY || process.env.RESEND_API_KEY;
+  const res = await fetch(`https://api.resend.com${path}`, { headers: { Authorization: `Bearer ${key}` } });
   const data: any = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Resend ${res.status}: ${data?.message || "erro"}`);
   return data;

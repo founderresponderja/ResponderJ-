@@ -30,6 +30,7 @@ Lembre-se da regra do Dominios.pt: os registos **TXT** levam o valor entre aspas
 | Variável | Valor |
 | --- | --- |
 | `RESEND_INBOUND_WEBHOOK_SECRET` | O **Signing secret** do passo 2 |
+| `RESEND_INBOUND_API_KEY` | Uma chave do Resend com permissão **Full access** (API Keys → Create API Key). A chave de envio (`RESEND_API_KEY`, "Sending access") não consegue ler os emails recebidos (erro 401). |
 
 Coloque o valor diretamente na Vercel. Não o cole no chat. Depois faça **Redeploy**.
 
