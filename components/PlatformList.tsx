@@ -234,7 +234,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       key: 'booking',
       comingSoon: true,
       assisted: true,
-      description: "Líder em hospitalidade e reviews detalhados de hóspedes verificados.",
+      description: "Líder em hospitalidade e avaliações detalhadas de hóspedes verificados.",
       url: "https://admin.booking.com/",
       color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900"
     },
@@ -323,8 +323,8 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
               {p.key && (
                 <div className="flex items-center justify-between gap-3">
                   <span className={`text-xs font-semibold ${connections[p.key]?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {(p as any).assisted ? 'Adicione a review na Caixa de entrada; a resposta é copiada e esta plataforma abre para a colar.'
-                      : p.comingSoon ? 'Adicione as reviews à mão na Caixa de entrada'
+                    {(p as any).assisted ? 'Adicione a avaliação na Caixa de entrada; a resposta é copiada e esta plataforma abre para a colar.'
+                      : p.comingSoon ? 'Adicione as avaliações à mão na Caixa de entrada'
                       : connections[p.key]?.connected ? (connections[p.key]?.pageName ? `Conectado: ${connections[p.key]?.pageName}` : 'Conectado')
                       : connections[p.key]?.status === 'pending_page' ? 'Escolha a página' : 'Não conectado'}
                   </span>
@@ -378,7 +378,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw size={14} className={syncingGoogle ? 'animate-spin' : ''} />
-            {syncingGoogle ? 'A sincronizar...' : 'Sync Google'}
+            {syncingGoogle ? 'A sincronizar...' : 'Sincronizar Google'}
           </button>
         </div>
         {!connections.google?.connected && (

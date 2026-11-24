@@ -37,7 +37,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       badgePrefix: "Novo:",
       badgeText: "Algoritmo SEO Local 2026 Ativo",
       learnMore: "Saber Mais",
-      stats: ["Propostas de resposta por review", "Línguas", "Ligação direta", "Teste grátis, sem cartão"],
+      stats: ["Propostas de resposta por avaliação", "Línguas", "Ligação direta", "Teste grátis, sem cartão"],
       howTitle: "Automação Inteligente",
       howDesc: "4 passos simples para automatizar a sua comunicação digital e dominar o SEO local.",
       featuresTitle: "Tudo o que precisa para crescer",
@@ -124,15 +124,15 @@ const LandingPage: React.FC<LandingPageProps> = ({
       },
       {
         title: "Google e as outras plataformas",
-        description: "Ligação direta ao Google Business Profile: as reviews entram sozinhas. Para Booking, TripAdvisor, Facebook e outras, cole a review e copie a resposta gerada.",
-        details: ["Google Business Profile: sincronização automática", "TripAdvisor e Booking: a resposta é copiada e a página abre com um clique", "Todas as reviews num só lugar", "Facebook: ligação direta em breve"],
+        description: "Ligação direta ao Google Business Profile: as avaliações entram sozinhas. Para Booking, TripAdvisor, Facebook e outras, cole a avaliação e copie a resposta gerada.",
+        details: ["Google Business Profile: sincronização automática", "TripAdvisor e Booking: a resposta é copiada e a página abre com um clique", "Todas as avaliações num só lugar", "Facebook: ligação direta em breve"],
         badge: "Google ligado",
       },
       {
         title: "Analytics e Relatórios SEO",
-        description: "Dashboard com as métricas das suas reviews e respostas para acompanhar a reputação.",
-        details: ["Métricas de reviews e respostas", "Sentimento de cada review", "Palavras-chave de SEO local nas respostas", "Histórico de respostas"],
-        badge: "Dashboard",
+        description: "Painel com as métricas das suas avaliações e respostas para acompanhar a reputação.",
+        details: ["Métricas de avaliações e respostas", "Sentimento de cada avaliação", "Palavras-chave de SEO local nas respostas", "Histórico de respostas"],
+        badge: "Painel",
       },
       {
         title: "Segurança e privacidade",
@@ -197,9 +197,9 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
   const stepsByLang = {
     pt: [
-      { step: "1", title: "Ligar o Google", desc: "Ligue o Google Business Profile em segundos. Reviews de outras plataformas podem ser coladas." },
+      { step: "1", title: "Ligar o Google", desc: "Ligue o Google Business Profile em segundos. Avaliações de outras plataformas podem ser coladas." },
       { step: "2", title: "Configurar Tom da Marca", desc: "Defina a personalidade da sua IA para respostas autênticas." },
-      { step: "3", title: "Ativar Automação", desc: "A IA deteta reviews e sugere as melhores respostas instantaneamente." },
+      { step: "3", title: "Ativar Automação", desc: "A IA deteta avaliações e sugere as melhores respostas instantaneamente." },
       { step: "4", title: "Dominar o Ranking", desc: "Veja a sua reputação e SEO local subirem no dashboard." },
     ],
     en: [

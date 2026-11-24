@@ -63,7 +63,7 @@ const Dashboard: React.FC<DashboardProps> = ({ history, currentPlan, responsesRe
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h2>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Painel</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">Métricas reais das tuas avaliações e respostas.</p>
         </div>
       </div>

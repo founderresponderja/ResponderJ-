@@ -12,15 +12,15 @@ type BlogArticle = {
 const BLOG_ARTICLES: BlogArticle[] = [
   {
     slug: 'como-responder-reviews-negativas-google',
-    title: 'Como responder a reviews negativas no Google',
+    title: 'Como responder a avaliações negativas no Google',
     description:
-      'Guia prático para responder reviews negativas no Google com empatia, método e impacto em SEO local.',
+      'Guia prático para responder avaliações negativas no Google com empatia, método e impacto em SEO local.',
     coverImage: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
     readTime: '6 min',
     content: [
-      'Reviews negativas não são o fim da reputação de uma empresa. Na verdade, podem tornar-se uma oportunidade de mostrar profissionalismo e capacidade de resolver problemas.',
+      'Avaliações negativas não são o fim da reputação de uma empresa. Na verdade, podem tornar-se uma oportunidade de mostrar profissionalismo e capacidade de resolver problemas.',
       'O primeiro passo é responder rapidamente e com tom humano. Evite respostas defensivas. Agradeça o feedback, reconheça o problema e explique qual o próximo passo para corrigir a situação.',
-      'No contexto de SEO local, responder reviews com consistência ajuda o Google a perceber que o perfil está ativo. Isso pode melhorar a visibilidade no Google Maps, especialmente quando há volume de interações recentes.',
+      'No contexto de SEO local, responder avaliações com consistência ajuda o Google a perceber que o perfil está ativo. Isso pode melhorar a visibilidade no Google Maps, especialmente quando há volume de interações recentes.',
       'Use uma estrutura simples: agradecer + reconhecer + solução + convite a continuar a conversa em privado. Esta fórmula reduz conflito público e aumenta hipóteses de recuperação do cliente.',
       'Automatizar este processo com IA acelera equipas pequenas, mas deve existir aprovação humana antes de publicar. A combinação de velocidade com revisão garante qualidade e autenticidade.',
     ],
@@ -29,15 +29,15 @@ const BLOG_ARTICLES: BlogArticle[] = [
     slug: 'seo-local-restaurantes-portugal',
     title: 'SEO local para restaurantes em Portugal',
     description:
-      'Estratégia de SEO local para restaurantes portugueses: Google Business Profile, reviews e sinais de confiança.',
+      'Estratégia de SEO local para restaurantes portugueses: Google Business Profile, avaliações e sinais de confiança.',
     coverImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
     readTime: '7 min',
     content: [
       'Para restaurantes em Portugal, o SEO local começa no Google Business Profile: categoria correta, horário atualizado, fotos de qualidade e descrição com palavras-chave locais.',
-      'As reviews têm impacto direto na decisão de visita. Quanto mais respostas úteis e contextualizadas, maior a perceção de confiança do utilizador e dos motores de busca.',
+      'As avaliações têm impacto direto na decisão de visita. Quanto mais respostas úteis e contextualizadas, maior a perceção de confiança do utilizador e dos motores de busca.',
       'Inclua termos naturais como "restaurante em Lisboa" ou "comida tradicional no Porto" quando fizer sentido na resposta. Evite repetir palavras-chave de forma artificial.',
       'Também é importante manter consistência NAP (nome, morada, telefone) em diretórios e redes sociais. Inconsistências reduzem a confiança algorítmica.',
-      'Uma rotina semanal de resposta a reviews, atualização de fotos e análise de métricas costuma trazer ganhos visíveis em impressões e cliques no mapa.',
+      'Uma rotina semanal de resposta a avaliações, atualização de fotos e análise de métricas costuma trazer ganhos visíveis em impressões e cliques no mapa.',
     ],
   },
   {
@@ -48,8 +48,8 @@ const BLOG_ARTICLES: BlogArticle[] = [
     coverImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
     readTime: '8 min',
     content: [
-      'Automatizar reputação online é deixar de depender de processos manuais para monitorizar reviews, sugerir respostas e acompanhar resultados.',
-      'Um bom fluxo inclui: recolha centralizada de reviews, classificação de sentimento, proposta de resposta por IA e aprovação antes de publicação.',
+      'Automatizar reputação online é deixar de depender de processos manuais para monitorizar avaliações, sugerir respostas e acompanhar resultados.',
+      'Um bom fluxo inclui: recolha centralizada de avaliações, classificação de sentimento, proposta de resposta por IA e aprovação antes de publicação.',
       'Para PME, isto reduz o tempo operacional e melhora consistência de tom. Em vez de responder de forma reativa, a equipa atua com processo.',
       'Outro benefício é aprender com as edições humanas. Quando a equipa ajusta respostas, o sistema pode guardar padrões e evoluir sugestões futuras.',
       'A automação não substitui a marca. Ela remove fricção, acelera decisões e cria espaço para relações mais estratégicas com os clientes.',

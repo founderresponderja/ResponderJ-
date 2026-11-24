@@ -381,7 +381,7 @@ const MainApp: React.FC<MainAppProps> = ({
             <Logo className="w-8 h-8 text-brand-600" />
             <h1 className="text-xl font-bold tracking-tight">Responder Já</h1>
           </div>
-          <p className="text-[10px] text-slate-400 font-medium pl-10 uppercase tracking-widest">AI Command Center</p>
+          <p className="text-[10px] text-slate-400 font-medium pl-10 uppercase tracking-widest">Centro de comando da IA</p>
         </div>
 
         <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-hide">

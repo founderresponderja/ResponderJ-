@@ -38,7 +38,7 @@ const TermsAndConditionsPage: React.FC<TermsAndConditionsPageProps> = ({ onBack 
             </div>
             <div className="text-blue-800 text-sm space-y-1">
               <p><strong>Entidade:</strong> Amplia Solutions Unipessoal, Lda.</p>
-              <p><strong>Servico:</strong> Responder Ja (SaaS de apoio a resposta a reviews)</p>
+              <p><strong>Servico:</strong> Responder Ja (SaaS de apoio a resposta a avaliações)</p>
               <p><strong>Contacto:</strong> legal@ampliasolutions.pt</p>
             </div>
           </div>

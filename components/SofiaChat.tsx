@@ -39,9 +39,9 @@ export function sofiaNavigate(view: 'app' | 'backoffice', tab: string) {
 }
 
 const QUICK_PROMPTS: Record<string, string[]> = {
-  customer: ['Que reviews tenho por responder?', 'Quantos créditos me restam?', 'Como ligo o Google?'],
-  agency_owner: ['Que reviews tenho por responder?', 'Quantos créditos restam à agência?', 'Como convido alguém para a equipa?'],
-  agency_member: ['Que reviews tenho por responder?', 'O que posso fazer como membro da equipa?'],
+  customer: ['Que avaliações tenho por responder?', 'Quantos créditos me restam?', 'Como ligo o Google?'],
+  agency_owner: ['Que avaliações tenho por responder?', 'Quantos créditos restam à agência?', 'Como convido alguém para a equipa?'],
+  agency_member: ['Que avaliações tenho por responder?', 'O que posso fazer como membro da equipa?'],
   operator: ['Que erros estão fora do prazo?', 'Mostra os erros críticos por resolver', 'Há erros técnicos novos?'],
   super_admin: ['Que erros estão fora do prazo?', 'Mostra os erros críticos por resolver', 'Há erros técnicos novos?'],
 };
