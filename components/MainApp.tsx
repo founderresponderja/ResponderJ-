@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo, useCallback } from 'react';
 import { useClerk, useAuth } from '@clerk/clerk-react';
+import { PLANS } from '../shared/plans';
 import { 
   MessageSquareText,
   LayoutDashboard,
@@ -50,6 +51,7 @@ const ReportIssueModal = lazy(() => import('./ReportIssueModal'));
 // RJ-5.3: CRM retirado da app de cliente (ideia futura). Equipa ligada ao plano Agência.
 const AgencyTeamManagement = lazy(() => import('./AgencyTeamManagement'));
 const AgencyOverviewPage = lazy(() => import('./AgencyOverviewPage'));
+const AgencyClientsManager = lazy(() => import('./AgencyClientsManager'));
 
 type AgencyClient = {
   id: number;
@@ -112,7 +114,14 @@ const MainApp: React.FC<MainAppProps> = ({
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
   const [agencyClients, setAgencyClients] = useState<AgencyClient[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  // RJ-5.8: o negócio escolhido fica guardado neste navegador.
+  const SELECTED_CLIENT_KEY = 'responderja_selected_client';
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(() => {
+    try { const v = localStorage.getItem(SELECTED_CLIENT_KEY); return v ? Number(v) || null : null; } catch { return null; }
+  });
+  useEffect(() => {
+    try { if (selectedClientId) localStorage.setItem(SELECTED_CLIENT_KEY, String(selectedClientId)); } catch { /* sem armazenamento */ }
+  }, [selectedClientId]);
   const [agencyOverview, setAgencyOverview] = useState<Array<{
     clientId: number;
     clientName: string;
@@ -189,31 +198,34 @@ const MainApp: React.FC<MainAppProps> = ({
     if (path === '/agency') setActiveTab('agency');
   }, []);
 
-  useEffect(() => {
-    const loadAgencyData = async () => {
-      if (!isAgencyPlan) return;
-      try {
-        const [clientsRes, overviewRes] = await Promise.all([
-          fetch('/api/agency/clients'),
-          fetch('/api/agency/overview'),
-        ]);
-        if (clientsRes.ok) {
-          const clients = await clientsRes.json();
-          setAgencyClients(clients || []);
-          if (!selectedClientId && clients?.length > 0) {
-            setSelectedClientId(clients[0].id);
-          }
-        }
-        if (overviewRes.ok) {
-          const overview = await overviewRes.json();
-          setAgencyOverview(overview.clients || []);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados de agência:', error);
+  // RJ-5.8: carrega os negócios; mantém o escolhido se ainda existir, senão passa ao primeiro.
+  const loadAgencyData = useCallback(async (preferId?: number | null) => {
+    if (!isAgencyPlan) return;
+    try {
+      const [clientsRes, overviewRes] = await Promise.all([
+        fetch('/api/agency/clients'),
+        fetch('/api/agency/overview'),
+      ]);
+      if (clientsRes.ok) {
+        const clients: AgencyClient[] = (await clientsRes.json()) || [];
+        setAgencyClients(clients);
+        setSelectedClientId((prev) => {
+          const ids = clients.map((c) => c.id);
+          if (preferId && ids.includes(preferId)) return preferId;
+          if (prev && ids.includes(prev)) return prev;
+          return ids[0] ?? null;
+        });
       }
-    };
-    loadAgencyData();
-  }, [isAgencyPlan, selectedClientId]);
+      if (overviewRes.ok) {
+        const overview = await overviewRes.json();
+        setAgencyOverview(overview.clients || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados de agência:', error);
+    }
+  }, [isAgencyPlan]);
+
+  useEffect(() => { loadAgencyData(); }, [loadAgencyData]);
 
   // Memoized stats to prevent re-calculations on re-renders
   const { creditLimit, creditsLeft, usagePercentage } = useMemo(() => {
@@ -463,6 +475,12 @@ const MainApp: React.FC<MainAppProps> = ({
                     <option key={client.id} value={client.id}>{client.name}</option>
                   ))}
                 </select>
+                <button
+                  onClick={() => setActiveTab('agency')}
+                  className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  {canManageTeam ? 'Gerir negócios' : 'Ver negócios'}
+                </button>
               </div>
             </div>
           )}
@@ -548,7 +566,19 @@ const MainApp: React.FC<MainAppProps> = ({
               {activeTab === 'team' && isAgencyPlan && canManageTeam && <AgencyTeamManagement />}
               {activeTab === 'platforms' && <PlatformList lang={lang} establishmentId={selectedClientId} planId={subscription.planId} />}
               {activeTab === 'business-profile' && <BusinessProfilePage />}
-              {activeTab === 'agency' && isAgencyPlan && <AgencyOverviewPage clients={agencyOverview} />}
+              {activeTab === 'agency' && isAgencyPlan && (
+                <div className="space-y-6">
+                  <AgencyClientsManager
+                    clients={agencyClients}
+                    selectedId={selectedClientId}
+                    canManage={canManageTeam}
+                    limit={PLANS.agency.maxEstablishments}
+                    onSelect={setSelectedClientId}
+                    onChanged={(selectId) => loadAgencyData(selectId)}
+                  />
+                  <AgencyOverviewPage clients={agencyOverview} />
+                </div>
+              )}
               {activeTab === 'pricing' && canSeeBilling && <BillingPage lang={lang} />}
               {activeTab === 'pricing' && !canSeeBilling && (
                 <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">

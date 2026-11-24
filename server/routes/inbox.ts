@@ -164,6 +164,7 @@ router.post("/manual", requireAuth, async (req: any, res) => {
       reviewDate,
       externalResponseText,
       externalResponseAt,
+      establishmentId: requestedEstablishmentId,
     } = req.body ?? {};
 
     const allowedPlatforms = ["google", "booking", "tripadvisor", "facebook", "instagram"];
@@ -190,11 +191,15 @@ router.post("/manual", requireAuth, async (req: any, res) => {
       return res.status(400).json({ message: "Texto da resposta externa excede 5000 caracteres" });
     }
 
-    // Resolver establishment via userId (padrão do ficheiro)
+    // RJ-5.8: o negócio escolhido (tem de ser do utilizador); sem escolha, o primeiro.
+    const requestedId = Number(requestedEstablishmentId) || null;
     const [establishment] = await db
       .select({ id: establishments.id })
       .from(establishments)
-      .where(eq(establishments.userId, userId))
+      .where(requestedId
+        ? and(eq(establishments.userId, userId), eq(establishments.id, requestedId))
+        : eq(establishments.userId, userId))
+      .orderBy(establishments.id)
       .limit(1);
     if (!establishment) {
       return res.status(404).json({ message: "Estabelecimento não encontrado" });
