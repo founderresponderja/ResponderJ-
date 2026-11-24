@@ -7,7 +7,8 @@ import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
 import { buildAuthHeaders } from '../utils/api';
-import { notifyError, toast } from '../utils/notify';
+import { notifyError, notifySuccess, toast } from '../utils/notify';
+import { publishModeFor, assistedUrlFor, PLATFORM_LABELS } from '../shared/publish-modes';
 import { useGenerateResponse } from '../services/geminiService';
 
 interface InboxProps {
@@ -394,6 +395,42 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
     }
   }, [getToken, fetchInbox, t]);
 
+  // RJ-4.7: TripAdvisor, Booking e reviews adicionadas à mão — copiar, abrir a plataforma e marcar.
+  const handleAssistedCopy = useCallback(async () => {
+    if (!selectedItem) return;
+    try {
+      await navigator.clipboard.writeText(selectedItem.response_text ?? '');
+      notifySuccess(t.copiedOpened);
+    } catch {
+      notifyError(t.copyFailed);
+    }
+    window.open(assistedUrlFor(selectedItem.platform), '_blank', 'noopener,noreferrer');
+  }, [selectedItem, t]);
+
+  const handleMarkPublished = useCallback(async () => {
+    if (!selectedItem || !selectedItem.response_id) return;
+    setIsPublishing(true);
+    try {
+      const headers = await buildAuthHeaders({ getToken });
+      const res = await fetch(`/api/inbox/${selectedItem.id}/publish`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ responseId: selectedItem.response_id, manual: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        notifyError(err.message || t.publishFailed);
+        return;
+      }
+      await fetchInbox();
+    } catch (e) {
+      console.error('markPublished failed:', e);
+      notifyError(t.publishFailed);
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [selectedItem, getToken, fetchInbox, t]);
+
   const handlePublish = useCallback(() => {
     if (!selectedItem || !selectedItem.response_id) return;
 
@@ -714,14 +751,37 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
                     {/* Botão Publicar — só visível quando aprovada e não publicada */}
                     {(selectedItem.approval_status === 'approved' ||
                       selectedItem.approval_status === 'edited') && (
-                      <button
-                        onClick={handlePublish}
-                        disabled={isPublishing || pendingPublish?.reviewId === selectedItem.id}
-                        className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        <Send size={16} />
-                        {t.publishToGoogle}
-                      </button>
+                      publishModeFor(selectedItem.platform, selectedItem.external_id) === 'assisted' ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{t.assistedHint}</p>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <button
+                              onClick={handleAssistedCopy}
+                              className="flex-1 flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            >
+                              <ExternalLink size={16} />
+                              {t.copyAndOpen} {PLATFORM_LABELS[selectedItem.platform] ?? platformLabel(selectedItem.platform)}
+                            </button>
+                            <button
+                              onClick={handleMarkPublished}
+                              disabled={isPublishing}
+                              className="flex-1 flex items-center justify-center gap-2 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            >
+                              <CheckCircle size={16} />
+                              {t.markPublished}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handlePublish}
+                          disabled={isPublishing || pendingPublish?.reviewId === selectedItem.id}
+                          className="w-full flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <Send size={16} />
+                          {publishModeFor(selectedItem.platform, selectedItem.external_id) === 'facebook' ? t.publishToFacebook : t.publishToGoogle}
+                        </button>
+                      )
                     )}
                   </div>
                 )}

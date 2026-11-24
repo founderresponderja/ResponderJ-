@@ -2,6 +2,7 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
+import { publishModeFor } from "../../shared/publish-modes.js";
 import { db } from "../db.js";
 import { establishments, responses, reviews, socialPlatformConnections } from "../../shared/schema.js";
 import { requireAuth } from "../auth.js";
@@ -277,10 +278,6 @@ router.post("/:reviewId/publish", requireAuth, async (req: any, res) => {
     const review = owned.review;
     const establishment = { id: owned.establishmentId };
 
-    if (!review.externalId) {
-      return res.status(400).json({ message: "Review sem ID externo — não pode ser publicada via API" });
-    }
-
     const [response] = await db
       .select()
       .from(responses)
@@ -298,6 +295,24 @@ router.post("/:reviewId/publish", requireAuth, async (req: any, res) => {
     }
     if (response.isPublished) {
       return res.status(409).json({ message: "Resposta já publicada" });
+    }
+
+    // RJ-4.7: TripAdvisor, Booking e reviews adicionadas à mão — a pessoa cola a resposta na
+    // plataforma e aqui só se regista que ficou publicada.
+    if (publishModeFor(review.platform, review.externalId) === "assisted") {
+      if (req.body?.manual !== true) {
+        return res.status(400).json({ message: "Esta plataforma não permite publicar daqui. Copie a resposta, publique-a na plataforma e marque como publicada." });
+      }
+      const publishedAt = new Date();
+      await db.update(responses).set({
+        isPublished: true,
+        publishedAt,
+        learningMeta: { ...((response.learningMeta as any) || {}), publishedManually: true },
+      }).where(eq(responses.id, responseId));
+      return res.json({ ok: true, publishedAt, manual: true });
+    }
+    if (!review.externalId) {
+      return res.status(400).json({ message: "Review sem ID externo — não pode ser publicada via API" });
     }
 
     // RJ-4.7: Facebook responde com um comentário da página na recomendação.
@@ -396,6 +411,12 @@ router.post("/:reviewId/unpublish", requireAuth, async (req: any, res) => {
     if (!response) return res.status(404).json({ message: "Resposta não encontrada" });
     if (!response.isPublished) {
       return res.status(409).json({ message: "Resposta não está publicada" });
+    }
+
+    // RJ-4.7: publicada à mão — só se desfaz a marcação (a resposta na plataforma é apagada lá).
+    if ((response.learningMeta as any)?.publishedManually) {
+      await db.update(responses).set({ isPublished: false, publishedAt: null }).where(eq(responses.id, responseId));
+      return res.json({ ok: true, manual: true });
     }
 
     if (review.platform === "facebook") {
