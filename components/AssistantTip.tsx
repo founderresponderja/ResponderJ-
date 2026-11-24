@@ -13,7 +13,7 @@ const AssistantTip: React.FC<AssistantTipProps> = ({ status }) => {
 
   switch (status) {
     case 'idle':
-      message = "Olá! Sou a Sofia, a sua assistente de IA. Cole uma review abaixo e eu ajudo a escrever a resposta perfeita num instante.";
+      message = "Olá! Sou a Sofia, a sua assistente de IA. Cole uma avaliação abaixo e eu ajudo a escrever a resposta perfeita num instante.";
       break;
     case 'loading':
       message = "Estou a analisar o sentimento do cliente e a escrever a melhor resposta... Só um momento!";

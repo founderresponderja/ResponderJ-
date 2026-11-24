@@ -374,10 +374,10 @@ const AutomationRules: React.FC = () => {
                   >
                     {/* RJ-4.5: só o Google sincroniza; nas outras a regra aplica-se às reviews adicionadas à mão. */}
                     <option value="google">Google</option>
-                    <option value="facebook">Facebook (reviews adicionadas à mão)</option>
-                    <option value="instagram">Instagram (reviews adicionadas à mão)</option>
-                    <option value="tripadvisor">TripAdvisor (reviews adicionadas à mão)</option>
-                    <option value="booking">Booking.com (reviews adicionadas à mão)</option>
+                    <option value="facebook">Facebook (avaliações adicionadas à mão)</option>
+                    <option value="instagram">Instagram (avaliações adicionadas à mão)</option>
+                    <option value="tripadvisor">TripAdvisor (avaliações adicionadas à mão)</option>
+                    <option value="booking">Booking.com (avaliações adicionadas à mão)</option>
                   </select>
                 </div>
                 <div>

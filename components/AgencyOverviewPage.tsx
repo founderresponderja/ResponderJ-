@@ -23,7 +23,7 @@ const AgencyOverviewPage: React.FC<AgencyOverviewPageProps> = ({ clients }) => {
     pdf.text(`Relatorio Mensal - ${client.clientName}`, 14, 18);
     pdf.setFontSize(11);
     pdf.text(`Data: ${new Date().toLocaleDateString()}`, 14, 28);
-    pdf.text(`Reviews pendentes: ${client.pendingReviews}`, 14, 40);
+    pdf.text(`Avaliações pendentes: ${client.pendingReviews}`, 14, 40);
     pdf.text(`Avaliacao media: ${client.averageRating.toFixed(2)} / 5`, 14, 48);
     pdf.text(`Respostas esta semana: ${client.responsesThisWeek}`, 14, 56);
     pdf.text(`Plataformas ligadas: ${client.connectedPlatforms.join(', ') || 'Nenhuma'}`, 14, 64);
@@ -34,7 +34,7 @@ const AgencyOverviewPage: React.FC<AgencyOverviewPageProps> = ({ clients }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Agency Overview</h2>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Visão geral da agência</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">Visao consolidada dos teus clientes.</p>
         </div>
       </div>
@@ -58,7 +58,7 @@ const AgencyOverviewPage: React.FC<AgencyOverviewPageProps> = ({ clients }) => {
 
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 flex items-center gap-1"><Clock3 size={14} /> Reviews pendentes</span>
+                <span className="text-slate-500 flex items-center gap-1"><Clock3 size={14} /> Avaliações pendentes</span>
                 <span className="font-semibold">{client.pendingReviews}</span>
               </div>
               <div className="flex items-center justify-between">

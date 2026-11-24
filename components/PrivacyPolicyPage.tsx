@@ -74,7 +74,7 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack }) => {
             <ul>
               <li><strong>Conta e autenticacao:</strong> nome, email, identificadores tecnicos, credenciais e estado da conta.</li>
               <li><strong>Dados de utilizacao:</strong> logs, enderecos IP, metadados de dispositivo/navegador, eventos de seguranca e operacao.</li>
-              <li><strong>Conteudos introduzidos:</strong> reviews, textos de resposta, configuracoes de tom e informacoes de contexto fornecidas pelo cliente.</li>
+              <li><strong>Conteudos introduzidos:</strong> avaliações, textos de resposta, configuracoes de tom e informacoes de contexto fornecidas pelo cliente.</li>
               <li><strong>Dados de faturacao:</strong> identificadores de cliente e informacoes de transacao processadas por prestadores de pagamento.</li>
             </ul>
 
