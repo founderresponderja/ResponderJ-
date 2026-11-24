@@ -137,6 +137,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
       if (filters.status) url.searchParams.set('status', filters.status);
       if (filters.platform) url.searchParams.set('platform', filters.platform);
       if (filters.rating) url.searchParams.set('rating', String(filters.rating));
+      if (establishmentId) url.searchParams.set('establishmentId', String(establishmentId));
 
       const token = await getToken();
       const res = await fetch(url.toString(), {
@@ -157,7 +158,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
     } finally {
       setLoading(false);
     }
-  }, [page, filters.status, filters.platform, filters.rating, getToken, t.errorLoading]);
+  }, [page, filters.status, filters.platform, filters.rating, establishmentId, getToken, t.errorLoading]);
 
   const {
     accept,
@@ -245,6 +246,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
           reviewDate: manualReviewDate,
         };
         if (manualAuthorName.trim()) body.authorName = manualAuthorName.trim();
+        if (establishmentId) body.establishmentId = establishmentId;
         if (manualExternalText.trim()) {
           body.externalResponseText = manualExternalText.trim();
           if (manualExternalDate) body.externalResponseAt = manualExternalDate;
@@ -281,6 +283,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
       manualAuthorName,
       manualExternalText,
       manualExternalDate,
+      establishmentId,
       closeManualDrawer,
       fetchInbox,
       t,

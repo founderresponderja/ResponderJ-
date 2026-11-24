@@ -372,19 +372,24 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
+  // RJ-5.8: clientes (negócios) da agência. Ver: todos da equipa; criar, editar e remover: dono ou administrador.
+  const requireAgencyPlanUser = async (req: any, res: any) => {
+    const user = await storage.getUser(Number(req.user?.id));
+    if (!user) { res.status(404).json({ message: "Utilizador não encontrado." }); return null; }
+    if (user.selectedPlan !== 'agency' && user.subscriptionPlan !== 'agency') {
+      res.status(403).json({ message: "Disponível apenas no plano Agência." }); return null;
+    }
+    return user;
+  };
+
   app.get('/api/agency/clients', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
-      const user = await storage.getUser(userId);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      if (user.selectedPlan !== 'agency' && user.subscriptionPlan !== 'agency') {
-        return res.status(403).json({ message: "Disponível apenas no plano Agência/Enterprise." });
-      }
+      if (!(await requireAgencyPlanUser(req, res))) return;
 
       const clients = await db.select().from(establishments)
         .where(eq(establishments.userId, userId))
-        .orderBy(desc(establishments.createdAt))
-        .limit(5);
+        .orderBy(establishments.createdAt);
 
       const withPlatforms = await Promise.all(clients.map(async (c) => {
         const connections = await db.select().from(socialPlatformConnections)
@@ -405,49 +410,46 @@ export async function registerRoutes(app: any): Promise<void> {
     }
   });
 
-  app.post('/api/agency/clients', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
+  app.post('/api/agency/clients', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
-      const user = await storage.getUser(userId);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      if (user.selectedPlan !== 'agency' && user.subscriptionPlan !== 'agency') {
-        return res.status(403).json({ message: "Disponível apenas no plano Agência/Enterprise." });
-      }
+      if (!(await requireAgencyPlanUser(req, res))) return;
+      const { validateClientInput, canAddClient } = await import("./services/agency-client-logic.js");
+      const { PLANS } = await import("../shared/plans.js");
 
       const countResult = await db.select({ count: sql<number>`count(*)` })
         .from(establishments)
         .where(eq(establishments.userId, userId));
-      // RJ-2.4: limite de estabelecimentos do plano (shared/plans.ts).
-      const { PLANS } = await import("../shared/plans.js");
-      const maxEst = PLANS.agency.maxEstablishments;
-      if (maxEst !== -1 && Number(countResult[0]?.count || 0) >= maxEst) {
-        return res.status(400).json({ message: `Limite de ${maxEst} negócios atingido.` });
-      }
+      const limit = canAddClient(Number(countResult[0]?.count || 0), PLANS.agency.maxEstablishments);
+      if (!limit.ok) return res.status(400).json({ message: limit.message });
 
-      const payload = req.body || {};
-      if (!payload.name?.trim()) return res.status(400).json({ message: "Nome do negócio é obrigatório." });
+      const check = validateClientInput(req.body || {});
+      if (!check.ok) return res.status(400).json({ message: check.message });
 
       const [created] = await db.insert(establishments).values({
         userId,
-        name: payload.name.trim(),
-        logoUrl: payload.logoUrl || null,
-        type: payload.type || null,
-        brandTone: payload.brandTone || "profissional",
-        responseGuidelines: payload.responseGuidelines || null,
-        platformIds: Array.isArray(payload.platformIds) ? payload.platformIds : [],
+        name: check.values!.name!,
+        logoUrl: check.values!.logoUrl ?? null,
+        type: check.values!.type ?? null,
+        brandTone: check.values!.brandTone,
+        responseGuidelines: check.values!.responseGuidelines ?? null,
+        platformIds: [],
       }).returning();
 
-      res.json(created);
+      res.json({ ...created, connectedPlatforms: [] });
     } catch (error) {
       res.status(500).json({ message: "Erro ao criar negócio da agência" });
     }
   });
 
-  app.patch('/api/agency/clients/:clientId', requireAuth, requireFeature("hasClientManagement"), async (req: any, res: any) => {
+  app.patch('/api/agency/clients/:clientId', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
     try {
       const userId = Number(req.user?.id);
       const clientId = Number(req.params.clientId);
-      const payload = req.body || {};
+      const { validateClientInput } = await import("./services/agency-client-logic.js");
+      const check = validateClientInput(req.body || {}, true);
+      if (!check.ok) return res.status(400).json({ message: check.message });
+
       const [client] = await db.select().from(establishments).where(and(
         eq(establishments.id, clientId),
         eq(establishments.userId, userId),
@@ -455,18 +457,32 @@ export async function registerRoutes(app: any): Promise<void> {
       if (!client) return res.status(404).json({ message: "Negócio não encontrado." });
 
       const [updated] = await db.update(establishments).set({
-        name: payload.name ?? client.name,
-        logoUrl: payload.logoUrl ?? client.logoUrl,
-        type: payload.type ?? client.type,
-        brandTone: payload.brandTone ?? client.brandTone,
-        responseGuidelines: payload.responseGuidelines ?? client.responseGuidelines,
-        platformIds: payload.platformIds ?? client.platformIds,
+        ...check.values,
         updatedAt: new Date(),
-      }).where(eq(establishments.id, clientId)).returning();
+      }).where(and(eq(establishments.id, clientId), eq(establishments.userId, userId))).returning();
 
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Erro ao atualizar negócio da agência" });
+    }
+  });
+
+  // Remover apaga também as avaliações, respostas e ligações desse negócio (FK em cascata).
+  app.delete('/api/agency/clients/:clientId', requireAuth, requireFeature("hasClientManagement"), requireAgencyManager, async (req: any, res: any) => {
+    try {
+      const userId = Number(req.user?.id);
+      const clientId = Number(req.params.clientId);
+      const { canRemoveClient } = await import("./services/agency-client-logic.js");
+
+      const owned = await db.select({ id: establishments.id }).from(establishments).where(eq(establishments.userId, userId));
+      if (!owned.some((e) => e.id === clientId)) return res.status(404).json({ message: "Negócio não encontrado." });
+      const check = canRemoveClient(owned.length);
+      if (!check.ok) return res.status(400).json({ message: check.message });
+
+      await db.delete(establishments).where(and(eq(establishments.id, clientId), eq(establishments.userId, userId)));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao remover negócio da agência" });
     }
   });
 
