@@ -116,12 +116,15 @@ const MainApp: React.FC<MainAppProps> = ({
   const [agencyClients, setAgencyClients] = useState<AgencyClient[]>([]);
   // RJ-5.8: o negócio escolhido fica guardado neste navegador.
   const SELECTED_CLIENT_KEY = 'responderja_selected_client';
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(() => {
+  const [storedClientId, setSelectedClientId] = useState<number | null>(() => {
     try { const v = localStorage.getItem(SELECTED_CLIENT_KEY); return v ? Number(v) || null : null; } catch { return null; }
   });
   useEffect(() => {
-    try { if (selectedClientId) localStorage.setItem(SELECTED_CLIENT_KEY, String(selectedClientId)); } catch { /* sem armazenamento */ }
-  }, [selectedClientId]);
+    try { if (storedClientId) localStorage.setItem(SELECTED_CLIENT_KEY, String(storedClientId)); } catch { /* sem armazenamento */ }
+  }, [storedClientId]);
+  // Só vale um negócio da lista desta conta (Agência). Noutra conta no mesmo navegador, ou noutro
+  // plano, o valor guardado é ignorado e o servidor usa o negócio principal.
+  const selectedClientId = agencyClients.some((c) => c.id === storedClientId) ? storedClientId : null;
   const [agencyOverview, setAgencyOverview] = useState<Array<{
     clientId: number;
     clientName: string;
