@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inbox as InboxIcon, Plus, AlertCircle, AlertTriangle, CheckCircle, ExternalLink, Send, X, Star } from 'lucide-react';
+import { Inbox as InboxIcon, Plus, RefreshCw, AlertCircle, AlertTriangle, CheckCircle, ExternalLink, Send, X, Star } from 'lucide-react';
 import { AiMark as Sparkles } from './Logo';
 import { translations, Language } from '../utils/translations';
 import { useAuth, useUser } from '@clerk/clerk-react';
@@ -431,6 +431,25 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
     }
   }, [selectedItem, getToken, fetchInbox, t]);
 
+  // Sincronizar as avaliações do Google sem sair da Caixa de entrada.
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleSyncGoogle = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const headers = await buildAuthHeaders({ getToken });
+      const res = await fetch(`/api/platforms/sync/google?establishmentId=${establishmentId ?? ''}`, { headers });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 404) { notifyError(t.syncNotConnected); return; }
+      if (!res.ok) { notifyError(body?.error || t.syncFailed); return; }
+      notifySuccess(t.syncDone.replace('{n}', String(body?.imported ?? 0)));
+      await fetchInbox();
+    } catch {
+      notifyError(t.syncFailed);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [getToken, establishmentId, fetchInbox, t]);
+
   const handlePublish = useCallback(() => {
     if (!selectedItem || !selectedItem.response_id) return;
 
@@ -525,13 +544,23 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
           <InboxIcon size={24} className="text-brand-600" />
           <h1 className="text-2xl font-bold">{t.title}</h1>
         </div>
-        <button
-          onClick={() => setIsManualOpen(true)}
-          className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors"
-        >
-          <Plus size={16} />
-          {t.newManual}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSyncGoogle}
+            disabled={isSyncing}
+            className="flex items-center gap-2 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-60 transition-colors"
+          >
+            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? t.syncing : t.syncGoogle}
+          </button>
+          <button
+            onClick={() => setIsManualOpen(true)}
+            className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors"
+          >
+            <Plus size={16} />
+            {t.newManual}
+          </button>
+        </div>
       </div>
 
       {/* Body: 2-col layout */}
