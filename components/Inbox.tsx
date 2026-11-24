@@ -8,7 +8,7 @@ import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
 import { buildAuthHeaders } from '../utils/api';
 import { notifyError, notifySuccess, toast } from '../utils/notify';
-import { publishModeFor, assistedUrlFor, PLATFORM_LABELS } from '../shared/publish-modes';
+import { publishModeFor, assistedUrlFor } from '../shared/publish-modes';
 import { useGenerateResponse } from '../services/geminiService';
 
 interface InboxProps {
@@ -760,7 +760,7 @@ const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {
                               className="flex-1 flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                             >
                               <ExternalLink size={16} />
-                              {t.copyAndOpen} {PLATFORM_LABELS[selectedItem.platform] ?? platformLabel(selectedItem.platform)}
+                              {t.copyAndOpen} {platformLabel(selectedItem.platform)}
                             </button>
                             <button
                               onClick={handleMarkPublished}
