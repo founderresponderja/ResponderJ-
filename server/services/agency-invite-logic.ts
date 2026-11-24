@@ -13,7 +13,7 @@ export function seatsTaken(members: MemberRow[], invites: InviteRow[], now = new
   return people.size + pendingEmails.size;
 }
 
-export type InviteCheck = { ok: true } | { ok: false; status: number; message: string };
+export type InviteCheck = { ok: boolean; status?: number; message?: string };
 
 /** Pode-se convidar este email? */
 export function canInvite(
