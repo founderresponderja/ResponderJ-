@@ -233,6 +233,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       name: Platform.BOOKING,
       key: 'booking',
       comingSoon: true,
+      assisted: true,
       description: "Líder em hospitalidade e reviews detalhados de hóspedes verificados.",
       url: "https://admin.booking.com/",
       color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900"
@@ -241,6 +242,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
       name: Platform.TRIPADVISOR,
       key: 'tripadvisor',
       comingSoon: true,
+      assisted: true,
       description: "Forte impacto na reputação turística global e rankings de viagem.",
       url: "https://www.tripadvisor.com/Owners",
       color: "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
@@ -302,7 +304,7 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
           <div key={p.name} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all p-6 flex flex-col h-full animate-fade-in">
             {/* RJ-4.5: só o Google tem ligação real; as outras mostram "Em breve" em vez de "Integração Ativa". */}
             <div className={`w-fit px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border mb-4 ${p.comingSoon ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700' : p.color}`}>
-              {p.comingSoon ? 'Em breve' : t.supported}
+              {(p as any).assisted ? 'Modo assistido' : p.comingSoon ? 'Em breve' : t.supported}
             </div>
             <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">{p.name}</h3>
             <p className="text-slate-600 dark:text-slate-400 mb-6 flex-grow text-sm leading-relaxed">
@@ -321,7 +323,8 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
               {p.key && (
                 <div className="flex items-center justify-between gap-3">
                   <span className={`text-xs font-semibold ${connections[p.key]?.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {p.comingSoon ? 'Adicione as reviews à mão na Caixa de entrada'
+                    {(p as any).assisted ? 'Adicione a review na Caixa de entrada; a resposta é copiada e esta plataforma abre para a colar.'
+                      : p.comingSoon ? 'Adicione as reviews à mão na Caixa de entrada'
                       : connections[p.key]?.connected ? (connections[p.key]?.pageName ? `Conectado: ${connections[p.key]?.pageName}` : 'Conectado')
                       : connections[p.key]?.status === 'pending_page' ? 'Escolha a página' : 'Não conectado'}
                   </span>
@@ -337,11 +340,11 @@ const PlatformList: React.FC<PlatformListProps> = ({ lang, establishmentId, plan
                         <option key={page.id} value={page.id}>{page.name}</option>
                       ))}
                     </select>
-                  ) : p.comingSoon ? (
+                  ) : p.comingSoon && !(p as any).assisted ? (
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                       Em breve
                     </span>
-                  ) : connections[p.key]?.connected ? (
+                  ) : (p as any).assisted ? null : connections[p.key]?.connected ? (
                     <button
                       onClick={() => handleDisconnect(p.key)}
                       disabled={loadingPlatform === p.key}

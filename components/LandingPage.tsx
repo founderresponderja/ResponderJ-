@@ -125,7 +125,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       {
         title: "Google e as outras plataformas",
         description: "Ligação direta ao Google Business Profile: as reviews entram sozinhas. Para Booking, TripAdvisor, Facebook e outras, cole a review e copie a resposta gerada.",
-        details: ["Google Business Profile: sincronização automática", "Booking, TripAdvisor e Facebook: colar e responder", "Todas as reviews num só lugar", "Ligação direta a mais plataformas: em breve"],
+        details: ["Google Business Profile: sincronização automática", "TripAdvisor e Booking: a resposta é copiada e a página abre com um clique", "Todas as reviews num só lugar", "Facebook: ligação direta em breve"],
         badge: "Google ligado",
       },
       {
@@ -151,7 +151,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       {
         title: "Google and other platforms",
         description: "Direct connection to Google Business Profile: reviews come in on their own. For Booking, TripAdvisor, Facebook and others, paste the review and copy the generated reply.",
-        details: ["Google Business Profile: automatic sync", "Booking, TripAdvisor and Facebook: paste and reply", "All reviews in one place", "Direct connection to more platforms: coming soon"],
+        details: ["Google Business Profile: automatic sync", "TripAdvisor and Booking: the reply is copied and the page opens in one click", "All reviews in one place", "Facebook: direct connection coming soon"],
         badge: "Google connected",
       },
       {
@@ -177,7 +177,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
       {
         title: "Google y otras plataformas",
         description: "Conexión directa con Google Business Profile: las reseñas llegan solas. Para Booking, TripAdvisor, Facebook y otras, pega la reseña y copia la respuesta generada.",
-        details: ["Google Business Profile: sincronización automática", "Booking, TripAdvisor y Facebook: pegar y responder", "Todas las reseñas en un solo lugar", "Conexión directa con más plataformas: próximamente"],
+        details: ["Google Business Profile: sincronización automática", "TripAdvisor y Booking: la respuesta se copia y la página se abre con un clic", "Todas las reseñas en un solo lugar", "Facebook: conexión directa próximamente"],
         badge: "Google conectado",
       },
       {
