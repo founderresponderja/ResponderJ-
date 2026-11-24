@@ -109,6 +109,8 @@ export interface IStorage {
   acceptAgencyInvitation(token: string, userId: number | string): Promise<void>;
   getAgencyMembers(agencyId: number | string): Promise<any[]>;
   getAgencyMemberCount(agencyId: number | string): Promise<{ total: number }>;
+  getAgencyInvitations(agencyId: number | string): Promise<any[]>;
+  getAgencyMemberEmails(agencyId: number | string): Promise<string[]>;
   inviteAgencyMember(agencyId: number | string, email: string, role: string, invitedBy: number | string): Promise<any>;
   updateAgencyMember(memberId: number | string, updates: any): Promise<any>;
   getAgencyDelegations(agencyId: number | string): Promise<any[]>;
@@ -636,17 +638,44 @@ export class DatabaseStorage implements IStorage {
     return invite;
   }
 
+  async getAgencyInvitations(agencyId: number | string): Promise<any[]> {
+    return await db.select().from(agencyInvitations).where(eq(agencyInvitations.agencyId, Number(agencyId)));
+  }
+
+  /** Emails das pessoas que já estão na equipa (o dono incluído). */
+  async getAgencyMemberEmails(agencyId: number | string): Promise<string[]> {
+    const rows = await db.select({ email: users.email }).from(agencyMembers)
+      .innerJoin(users, eq(users.id, agencyMembers.userId))
+      .where(eq(agencyMembers.agencyId, Number(agencyId)));
+    return rows.map((r: any) => String(r.email || "")).filter(Boolean);
+  }
+
   async acceptAgencyInvitation(token: string, userId: number | string): Promise<void> {
     const invite = await this.getAgencyInvitationByToken(token);
-    if (!invite) throw new Error("Invite not found");
-    
-    await db.update(agencyInvitations).set({ 
-      status: 'accepted', 
-      acceptedAt: new Date(), 
-      acceptedBy: Number(userId) 
+    if (!invite) throw new Error("Convite inválido ou expirado");
+
+    // RJ-2.4: só convites pendentes e dentro do prazo; sem linhas repetidas; limite da equipa.
+    const { canAccept, seatsTaken } = await import("./services/agency-invite-logic.js");
+    const check = canAccept(invite);
+    if (!check.ok) throw Object.assign(new Error(check.message), { status: check.status });
+
+    const members = await this.getAgencyMembers(invite.agencyId);
+    const alreadyMember = members.some((m: any) => Number(m.userId) === Number(userId));
+    if (!alreadyMember) {
+      const { PLANS } = await import("../shared/plans.js");
+      const limit = PLANS.agency.users;
+      if (limit !== -1 && seatsTaken(members, []) >= limit) {
+        throw Object.assign(new Error(`A equipa já tem ${limit} utilizadores.`), { status: 403 });
+      }
+    }
+
+    await db.update(agencyInvitations).set({
+      status: 'accepted',
+      acceptedAt: new Date(),
+      acceptedBy: Number(userId)
     }).where(eq(agencyInvitations.token, token));
-    
-    await db.insert(agencyMembers).values({
+
+    if (!alreadyMember) await db.insert(agencyMembers).values({
       agencyId: invite.agencyId,
       userId: Number(userId),
       role: invite.role,

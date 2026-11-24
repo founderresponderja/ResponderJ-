@@ -183,7 +183,7 @@ export async function registerRoutes(app: any): Promise<void> {
       await storage.acceptAgencyInvitation(req.params.token, req.user.id);
       res.json({ success: true, message: "Convite aceite com sucesso" });
     } catch (e: any) {
-      res.status(400).json({ message: e.message || "Erro ao aceitar convite" });
+      res.status(e?.status || 400).json({ message: e.message || "Erro ao aceitar convite" });
     }
   });
 
@@ -263,11 +263,16 @@ export async function registerRoutes(app: any): Promise<void> {
       const safeRole = "member";
 
       // RJ-2.4: limite de utilizadores do plano (shared/plans.ts), contando o dono.
+      // Contam pessoas distintas (o dono incluído) e convites ainda pendentes; não se repetem convites.
       const { PLANS } = await import("../shared/plans.js");
-      const counts = await storage.getAgencyMemberCount(user.agencyId);
-      if (counts.total >= PLANS.agency.users) {
-        return res.status(403).json({ message: `Limite de ${PLANS.agency.users} utilizadores atingido` });
-      }
+      const { canInvite } = await import("./services/agency-invite-logic.js");
+      const [members, memberEmails, invites] = await Promise.all([
+        storage.getAgencyMembers(user.agencyId),
+        storage.getAgencyMemberEmails(user.agencyId),
+        storage.getAgencyInvitations(user.agencyId),
+      ]);
+      const check = canInvite(cleanEmail, members, memberEmails, invites, PLANS.agency.users);
+      if (!check.ok) return res.status(check.status).json({ message: check.message });
 
       const invite = await storage.inviteAgencyMember(user.agencyId, cleanEmail, safeRole, user.id);
 
