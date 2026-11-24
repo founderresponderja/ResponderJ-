@@ -1,0 +1,43 @@
+{
+  "version": "4",
+  "today": "2026-11-24",
+  "holidays": ["2026-12-01","2026-12-08","2026-12-25","2027-01-01","2027-03-26","2027-04-25","2027-05-01","2027-05-27","2027-06-10","2027-08-15","2027-10-05","2027-11-01","2027-12-01","2027-12-08","2027-12-25"],
+  "overrides": { "Ligação direta às outras plataformas": 5 },
+  "dependsOn": { "RJ-4.1": "GATE-1" },
+  "last": ["RJ-9.1"],
+  "gates": {
+    "GATE-1": { "status": "Em curso", "expected": "2026-12-07", "note": "Novo pedido de acesso à API do Google Business Profile (o 1.º foi recusado a 23/11: site diferente do perfil). Resposta em até 2 semanas. Depois: ativar a API v4, voltar a ligar e verificar a sincronização (RJ-4.1)." },
+    "GATE-2": { "status": "Bloqueado", "note": "Atividade fiscal e IVA em serviços digitais. Depende de ti (contabilista)." },
+    "GATE-3": { "status": "Bloqueado", "note": "Revisão jurídica dos termos e contrato de subcontratação RGPD. Depende de ti (advogado). No fim, subir a versão dos documentos legais." }
+  },
+  "summaryNotes": [
+    "O que pesa: testes E2E (RJ-8.1, 10 dias), as outras plataformas de reviews (RJ-4.7, 5 dias), o seletor de clientes da Agência (RJ-5.8, 2,5 dias, novo), dependências (RJ-6.4) e retenção de dados (RJ-7.3). RJ-6.4 e RJ-8.1 precisam de instalar pacotes, o que este ambiente não permite.",
+    "O que marca a data de lançamento são os gates externos (Google, fiscal, jurídico), não o código.",
+    "Novo desde a v3: o Stripe está em modo real e o aviso de pagamentos estava desligado desde abril (corrigido a 23/11). Falta o teste real de pagamento, portal e cancelamento, e corrigir contas com plano pago já cancelado no Stripe."
+  ],
+  "doneSinceTitle": "Feito desde a versão 3 (17/11/2026)",
+  "doneSince": [
+    ["IA", "Agent Platform pós-paga (sem créditos pré-pagos), Gemini 3.5 Flash em Frankfurt, conta de serviço", "#42–#44"],
+    ["RJ-8.2", "Erros gravados antes de responder; 'Marcar como visto' com mensagem de falha", "#45–#46"],
+    ["Marca", "Favicon e ícones; nova identidade visual Petróleo e Ouro", "#47"],
+    ["Inbox", "Nome do cliente nas respostas; contador de Refazer correto", "#48"],
+    ["Segurança", "Filtros de texto que bloqueavam o login do Google retirados (consultas já parametrizadas)", "#49"],
+    ["Login", "Primeiro login sem erro com pedidos simultâneos", "#50"],
+    ["RJ-5.5", "Membros sem Faturação nem gestão da equipa; convites sempre para membro", "#51"],
+    ["RJ-7.1", "Exportação de dados legível (página em português)", "#52"],
+    ["RJ-5.7", "Sofia com perfis, ferramentas, ações confirmadas e avisos; mais tempo para análises", "#53–#54"],
+    ["App", "Recarrega sozinha quando abre uma versão antiga depois de uma atualização", "#55"],
+    ["RJ-5.6", "Erros por email (suporte.responderja.pt) a funcionar; tarefa fechada", "#56"],
+    ["RJ-2.4", "Quotas testadas; limite da equipa conta convites pendentes, sem duplicados; tarefa fechada", "#57–#58"],
+    ["Stripe", "Aviso de pagamentos em modo real reativado no endereço certo (www)", "Stripe"]
+  ],
+  "waitingOnOwner": [
+    "Google: submeter de novo o pedido de acesso com o site igual ao do perfil (GATE-1).",
+    "Stripe: pagamento real do Starter com outro cartão, para testar aviso, portal, cancelamento e reembolso.",
+    "Sofia como cliente (RJ-5.7): testar sugestões e ações com uma conta de cliente.",
+    "Autorizar a limpeza do membro duplicado na base de dados.",
+    "Vercel: apagar AGENT_PLATFORM_API_KEY e GEMINI_API_KEY; criar o orçamento com alertas no Google Cloud.",
+    "Decisões: retenção de dados (RJ-7.3); contas das lojas (RJ-10.1); tecnologia das apps (RJ-11.1).",
+    "Gates fiscal e jurídico (GATE-2 e GATE-3)."
+  ]
+}
