@@ -228,7 +228,14 @@ export async function registerRoutes(app: any): Promise<void> {
       const user = req.user;
       if (!user.agencyId) return res.status(400).json({ message: "Utilizador não pertence a uma agência" });
       
-      const members = await storage.getAgencyMembers(user.agencyId);
+      // A mesma pessoa aparece uma só vez (havia linhas repetidas de convites aceites duas vezes).
+      const seen = new Set<number>();
+      const members = (await storage.getAgencyMembers(user.agencyId)).filter((m: any) => {
+        if (m.userId == null) return true;
+        if (seen.has(Number(m.userId))) return false;
+        seen.add(Number(m.userId));
+        return true;
+      });
       
       const invitationsResult = await db.execute(sql`
         SELECT * FROM agency_invitations 
