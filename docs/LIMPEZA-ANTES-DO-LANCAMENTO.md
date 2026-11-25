@@ -54,3 +54,7 @@ As contas de login vivem na Clerk e não são apagadas pelo SQL. No painel da Cl
 
 - Entrar no backoffice com o super administrador: em **Visão geral**, "Clientes" deve mostrar 0.
 - Abrir uma sandbox em **Ver como cliente** e confirmar que continua a funcionar.
+
+## Avaliações de teste no código da página inicial
+
+O `index.html` declara ao Google uma nota de 4,9 com 128 avaliações e dois testemunhos de teste ("Carlos M.", "Ana R."), dentro do bloco `application/ld+json` (`aggregateRating` e `review`). Os visitantes não veem estes dados, mas o Google lê-os. Retirar os dois campos neste passo final, antes do lançamento. Avaliações inventadas violam as regras do Google e a lei de defesa do consumidor.
