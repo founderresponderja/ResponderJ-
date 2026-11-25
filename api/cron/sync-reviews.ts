@@ -5,7 +5,8 @@ import { reviewSyncService } from "../../server/services/review-sync-service.js"
 /**
  * Agendamento diário (vercel.json → crons, 03:00 UTC): sincroniza as reviews de todas as ligações
  * e corre as regras de respostas automáticas (RJ-3.4).
- * RJ-7.3: antes de tudo, apaga os dados que já passaram do prazo de conservação.
+ * RJ-7.3: antes de tudo, apaga os dados que já passaram do prazo de conservação e trata as contas
+ * gratuitas inativas (aviso por email 30 dias antes; apagamento aos 12 meses).
  * RJ-3.5: comparação do segredo em tempo constante e registo de cada execução em admin_audit_log
  * (ação "cron_sync"), visível no backoffice → Sincronizações.
  */
@@ -39,6 +40,16 @@ export default async function handler(req: Request, res: Response) {
   } catch (err: any) {
     retention = { error: err?.message || "retention failed" };
     console.error("[cron] retention failed:", retention.error);
+  }
+
+  // RJ-7.3: contas gratuitas inativas: aviso 30 dias antes dos 12 meses; depois, apagamento.
+  let inactiveAccounts: any = null;
+  try {
+    const { processInactiveFreeAccounts } = await import("../../server/services/inactive-accounts.js");
+    inactiveAccounts = await processInactiveFreeAccounts({ now: new Date(started), deadline: started + 15000 });
+  } catch (err: any) {
+    inactiveAccounts = { error: err?.message || "inactive accounts failed" };
+    console.error("[cron] inactive accounts failed:", inactiveAccounts.error);
   }
 
   let result: { total: number } | null = null;
@@ -78,7 +89,7 @@ export default async function handler(req: Request, res: Response) {
     await db.insert(adminAuditLog).values({
       actorUserId: null,
       action: "cron_sync",
-      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, retention, durationMs: Date.now() - started },
+      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, retention, inactiveAccounts, durationMs: Date.now() - started },
     });
   } catch (logErr: any) {
     console.error("[cron] could not record run:", logErr?.message);

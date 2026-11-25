@@ -21,15 +21,16 @@ Proposta de 24/11/2026, aceite por Luís Pereira para implementar. **Rever com o
 | Reportes de erros resolvidos (com anexos) | 12 meses depois de resolvidos | Limpeza diária automática | Suporte e repetição do mesmo problema |
 | Registo de emails enviados | 12 meses | Limpeza diária automática | Prova de envio e suporte |
 | Registo de ações de administração e do agendamento | 24 meses | Limpeza diária automática | Auditoria e segurança |
-| Contas gratuitas sem acesso há 12 meses | Só sinalizadas | Contadas no registo diário; **não são apagadas** sem decisão | A decidir: aviso por email 30 dias antes e depois apagar |
+| Contas gratuitas sem acesso há 12 meses | 12 meses sem acesso | Aviso por email 30 dias antes; se a pessoa não voltar a entrar, a conta e os dados são apagados como no botão "Apagar a minha conta". Nunca se apaga sem aviso enviado há pelo menos 30 dias | Minimização: contas abandonadas não ficam guardadas para sempre (decidido por Luís a 24/11/2026) |
 | Registos da Vercel | 1 hora | Plano Hobby | Fornecedor |
 | Cópias de recuperação da base de dados (Neon) | 6 horas | Configuração do projeto | Fornecedor |
 
 ## Implementação
 - `server/services/retention-logic.ts`: prazos (um só sítio para os mudar).
 - `server/services/retention.ts`: limpeza; corre no agendamento diário (`api/cron/sync-reviews.ts`, 03:00 UTC) antes da sincronização. O resultado fica no registo do agendamento (backoffice → Sincronizações).
+- `server/services/inactive-accounts.ts`: contas gratuitas inativas (aviso e apagamento), logo a seguir à limpeza. Ficam de fora: contas com subscrição, da equipa (operadores e super administrador), de teste (sandbox), donas de uma agência e membros ativos de uma agência. Máximo de 100 avisos e 10 apagamentos por dia; o resultado fica no registo do agendamento (`inactiveAccounts`).
+- `server/services/account-deletion.ts`: o apagamento de uma conta (Stripe, base de dados e Clerk), partilhado pelo botão "Apagar a minha conta" e pelas contas inativas.
 
 ## Pendente
-- Decidir o apagamento das contas gratuitas inativas (aviso + apagamento).
 - Confirmar prazos com o advogado (GATE-3) e publicar na Política de Privacidade.
 - Prazos dos fornecedores (Clerk, Resend, Stripe, Google) a listar na Política de Privacidade.

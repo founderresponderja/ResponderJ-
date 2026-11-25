@@ -1,5 +1,5 @@
 // RJ-7.3: limpeza diária dos dados que já passaram do prazo (chamada pelo agendamento diário).
-// Não apaga contas: as contas gratuitas inativas são só contadas e aparecem no registo do agendamento.
+// As contas gratuitas inativas são contadas aqui; o aviso e o apagamento estão em inactive-accounts.ts.
 import { sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { cutoffs } from "./retention-logic.js";
