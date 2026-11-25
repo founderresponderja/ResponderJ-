@@ -29,7 +29,9 @@
       [
         "expo-font",
         {
-          "fonts": ["./assets/fonts/Max-Regular.otf"]
+          "fonts": [
+            "./assets/fonts/Max-Regular.otf"
+          ]
         }
       ],
       [
@@ -43,6 +45,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "375bccf6-2f97-47c5-98ee-c3062e3c37e3"
+      }
     }
   }
 }
