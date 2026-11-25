@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Responder Já",
+    "slug": "responder-ja",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "responderja",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "pt.responderja.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "pt.responderja.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F5F66",
+        "foregroundImage": "./assets/images/adaptive-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-font",
+        {
+          "fonts": ["./assets/fonts/Max-Regular.otf"]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F4F1EC",
+          "image": "./assets/images/adaptive-icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

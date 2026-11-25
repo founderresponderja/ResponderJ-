@@ -1,6 +1,6 @@
 # Apps Responder Já (iPhone e Android): decisões e plano
 
-Atualizado a 25/11/2026. Tarefas no Notion: RJ-10.x (contas das lojas), RJ-11.x (apps), RJ-12.x (testes e publicação). Lançamento previsto das apps: 24/02/2027 (cronograma v4).
+Atualizado a 25/11/2026. Tarefas no Notion: RJ-10.x (contas das lojas), RJ-11.x (apps), RJ-12.x (testes e publicação). Lançamento previsto das apps: 08/02/2027 (cronograma de 25/11/2026).
 
 ## Decisões
 | Decisão | Data | Porquê |
@@ -18,12 +18,12 @@ Atualizado a 25/11/2026. Tarefas no Notion: RJ-10.x (contas das lojas), RJ-11.x 
 ## Arquitetura
 - Pasta `mobile/` neste repositório, com projeto e dependências próprios. Excluída da compilação do site (`tsconfig.json`) e da Vercel (`.vercelignore`).
 - **Servidor:** o mesmo da web (`https://www.responderja.pt/api`). O `requireAuth` (`server/auth.ts`) já aceita o token do Clerk em `Authorization: Bearer …`, por isso a app não precisa de rotas novas para começar.
-- **Login:** Clerk com o SDK para Expo (`@clerk/clerk-expo`), mesma instância de produção do site.
-- **Estilos:** NativeWind (Tailwind para React Native) com as mesmas cores de `tailwind.config.cjs`: Petróleo (`brand`), Pedra (`slate`) e Ouro (`amber`).
+- **Login:** Clerk com o SDK para Expo (`@clerk/expo` 4.x), mesma instância de produção do site. Ecrã próprio (como na maqueta): Google, ou email com código; se o email não tem conta, pede palavra-passe (obrigatória nesta instância) e confirma o email com código.
+- **Estilos:** `mobile/src/theme.ts` com as mesmas cores de `tailwind.config.cjs` (Petróleo, Pedra e Ouro) e estilos do próprio React Native. O NativeWind ficou de fora na RJ-11.2: é mais uma peça a manter e a compatibilidade com o Expo 58 não estava garantida. Se o site mudar uma cor, muda-se também em `theme.ts`.
 - **Apagar conta dentro da app** (obrigatório na Apple): usa a rota existente `POST /api/account/delete`.
 - **Notificações push** (RJ-11.4): Expo Notifications; precisa de uma rota nova para guardar o token do telemóvel.
 
-## Ecrãs da primeira versão (propostos; a confirmar pelo Luís)
+## Ecrãs da primeira versão (maquetas aprovadas pelo Luís a 25/11/2026)
 1. Entrar / criar conta (Clerk)
 2. Caixa de entrada: lista de avaliações, filtros, puxar para atualizar
 3. Avaliação: gerar resposta com IA, editar, aprovar e publicar (ou modo assistido: copiar, abrir a plataforma, "Já publiquei")
@@ -31,10 +31,16 @@ Atualizado a 25/11/2026. Tarefas no Notion: RJ-10.x (contas das lojas), RJ-11.x 
 5. Definições: conta, negócio, notificações, apagar conta
 6. Planos: informação e link para a web (sem pagamentos na app)
 
-## Recursos que faltam
-- **Tipo de letra Max em TTF ou OTF.** O repositório só tem `public/fonts/Max-Regular.woff`, e as apps não leem WOFF. O Luís tem de enviar o ficheiro original (o que veio com a licença).
-- **Ícone da app em 1024×1024 px** (PNG, sem transparência, para a Apple). Hoje só existem `public/icon-512.png` e `public/favicon.svg`.
-- **Ecrã de arranque (splash):** logótipo sobre o fundo `#F4F1EC` (Pedra 100), como no `site.webmanifest`.
+Barra de baixo com 3 separadores: Caixa de entrada, Plataformas e Definições. Planos fica dentro de Definições.
+
+## Recursos
+- Tipo de letra Max em OTF: `mobile/assets/fonts/Max-Regular.otf` (recebido a 25/11/2026). Não tem o símbolo €.
+- Ícones de 1024×1024 px: `mobile/assets/images/icon.png` (fundo petróleo) e `adaptive-icon.png` (Android, fundo transparente). Original em `icon.svg`.
+- Ecrã de arranque: ícone sobre o fundo `#F4F1EC` (Pedra 100).
+
+## Antes de testar num telemóvel (Luís, nas consolas)
+- **Clerk → Native applications:** ligar a *Native API* da instância de produção. Hoje está desligada e, sem ela, o login na app não funciona.
+- **Sign in with Apple (regra 4.8 da Apple):** se a app no iPhone tiver "Continuar com Google", a Apple exige também "Iniciar sessão com a Apple". Precisa da conta Apple Developer (RJ-10.2); fica para a RJ-11.5.
 
 ## Ordem de trabalho
 1. RJ-10.2 e RJ-10.3: o Luís cria as contas Apple Developer (99 USD por ano) e Google Play Console (25 USD, pagamento único). A verificação de identidade pode demorar dias.
