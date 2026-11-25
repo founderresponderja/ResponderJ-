@@ -54,11 +54,11 @@ function App() {
 
   useEffect(() => {
     const path = window.location.pathname;
-    const canonicalUrl = `https://responder-ja.vercel.app${path}`;
+    const canonicalUrl = `https://www.responderja.pt${path}`;
     const defaultTitle = 'Responder Já | Gestão de Reviews com IA para PME';
     const defaultDescription =
       'Responder reviews Google com IA, gestão reputação online Portugal e automatizar respostas avaliações para PME.';
-    const defaultOgImage = 'https://responder-ja.vercel.app/og-image-1200x630.svg';
+    const defaultOgImage = 'https://www.responderja.pt/og-image-1200x630.svg';
 
     let title = defaultTitle;
     let description = defaultDescription;
