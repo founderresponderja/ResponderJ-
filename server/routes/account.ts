@@ -7,8 +7,6 @@
 // nestas rotas, ver server/middleware/member-rules.ts).
 
 import { Router } from "express";
-import Stripe from "stripe";
-import { createClerkClient } from "@clerk/backend";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db.js";
 import { requireAuth } from "../auth.js";
@@ -18,7 +16,8 @@ import {
   agencies, agencyMembers, agencyInvitations, qualityFeedback, referrals, adminAuditLog,
   incidents, incidentAttachments,
 } from "../../shared/schema.js";
-import { stripSecrets, deletionBlockedReason, confirmationMatches, isStripeMissing, renderExportHtml } from "../services/account-logic.js";
+import { stripSecrets, deletionBlockedReason, confirmationMatches, renderExportHtml } from "../services/account-logic.js";
+import { deleteUserAccount } from "../services/account-deletion.js";
 
 const router = Router();
 
@@ -128,74 +127,10 @@ router.post("/delete", requireAuth, async (req: any, res) => {
       return res.status(400).json({ message: "Para confirmar, escreva o email da conta.", code: "CONFIRMATION_MISMATCH" });
     }
 
-    // 1) Pagamentos: cancelar já a subscrição (para não voltar a cobrar) e apagar o cliente no
-    //    Stripe. As faturas emitidas ficam no Stripe, que as guarda por obrigação legal.
-    if (process.env.STRIPE_SECRET_KEY && (user.stripeSubscriptionId || user.stripeCustomerId)) {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-07-30.basil" as any });
-      try {
-        if (user.stripeSubscriptionId) await stripe.subscriptions.cancel(user.stripeSubscriptionId);
-      } catch (error: any) {
-        if (!isStripeMissing(error)) {
-          console.error("[account] stripe cancel failed:", error?.message);
-          return res.status(502).json({ message: "Não foi possível cancelar a subscrição. Nada foi apagado; tente novamente." });
-        }
-      }
-      try {
-        if (user.stripeCustomerId) await stripe.customers.del(user.stripeCustomerId);
-      } catch (error: any) {
-        if (!isStripeMissing(error)) console.warn("[account] stripe customer delete failed:", error?.message);
-      }
-    }
+    // Pagamentos (Stripe), base de dados e login (Clerk): ver server/services/account-deletion.ts.
+    const result = await deleteUserAccount(user as any, "self");
+    if (!result.ok) return res.status(502).json({ message: result.message });
 
-    // 2) Base de dados, numa só transação. Apagar o utilizador apaga em cascata os
-    //    estabelecimentos, reviews, respostas, ligações, créditos, regras, agência própria, etc.
-    //    (chaves estrangeiras da RJ-1.4). O resto (ligado por email) apaga-se à mão.
-    const email = String(user.email || "").toLowerCase();
-    // Tabelas sem chave estrangeira para users, ligadas por email ou por user_id (as que existirem
-    // nesta base de dados). Saber antes evita que um DELETE numa tabela inexistente anule a transação.
-    const { rows: cols } = await db.execute(sql`
-      SELECT table_name, column_name FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND ((table_name IN ('leads', 'referrals') AND column_name = 'email')
-          OR (table_name IN ('invoice_items', 'invoices', 'invoice_settings') AND column_name = 'user_id'))`);
-    const has = (t: string, c: string) => (cols as any[]).some((r) => r.table_name === t && r.column_name === c);
-
-    await db.transaction(async (tx) => {
-      if (email) {
-        await tx.delete(agencyInvitations).where(sql`lower(${agencyInvitations.email}) = ${email}`);
-        // RJ-5.6: reportes por email sem conta associada (os da conta apagam-se em cascata).
-        await tx.delete(incidents).where(sql`lower(${incidents.reporterEmail}) = ${email}`);
-        for (const t of ["leads", "referrals"]) {
-          if (has(t, "email")) await tx.execute(sql`DELETE FROM ${sql.identifier(t)} WHERE lower(email) = ${email}`);
-        }
-        // O registo de auditoria fica (é do backoffice), mas sem o email da pessoa.
-        await tx.execute(sql`
-          UPDATE admin_audit_log
-          SET details = replace(details::text, ${String(user.email)}, '[apagado]')::jsonb
-          WHERE details IS NOT NULL AND details::text ILIKE ${"%" + String(user.email) + "%"}`);
-      }
-      // Tabelas antigas sem chave estrangeira (módulo de faturação simulado, RJ-5.1).
-      for (const t of ["invoice_items", "invoices", "invoice_settings"]) {
-        if (has(t, "user_id")) await tx.execute(sql`DELETE FROM ${sql.identifier(t)} WHERE user_id = ${userId}`);
-      }
-      await tx.delete(users).where(eq(users.id, userId));
-      await tx.insert(adminAuditLog).values({
-        actorUserId: null, action: "account_deleted", targetUserId: null,
-        details: { deletedUserId: userId, at: new Date().toISOString() },
-        ip: null,
-      });
-    });
-
-    // 3) Login (Clerk): apagar a identidade, para a pessoa não ficar com uma conta de login órfã.
-    if (process.env.CLERK_SECRET_KEY && user.clerkUserId) {
-      try {
-        await createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY }).users.deleteUser(String(user.clerkUserId));
-      } catch (error: any) {
-        console.warn("[account] clerk delete failed (dados já apagados):", error?.message);
-      }
-    }
-
-    console.log(`[account] user ${userId} deleted`);
     return res.json({ deleted: true });
   } catch (error: any) {
     console.error("[account] delete failed:", error?.message);
