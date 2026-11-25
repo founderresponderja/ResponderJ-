@@ -1,0 +1,39 @@
+name: Apps - compilar versão de teste
+
+# Corre só quando alguém carrega em "Run workflow" no separador Actions do GitHub.
+on:
+  workflow_dispatch:
+    inputs:
+      plataforma:
+        description: "Plataforma"
+        required: true
+        default: android
+        type: choice
+        options: [android, ios, all]
+      perfil:
+        description: "Perfil (preview = versão de teste para instalar diretamente)"
+        required: true
+        default: preview
+        type: choice
+        options: [preview, production]
+
+jobs:
+  compilar:
+    name: Compilar no Expo (EAS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci --no-audit --no-fund
+      - run: eas build --platform ${{ inputs.plataforma }} --profile ${{ inputs.perfil }} --non-interactive --no-wait
