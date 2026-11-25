@@ -17,9 +17,13 @@ export interface DeletableUser {
   stripeSubscriptionId?: string | null;
 }
 
-export type DeletionResult =
-  | { ok: true }
-  | { ok: false; stage: "stripe"; message: string };
+// Tipo simples (sem união): o projeto não usa strictNullChecks, que a TypeScript precisa para
+// distinguir os dois casos de uma união pelo campo "ok".
+export interface DeletionResult {
+  ok: boolean;
+  /** Só quando ok = false: a mensagem para a pessoa. */
+  message?: string;
+}
 
 /**
  * Apaga a conta. Se a subscrição do Stripe não puder ser cancelada, não apaga nada
@@ -37,7 +41,7 @@ export async function deleteUserAccount(user: DeletableUser, reason: "self" | "i
     } catch (error: any) {
       if (!isStripeMissing(error)) {
         console.error("[account] stripe cancel failed:", error?.message);
-        return { ok: false, stage: "stripe", message: "Não foi possível cancelar a subscrição. Nada foi apagado; tente novamente." };
+        return { ok: false, message: "Não foi possível cancelar a subscrição. Nada foi apagado; tente novamente." };
       }
     }
     try {
