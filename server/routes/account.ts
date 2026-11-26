@@ -14,7 +14,7 @@ import {
   users, establishments, reviews, responses, responseLearningPatterns, responseTemplates,
   automationRules, creditTransactions, subscriptions, socialPlatformConnections,
   agencies, agencyMembers, agencyInvitations, qualityFeedback, referrals, adminAuditLog,
-  incidents, incidentAttachments,
+  incidents, incidentAttachments, complaints,
 } from "../../shared/schema.js";
 import { stripSecrets, deletionBlockedReason, confirmationMatches, renderExportHtml } from "../services/account-logic.js";
 import { deleteUserAccount } from "../services/account-deletion.js";
@@ -62,6 +62,9 @@ router.get("/export", requireAuth, async (req: any, res) => {
       SELECT kind, version, granted, choices, source, created_at FROM consent_records
       WHERE user_id = ${userId} ORDER BY created_at`).catch(() => ({ rows: [] as any[] })) as { rows: any[] };
 
+    // RJ-13.1: reclamações recebidas nos negócios da conta.
+    const myComplaints = await db.select().from(complaints).where(eq(complaints.userId, userId));
+
     const clean = (rows: any[]) => rows.map((r) => stripSecrets(r));
     const exportData = {
       about: {
@@ -87,6 +90,7 @@ router.get("/export", requireAuth, async (req: any, res) => {
       qualityFeedback: clean(feedback),
       referrals: clean(referralsMade),
       consents: consentRows,
+      complaints: clean(myComplaints),
       errorReports: myIncidents.map((i) => ({
         ...i,
         attachments: myAttachments.filter((a) => a.incidentId === i.id),

@@ -24,6 +24,7 @@ import {
   Inbox as InboxIcon,
   ShieldCheck,
   Bug,
+  MessageSquareWarning,
 } from 'lucide-react';
 
 import InboxPage from './Inbox';
@@ -47,6 +48,7 @@ const PlatformList = lazy(() => import('./PlatformList'));
 const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
 const PrivacyDataPage = lazy(() => import('./PrivacyDataPage'));
+const ComplaintsPage = lazy(() => import('./ComplaintsPage'));
 const ReportIssueModal = lazy(() => import('./ReportIssueModal'));
 // RJ-5.3: CRM retirado da app de cliente (ideia futura). Equipa ligada ao plano Agência.
 const AgencyTeamManagement = lazy(() => import('./AgencyTeamManagement'));
@@ -109,7 +111,7 @@ const MainApp: React.FC<MainAppProps> = ({
   const { signOut } = useClerk();
   const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy' | 'complaints'>('overview');
   const [reportOpen, setReportOpen] = useState(false); // RJ-5.6
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
@@ -199,6 +201,7 @@ const MainApp: React.FC<MainAppProps> = ({
   useEffect(() => {
     const path = window.location.pathname.toLowerCase();
     if (path === '/agency') setActiveTab('agency');
+    if (path === '/reclamacoes') setActiveTab('complaints'); // RJ-13.2: ligação dos avisos de prazo
   }, []);
 
   // RJ-5.8: carrega os negócios; mantém o escolhido se ainda existir, senão passa ao primeiro.
@@ -387,6 +390,7 @@ const MainApp: React.FC<MainAppProps> = ({
         <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-hide">
           <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
           <NavButton tab="inbox" icon={InboxIcon} label={nav.menu.inbox} />
+          <NavButton tab="complaints" icon={MessageSquareWarning} label="Reclamações" />
           {/* TODO: remove after Inbox proves stable */}
           {/* <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} /> */}
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
@@ -590,6 +594,7 @@ const MainApp: React.FC<MainAppProps> = ({
                 </div>
               )}
               {activeTab === 'privacy' && <PrivacyDataPage />}
+              {activeTab === 'complaints' && <ComplaintsPage establishmentId={selectedClientId} />}
             </div>
           </Suspense>
         </main>

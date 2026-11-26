@@ -137,6 +137,8 @@ export const establishments = pgTable("establishments", {
   responseGuidelines: text("response_guidelines"),
   forbiddenPhrases: text("forbidden_phrases"),
   platformIds: jsonb("platform_ids"), 
+  // RJ-13.1: código do endereço de reclamações (reclamacoes-<código>@suporte.responderja.pt).
+  complaintsToken: text("complaints_token").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => {
@@ -657,6 +659,28 @@ export const stripeEvents = pgTable("stripe_events", {
 });
 
 // --- RJ-5.6: reporte de erros ---
+// RJ-13.1 / RJ-13.2: reclamações recebidas por email reencaminhado (Livro de Reclamações, Portal da Queixa).
+export const complaints = pgTable("complaints", {
+  id: serial("id").primaryKey(),
+  establishmentId: integer("establishment_id").notNull().references(() => establishments.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  inboundEmailId: text("inbound_email_id").unique(),
+  fromEmail: text("from_email"),
+  subject: text("subject"),
+  body: text("body"),
+  reference: text("reference"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+  dueAt: date("due_at", { mode: "date" }),
+  status: text("status").notNull().default("nova"),
+  responseText: text("response_text"),
+  respondedAt: timestamp("responded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  establishmentIdx: index("complaints_establishment_idx").on(table.establishmentId, table.receivedAt),
+}));
+
 export const incidents = pgTable("incidents", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),

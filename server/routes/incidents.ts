@@ -9,6 +9,8 @@ import { db } from "../db.js";
 import { incidents } from "../../shared/schema.js";
 import { requireAuth } from "../auth.js";
 import { createIncident, findUserIdByEmail } from "../services/incident-service.js";
+import { storeInboundComplaint } from "../services/complaint-service.js";
+import { complaintsTokenFromRecipients } from "../services/complaint-logic.js";
 import {
   ALLOWED_IMAGE_TYPES, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, base64Bytes, validateAttachments, verifySvixSignature,
 } from "../services/incident-logic.js";
@@ -90,6 +92,25 @@ router.post("/inbound-email", async (req: any, res) => {
   const emailId = String(event.data?.email_id || "");
   const from = String(event.data?.from || "").trim().toLowerCase();
   if (!emailId || !from) return res.status(400).json({ error: "Email incompleto." });
+
+  // RJ-13.1: emails para reclamacoes-<código>@ vão para a caixa de reclamações do negócio, não para os erros.
+  const complaintsToken = complaintsTokenFromRecipients(event.data?.to);
+  if (complaintsToken) {
+    try {
+      const result = await storeInboundComplaint({
+        token: complaintsToken,
+        emailId,
+        from,
+        subject: String(event.data?.subject || ""),
+        fetchEmail: (id) => resendGet(`/emails/receiving/${encodeURIComponent(id)}`),
+      });
+      return res.json({ complaint: true, ...result });
+    } catch (error: any) {
+      console.error("[complaints] inbound failed:", error?.message);
+      // 500 faz o Resend tentar outra vez mais tarde.
+      return res.status(500).json({ error: "Não foi possível guardar a reclamação." });
+    }
+  }
 
   // Idempotência: o Resend pode repetir o aviso.
   const [existing] = await db.select({ id: incidents.id }).from(incidents).where(eq(incidents.inboundEmailId, emailId));

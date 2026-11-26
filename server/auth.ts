@@ -191,7 +191,7 @@ const SANDBOX_BLOCKED: { method?: string; pattern: RegExp; what: string }[] = [
   { method: "POST", pattern: /^\/api\/agency\/(invite-member|delegate-admin)/, what: "envio de convites" },
   { method: "POST", pattern: /^\/api\/invitations\//, what: "convites" },
 ];
-const SANDBOX_AI_PATHS = [/^\/api\/generate-response/, /^\/api\/responses\/\d+\/regenerate/, /^\/api\/reviews-ai\/generate/];
+const SANDBOX_AI_PATHS = [/^\/api\/generate-response/, /^\/api\/responses\/\d+\/regenerate/, /^\/api\/reviews-ai\/generate/, /^\/api\/complaints\/\d+\/draft/];
 
 async function applyViewAs(req: any): Promise<{ status: number; message: string; code: string } | null> {
   const raw = req.headers?.["x-view-as"];

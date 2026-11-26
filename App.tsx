@@ -128,7 +128,7 @@ function App() {
         setInviteToken(token);
         setCurrentView('invite');
       }
-    } else if (path === '/agency') {
+    } else if (path === '/agency' || path === '/reclamacoes') {
       setCurrentView('app');
     } else if (path === '/blog' || path.startsWith('/blog/')) {
       setCurrentView('blog');
