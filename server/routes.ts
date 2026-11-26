@@ -56,6 +56,7 @@ import accountRoutes from "./routes/account.js";
 import consentRoutes from "./routes/consents.js";
 import sofiaRoutes from "./routes/sofia.js";
 import incidentRoutes from "./routes/incidents.js";
+import complaintRoutes from "./routes/complaints.js";
 
 import { db } from "./db.js";
 import { users, establishments, reviews, responses, socialPlatformConnections, agencyMembers, agencies } from "../shared/schema.js";
@@ -108,6 +109,7 @@ export async function registerRoutes(app: any): Promise<void> {
   app.use("/api/sofia", sofiaRoutes);
   // RJ-5.6: reporte de erros.
   app.use("/api/incidents", incidentRoutes);
+  app.use("/api/complaints", complaintRoutes); // RJ-13.1
   
   app.use((req: any, res: any, next: any) => {
     if (req.path === '/api/suggestions' && req.method === 'POST') return next();

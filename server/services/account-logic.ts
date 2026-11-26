@@ -81,6 +81,7 @@ const SECTION_LABELS: Record<string, string> = {
   referrals: "Recomendações",
   consents: "Consentimentos",
   errorReports: "Erros reportados",
+  complaints: "Reclamações recebidas",
 };
 
 const FIELD_LABELS: Record<string, string> = {

@@ -74,6 +74,16 @@ export default async function handler(req: Request, res: Response) {
   }
 
   // RJ-3.3: emails de ciclo de vida (teste a acabar/acabado, poucos créditos).
+  // RJ-13.2: avisos de prazo das reclamações (15 dias úteis).
+  let complaintDeadlines: any = null;
+  try {
+    const { sendComplaintDeadlineAlerts } = await import("../../server/services/complaint-service.js");
+    complaintDeadlines = await sendComplaintDeadlineAlerts({ deadline: started + 50000 });
+  } catch (err: any) {
+    complaintDeadlines = { error: err?.message || "complaint alerts failed" };
+    console.error("[cron] complaint alerts failed:", complaintDeadlines.error);
+  }
+
   let lifecycle: any = null;
   try {
     const { sendLifecycleEmails } = await import("../../server/services/lifecycle-emails.js");
@@ -89,7 +99,7 @@ export default async function handler(req: Request, res: Response) {
     await db.insert(adminAuditLog).values({
       actorUserId: null,
       action: "cron_sync",
-      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, retention, inactiveAccounts, durationMs: Date.now() - started },
+      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, retention, inactiveAccounts, complaintDeadlines, durationMs: Date.now() - started },
     });
   } catch (logErr: any) {
     console.error("[cron] could not record run:", logErr?.message);
