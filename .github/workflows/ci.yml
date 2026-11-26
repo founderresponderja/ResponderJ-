@@ -31,6 +31,10 @@ jobs:
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
 
+      - name: Vulnerabilidades conhecidas (pacotes que vão para produção)
+        # RJ-6.4: bloqueia se aparecer uma vulnerabilidade alta ou crítica nas dependências de produção.
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Testes
         run: npm test
 
