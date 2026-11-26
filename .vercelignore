@@ -1,2 +1,5 @@
 # As apps (Expo) têm o próprio projeto e não fazem parte do site publicado na Vercel.
 mobile
+
+# A extensão de Chrome é publicada na Chrome Web Store, não na Vercel.
+extension

@@ -58,6 +58,7 @@ import sofiaRoutes from "./routes/sofia.js";
 import incidentRoutes from "./routes/incidents.js";
 import complaintRoutes from "./routes/complaints.js";
 import reviewRequestRoutes from "./routes/review-requests.js";
+import extensionRoutes from "./routes/extension.js";
 
 import { db } from "./db.js";
 import { users, establishments, reviews, responses, socialPlatformConnections, agencyMembers, agencies } from "../shared/schema.js";
@@ -112,6 +113,7 @@ export async function registerRoutes(app: any): Promise<void> {
   app.use("/api/incidents", incidentRoutes);
   app.use("/api/complaints", complaintRoutes); // RJ-13.1
   app.use("/api/review-requests", reviewRequestRoutes); // RJ-16.3 (inclui a página pública, sem sessão)
+  app.use("/api/extension", extensionRoutes); // RJ-13.3 (a extensão usa chave própria, não a sessão)
   
   app.use((req: any, res: any, next: any) => {
     if (req.path === '/api/suggestions' && req.method === 'POST') return next();

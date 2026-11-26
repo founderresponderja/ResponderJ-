@@ -665,6 +665,18 @@ export const stripeEvents = pgTable("stripe_events", {
 });
 
 // --- RJ-5.6: reporte de erros ---
+// RJ-13.3: chaves pessoais da extensão de Chrome (só a impressão SHA-256).
+export const extensionKeys = pgTable("extension_keys", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  keyHash: text("key_hash").notNull().unique(),
+  label: text("label"),
+  lastFour: text("last_four").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
+
 // RJ-13.1 / RJ-13.2: reclamações recebidas por email reencaminhado (Livro de Reclamações, Portal da Queixa).
 export const complaints = pgTable("complaints", {
   id: serial("id").primaryKey(),
