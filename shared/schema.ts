@@ -141,6 +141,10 @@ export const establishments = pgTable("establishments", {
   platformIds: jsonb("platform_ids"), 
   // RJ-13.1: código do endereço de reclamações (reclamacoes-<código>@suporte.responderja.pt).
   complaintsToken: text("complaints_token").unique(),
+  // RJ-16.3: página pública de pedido de avaliações (/avaliar/<código>), ligações e mensagem.
+  reviewPageToken: text("review_page_token").unique(),
+  reviewLinks: jsonb("review_links").$type<Record<string, string>>(),
+  reviewMessage: text("review_message"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => {

@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   Bug,
   MessageSquareWarning,
+  QrCode,
 } from 'lucide-react';
 
 import InboxPage from './Inbox';
@@ -49,6 +50,7 @@ const BillingPage = lazy(() => import('./BillingPage'));
 const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
 const PrivacyDataPage = lazy(() => import('./PrivacyDataPage'));
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'));
+const ReviewRequestsPage = lazy(() => import('./ReviewRequestsPage'));
 const ReportIssueModal = lazy(() => import('./ReportIssueModal'));
 // RJ-5.3: CRM retirado da app de cliente (ideia futura). Equipa ligada ao plano Agência.
 const AgencyTeamManagement = lazy(() => import('./AgencyTeamManagement'));
@@ -111,7 +113,7 @@ const MainApp: React.FC<MainAppProps> = ({
   const { signOut } = useClerk();
   const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy' | 'complaints'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy' | 'complaints' | 'review-requests'>('overview');
   const [reportOpen, setReportOpen] = useState(false); // RJ-5.6
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
@@ -391,6 +393,7 @@ const MainApp: React.FC<MainAppProps> = ({
           <NavButton tab="overview" icon={LayoutDashboard} label={nav.menu.overview} />
           <NavButton tab="inbox" icon={InboxIcon} label={nav.menu.inbox} />
           <NavButton tab="complaints" icon={MessageSquareWarning} label="Reclamações" />
+          <NavButton tab="review-requests" icon={QrCode} label="Pedir avaliações" />
           {/* TODO: remove after Inbox proves stable */}
           {/* <NavButton tab="generate" icon={MessageSquareText} label={nav.menu.generate} /> */}
           <NavButton tab="analytics" icon={Activity} label={nav.menu.dashboard} locked={!planCapabilities.hasAnalytics} />
@@ -595,6 +598,7 @@ const MainApp: React.FC<MainAppProps> = ({
               )}
               {activeTab === 'privacy' && <PrivacyDataPage />}
               {activeTab === 'complaints' && <ComplaintsPage establishmentId={selectedClientId} />}
+              {activeTab === 'review-requests' && <ReviewRequestsPage establishmentId={selectedClientId} />}
             </div>
           </Suspense>
         </main>
