@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Responder Já",
   "short_name": "Responder Já",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Gere respostas às avaliações com IA dentro do Google, Booking e Tripadvisor, na língua do cliente.",
   "default_locale": "pt_PT",
   "icons": {

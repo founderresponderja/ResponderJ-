@@ -28,3 +28,10 @@ A extensão não lê páginas sozinha, não guarda o conteúdo das avaliações 
 2. Zipar o conteúdo desta pasta e carregar.
 3. Ficha: descrição em português, capturas de ecrã 1280×800, ícone 128 px (`icons/icon-128.png`), política de privacidade `https://www.responderja.pt/privacy`.
 4. Justificação das permissões: usar o texto acima.
+
+## Acessibilidade (RJ-A11Y.2)
+- Tudo funciona só com teclado (Tab, Enter); o foco é sempre visível (contorno dourado).
+- Leitores de ecrã: campos com nome, erros associados ao campo, anúncio de "A gerar…" e de "3 respostas prontas", e cada resposta identificada ("Resposta 1 de 3, curta").
+- Depois de gerar, o foco passa para a primeira resposta.
+- Contraste do texto ≥ 4,5:1 em todos os pares de cores (WCAG 2.2 AA).
+- Respeita "reduzir movimento" do sistema.
