@@ -24,7 +24,19 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
-if (!clerkPublishableKey) {
+// RJ-16.3: página pública de avaliações (QR code / WhatsApp): leve, sem login nem o resto do site.
+const reviewPageMatch = window.location.pathname.match(/^\/avaliar\/([a-z0-9]{8,40})\/?$/i);
+
+if (reviewPageMatch) {
+  const PublicReviewPage = React.lazy(() => import('./components/PublicReviewPage'));
+  root.render(
+    <React.StrictMode>
+      <React.Suspense fallback={null}>
+        <PublicReviewPage token={reviewPageMatch[1].toLowerCase()} />
+      </React.Suspense>
+    </React.StrictMode>
+  );
+} else if (!clerkPublishableKey) {
   root.render(
     <React.StrictMode>
       <div style={{ padding: '24px' }}>
