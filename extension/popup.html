@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <title>Responder Já</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon-32.png" alt="" width="24" height="24">
+    <strong>Responder Já</strong>
+    <span id="credits" class="muted"></span>
+  </header>
+
+  <section id="setup" hidden>
+    <p>Para ligar a extensão, crie uma chave na app: <strong>Extensão de Chrome → Criar chave</strong>.</p>
+    <label for="key">Chave</label>
+    <input id="key" type="password" autocomplete="off" placeholder="rjx_…">
+    <button id="save-key" class="primary">Ligar</button>
+    <p id="setup-error" class="error" role="alert"></p>
+    <a href="https://www.responderja.pt/app" target="_blank" rel="noopener">Abrir a app</a>
+  </section>
+
+  <section id="main" hidden>
+    <label for="review">Texto da avaliação</label>
+    <textarea id="review" rows="5" placeholder="Selecione o texto na página ou cole-o aqui."></textarea>
+    <div class="row">
+      <div>
+        <label for="business">Negócio</label>
+        <select id="business"></select>
+      </div>
+      <div>
+        <label for="platform">Plataforma</label>
+        <select id="platform">
+          <option value="google_maps">Google</option>
+          <option value="booking">Booking</option>
+          <option value="tripadvisor">Tripadvisor</option>
+          <option value="facebook">Facebook</option>
+        </select>
+      </div>
+    </div>
+    <button id="generate" class="primary">Gerar 3 respostas (1 crédito)</button>
+    <p id="error" class="error" role="alert"></p>
+    <div id="results"></div>
+    <footer>
+      <button id="disconnect" class="link">Desligar esta chave</button>
+    </footer>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

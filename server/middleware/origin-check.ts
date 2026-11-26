@@ -61,6 +61,11 @@ export function isAllowedOrigin(origin: string, req: Request): boolean {
 
 export function originCheck(req: Request, res: Response, next: NextFunction) {
   if (!STATE_CHANGING.has(req.method)) return next();
+  // RJ-13.3: a extensão de Chrome autentica-se com uma chave própria no cabeçalho (não com cookies),
+  // por isso não há risco de pedido forjado por outro site; a origem chrome-extension:// é aceite.
+  if (String(req.originalUrl || req.url || "").startsWith("/api/extension/") && /^Bearer rjx_/.test(String(req.headers.authorization || ""))) {
+    return next();
+  }
 
   const fetchSite = String(req.headers["sec-fetch-site"] || "").toLowerCase();
   if (fetchSite) {

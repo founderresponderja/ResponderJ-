@@ -26,6 +26,7 @@ import {
   Bug,
   MessageSquareWarning,
   QrCode,
+  Puzzle,
 } from 'lucide-react';
 
 import InboxPage from './Inbox';
@@ -51,6 +52,7 @@ const BusinessProfilePage = lazy(() => import('./BusinessProfilePage'));
 const PrivacyDataPage = lazy(() => import('./PrivacyDataPage'));
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'));
 const ReviewRequestsPage = lazy(() => import('./ReviewRequestsPage'));
+const ExtensionPage = lazy(() => import('./ExtensionPage'));
 const ReportIssueModal = lazy(() => import('./ReportIssueModal'));
 // RJ-5.3: CRM retirado da app de cliente (ideia futura). Equipa ligada ao plano Agência.
 const AgencyTeamManagement = lazy(() => import('./AgencyTeamManagement'));
@@ -113,7 +115,7 @@ const MainApp: React.FC<MainAppProps> = ({
   const { signOut } = useClerk();
   const { getToken } = useAuth();
   const generateResponse = useGenerateResponse();
-  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy' | 'complaints' | 'review-requests'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'inbox' | 'generate' | 'analytics' | 'platforms' | 'pricing' | 'business-profile' | 'crm' | 'social-manager' | 'team' | 'agency' | 'privacy' | 'complaints' | 'review-requests' | 'extension'>('overview');
   const [reportOpen, setReportOpen] = useState(false); // RJ-5.6
   const [currentReview, setCurrentReview] = useState<ReviewData | null>(null);
   const [history, setHistory] = useState<ReviewData[]>([]);
@@ -402,6 +404,7 @@ const MainApp: React.FC<MainAppProps> = ({
           {isAgencyPlan && <NavButton tab="agency" icon={Building2} label="Agency" />}
           {isAgencyPlan && canManageTeam && <NavButton tab="team" icon={Users} label="Equipa" />}
           {canSeeBilling && <NavButton tab="pricing" icon={CreditCard} label={nav.menu.plans} />}
+          <NavButton tab="extension" icon={Puzzle} label="Extensão de Chrome" />
           <NavButton tab="privacy" icon={ShieldCheck} label="Privacidade e dados" />
           <NavButton icon={Bug} label="Reportar um erro" onClick={() => setReportOpen(true)} />
         </div>
@@ -599,6 +602,7 @@ const MainApp: React.FC<MainAppProps> = ({
               {activeTab === 'privacy' && <PrivacyDataPage />}
               {activeTab === 'complaints' && <ComplaintsPage establishmentId={selectedClientId} />}
               {activeTab === 'review-requests' && <ReviewRequestsPage establishmentId={selectedClientId} />}
+              {activeTab === 'extension' && <ExtensionPage />}
             </div>
           </Suspense>
         </main>
