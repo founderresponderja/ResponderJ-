@@ -1,6 +1,6 @@
 // RJ-7.1: os dados pessoais do titular (RGPD): exportar tudo e apagar a conta.
-import React, { useState } from 'react';
-import { Download, Trash2, ShieldCheck, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Download, Trash2, ShieldCheck, Loader2, Mail } from 'lucide-react';
 import { useAuth, useClerk, useUser } from '@clerk/clerk-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { buildAuthHeaders } from '../utils/api';
@@ -14,6 +14,36 @@ const PrivacyDataPage: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
   const accountEmail = user?.primaryEmailAddress?.emailAddress || '';
+  // RJ-13.5: relatório semanal por email.
+  const [weeklyReport, setWeeklyReport] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const headers = await buildAuthHeaders({ getToken });
+        const res = await fetch('/api/account/preferences', { headers });
+        if (res.ok) setWeeklyReport(Boolean((await res.json()).weeklyReport));
+      } catch { /* fica por mostrar */ }
+    })();
+  }, [getToken]);
+
+  const toggleWeeklyReport = async (value: boolean) => {
+    const previous = weeklyReport;
+    setWeeklyReport(value);
+    try {
+      const headers = await buildAuthHeaders({ getToken });
+      const res = await fetch('/api/account/preferences', {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weeklyReport: value }),
+      });
+      if (!res.ok) throw new Error();
+      notifySuccess(value ? 'Relatório semanal ligado.' : 'Relatório semanal desligado.');
+    } catch {
+      setWeeklyReport(previous);
+      notifyError('Não foi possível guardar. Tente novamente.');
+    }
+  };
 
   const handleExport = async (format: 'html' | 'json') => {
     setExporting(true);
@@ -92,6 +122,27 @@ const PrivacyDataPage: React.FC = () => {
               Descarregar (JSON, para outros serviços)
             </button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Mail size={18} aria-hidden /> Emails</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <label className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4"
+              checked={weeklyReport ?? true}
+              disabled={weeklyReport === null}
+              onChange={(e) => toggleWeeklyReport(e.target.checked)}
+            />
+            <span>
+              <strong className="font-semibold">Relatório semanal</strong>
+              <span className="block text-slate-500 dark:text-slate-400">Às segundas: avaliações da semana, o que os clientes repetem e o que mudar.</span>
+            </span>
+          </label>
         </CardContent>
       </Card>
 

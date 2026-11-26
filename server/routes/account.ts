@@ -119,6 +119,18 @@ router.get("/export", requireAuth, async (req: any, res) => {
   }
 });
 
+// RJ-13.5: preferências de email da conta.
+router.get("/preferences", requireAuth, async (req: any, res) => {
+  const [row] = await db.select({ weeklyReport: users.weeklyReport }).from(users).where(eq(users.id, Number(req.user.id)));
+  res.json({ weeklyReport: row?.weeklyReport ?? true });
+});
+
+router.patch("/preferences", requireAuth, async (req: any, res) => {
+  if (typeof req.body?.weeklyReport !== "boolean") return res.status(400).json({ message: "Valor inválido." });
+  await db.update(users).set({ weeklyReport: req.body.weeklyReport, updatedAt: new Date() }).where(eq(users.id, Number(req.user.id)));
+  res.json({ weeklyReport: req.body.weeklyReport });
+});
+
 router.post("/delete", requireAuth, async (req: any, res) => {
   const userId = Number(req.user.id);
   try {

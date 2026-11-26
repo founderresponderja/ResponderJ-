@@ -29,6 +29,8 @@ export const users = pgTable("users", {
   isAgencyOwner: boolean("is_agency_owner").default(false),
   // Conta-sandbox do modo "Ver como cliente" (migrations/20261117_06_sandboxes.sql).
   isSandbox: boolean("is_sandbox").default(false).notNull(),
+  // RJ-13.5: recebe o relatório semanal por email.
+  weeklyReport: boolean("weekly_report").default(true).notNull(),
   emailVerified: boolean("email_verified").default(false),
   
   // Relations

@@ -93,13 +93,23 @@ export default async function handler(req: Request, res: Response) {
     console.error("[cron] lifecycle emails failed:", lifecycle.error);
   }
 
+  // RJ-13.5: relatório semanal (segunda, com repescagem à terça). Fica no fim: é o que pode demorar mais (IA).
+  let weeklyReports: any = null;
+  try {
+    const { sendWeeklyReports } = await import("../../server/services/weekly-report.js");
+    weeklyReports = await sendWeeklyReports({ deadline: started + 240000 });
+  } catch (err: any) {
+    weeklyReports = { error: err?.message || "weekly reports failed" };
+    console.error("[cron] weekly reports failed:", weeklyReports.error);
+  }
+
   try {
     const { db } = await import("../../server/db.js");
     const { adminAuditLog } = await import("../../shared/schema.js");
     await db.insert(adminAuditLog).values({
       actorUserId: null,
       action: "cron_sync",
-      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, retention, inactiveAccounts, complaintDeadlines, durationMs: Date.now() - started },
+      details: { ok: !error, imported: result?.total ?? 0, error, automation, lifecycle, retention, inactiveAccounts, complaintDeadlines, weeklyReports, durationMs: Date.now() - started },
     });
   } catch (logErr: any) {
     console.error("[cron] could not record run:", logErr?.message);
