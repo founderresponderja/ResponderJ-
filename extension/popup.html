@@ -8,22 +8,22 @@
 <body>
   <header>
     <img src="icons/icon-32.png" alt="" width="24" height="24">
-    <strong>Responder Já</strong>
-    <span id="credits" class="muted"></span>
+    <h1 style="font-size:15px;margin:0;color:var(--petroleo-escuro)">Responder Já</h1>
+    <span id="credits" class="muted" aria-live="polite"></span>
   </header>
 
   <section id="setup" hidden>
     <p>Para ligar a extensão, crie uma chave na app: <strong>Extensão de Chrome → Criar chave</strong>.</p>
     <label for="key">Chave</label>
-    <input id="key" type="password" autocomplete="off" placeholder="rjx_…">
+    <input id="key" type="password" autocomplete="off" placeholder="rjx_…" aria-describedby="setup-error">
     <button id="save-key" class="primary">Ligar</button>
     <p id="setup-error" class="error" role="alert"></p>
-    <a href="https://www.responderja.pt/app" target="_blank" rel="noopener">Abrir a app</a>
+    <a href="https://www.responderja.pt/app" target="_blank" rel="noopener">Abrir a app<span class="sr-only"> (abre num novo separador)</span></a>
   </section>
 
   <section id="main" hidden>
     <label for="review">Texto da avaliação</label>
-    <textarea id="review" rows="5" placeholder="Selecione o texto na página ou cole-o aqui."></textarea>
+    <textarea id="review" rows="5" placeholder="Selecione o texto na página ou cole-o aqui." aria-describedby="error"></textarea>
     <div class="row">
       <div>
         <label for="business">Negócio</label>
@@ -41,7 +41,8 @@
     </div>
     <button id="generate" class="primary">Gerar 3 respostas (1 crédito)</button>
     <p id="error" class="error" role="alert"></p>
-    <div id="results"></div>
+    <div id="status" class="sr-only" role="status" aria-live="polite"></div>
+    <div id="results" role="region" aria-label="Respostas geradas"></div>
     <footer>
       <button id="disconnect" class="link">Desligar esta chave</button>
     </footer>

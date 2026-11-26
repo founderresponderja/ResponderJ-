@@ -76,6 +76,7 @@ function showSetup(message = "") {
   $("main").hidden = true;
   $("setup").hidden = false;
   $("setup-error").textContent = message;
+  $("key").focus(); // RJ-A11Y.2: o foco vai para onde há que agir
 }
 
 async function showMain() {
@@ -101,9 +102,11 @@ async function showMain() {
 function renderResults(data, tabId) {
   const box = $("results");
   box.innerHTML = "";
-  for (const v of data.variations) {
+  data.variations.forEach((v, i) => {
     const card = document.createElement("div");
     card.className = "result";
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-label", `Resposta ${i + 1} de ${data.variations.length}${TIPOS[v.type] ? `, ${TIPOS[v.type]}` : ""}`);
     const tipo = document.createElement("div");
     tipo.className = "tipo";
     tipo.textContent = TIPOS[v.type] || v.type || "";
@@ -114,6 +117,7 @@ function renderResults(data, tabId) {
     const inserir = document.createElement("button");
     inserir.className = "inserir";
     inserir.textContent = "Inserir na página";
+    inserir.setAttribute("aria-label", `Inserir a resposta ${i + 1} na página`);
     inserir.onclick = async () => {
       try {
         const [r] = await chrome.scripting.executeScript({ target: { tabId }, func: insertIntoPage, args: [v.text] });
@@ -125,15 +129,20 @@ function renderResults(data, tabId) {
     };
     const copiar = document.createElement("button");
     copiar.textContent = "Copiar";
+    copiar.setAttribute("aria-label", `Copiar a resposta ${i + 1}`);
     copiar.onclick = async () => {
       await navigator.clipboard.writeText(v.text);
       copiar.textContent = "Copiado";
+      $("status").textContent = `Resposta ${i + 1} copiada.`;
     };
     acoes.append(inserir, copiar);
     card.append(tipo, p, acoes);
     box.append(card);
-  }
+  });
   $("credits").textContent = `${data.creditsRemaining} créditos`;
+  // RJ-A11Y.2: anunciar o resultado e pôr o foco na primeira resposta.
+  $("status").textContent = `${data.variations.length} respostas prontas.`;
+  box.querySelector("button")?.focus();
 }
 
 $("save-key").onclick = async () => {
@@ -154,10 +163,15 @@ $("generate").onclick = async () => {
   const reviewText = $("review").value.trim();
   if (reviewText.length < 3) {
     $("error").textContent = "Selecione o texto da avaliação na página ou cole-o aqui.";
+    $("review").setAttribute("aria-invalid", "true");
+    $("review").focus();
     return;
   }
+  $("review").removeAttribute("aria-invalid");
   btn.disabled = true;
   btn.textContent = "A gerar…";
+  btn.setAttribute("aria-busy", "true");
+  $("status").textContent = "A gerar respostas…";
   try {
     const establishmentId = $("business").value || null;
     await chrome.storage.local.set({ establishmentId });
@@ -172,6 +186,7 @@ $("generate").onclick = async () => {
     $("error").textContent = e.message;
   } finally {
     btn.disabled = false;
+    btn.removeAttribute("aria-busy");
     btn.textContent = "Gerar 3 respostas (1 crédito)";
   }
 };
