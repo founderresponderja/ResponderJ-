@@ -16,7 +16,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ onGenerate, isLoading, lang }) 
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [tone, setTone] = useState<Tone>(Tone.PROFESSIONAL);
-  const [language, setLanguage] = useState<AppLanguage>(AppLanguage.PT);
+  const [language, setLanguage] = useState<AppLanguage>(AppLanguage.AUTO);
   const [extraInstructions, setExtraInstructions] = useState('');
 
   const t = translations[lang].app.form;

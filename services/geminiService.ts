@@ -1,5 +1,6 @@
 
 import { ReviewData } from "../types.js";
+import { toReviewLanguage } from '../shared/review-languages';
 import { useAuth } from "@clerk/clerk-react";
 
 export interface BusinessContext {
@@ -49,6 +50,8 @@ export const generateResponse = async (
       platform: review.platform,
       originalMessage: 'reviewText' in review ? review.reviewText : '',
       tone: review.tone,
+      // RJ-13.4: código da língua escolhida; null = a língua do cliente.
+      language: 'language' in review ? toReviewLanguage(review.language) : null,
       extraInstructions: 'extraInstructions' in review ? review.extraInstructions : undefined,
       businessContext: context,
       customerName: 'customerName' in review ? review.customerName : 'Cliente',

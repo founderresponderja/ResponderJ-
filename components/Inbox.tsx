@@ -4,6 +4,7 @@ import { AiMark as Sparkles } from './Logo';
 import { translations, Language } from '../utils/translations';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { ReviewData, Platform, Tone, Language as LanguageEnum } from '../types';
+import { toReviewLanguage } from '../shared/review-languages';
 import ResponseCard from './ResponseCard';
 import { useResponseActions } from '../hooks/useResponseActions';
 import { buildAuthHeaders } from '../utils/api';
@@ -107,12 +108,10 @@ function inboxItemToReviewData(
 }
 
 function mapLanguage(lang: string | null): LanguageEnum {
-  if (!lang) return LanguageEnum.PT;
-  const lower = lang.toLowerCase();
-  if (lower.includes('en')) return LanguageEnum.EN;
-  if (lower.includes('es')) return LanguageEnum.ES;
-  if (lower.includes('fr')) return LanguageEnum.FR;
-  return LanguageEnum.PT;
+  // RJ-13.4: códigos pt, en, es, fr, de (antes "de" caía em português).
+  const BY_CODE = { pt: LanguageEnum.PT, en: LanguageEnum.EN, es: LanguageEnum.ES, fr: LanguageEnum.FR, de: LanguageEnum.DE } as const;
+  const code = toReviewLanguage(lang);
+  return code ? BY_CODE[code] : LanguageEnum.PT;
 }
 
 const Inbox: React.FC<InboxProps> = ({ lang, establishmentId }) => {

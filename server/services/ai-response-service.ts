@@ -1,5 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { REVIEW_LANGUAGES, REVIEW_LANGUAGE_PROMPT, detectReviewLanguage, toReviewLanguage, type ReviewLanguage } from "../../shared/review-languages.js";
 import { db } from "../db.js";
 import { and, desc, eq } from "drizzle-orm";
 import { responseLearningPatterns } from "../../shared/schema.js";
@@ -191,34 +192,12 @@ export const aiResponseService = {
     }
   },
 
-  /**
-   * RJ-4.4: deteção local por palavras e caracteres típicos de cada língua.
-   * Devolve null quando não há uma vencedora clara (aí pergunta-se à IA).
-   */
-  detectLanguageHeuristic(reviewText: string): "pt" | "en" | "es" | null {
-    const text = ` ${String(reviewText || "").toLowerCase()} `;
-    const words = text.match(/[a-záàâãéêíóôõúüçñ]+/g) || [];
-    if (words.length === 0) return null;
-    const LEX: Record<"pt" | "en" | "es", string[]> = {
-      pt: ["não", "muito", "obrigado", "obrigada", "você", "estava", "foi", "atendimento", "comida", "bom", "boa", "ótimo", "ótima", "também", "mas", "com", "uma", "para", "pelo", "pela", "isso", "aqui", "mais", "sempre", "simpático", "simpáticos", "espera", "lugar", "voltar", "voltaremos", "recomendo", "nós", "são", "está", "estão", "então", "já", "ao", "às", "à", "nao", "obg", "em", "tudo", "parabéns", "equipa", "razoável", "excelente", "pessoal", "gostei", "adorei", "preço", "sítio", "também"],
-      es: ["muy", "pero", "gracias", "fue", "estaba", "comida", "bueno", "buena", "también", "con", "una", "para", "el", "los", "las", "del", "servicio", "lugar", "volver", "recomiendo", "nosotros", "son", "está", "están", "hay", "todo", "nada", "mucho", "perfecto", "personal", "llegó", "repetiré", "sitio", "amable"],
-      en: ["the", "and", "was", "were", "very", "great", "with", "but", "not", "staff", "food", "place", "good", "nice", "service", "would", "again", "recommend", "we", "they", "this", "that", "is", "are", "had", "have", "friendly", "lovely", "value", "money", "avoid", "twice", "highly"],
-    };
-    const score = { pt: 0, es: 0, en: 0 };
-    for (const w of words) {
-      for (const lang of ["pt", "es", "en"] as const) if (LEX[lang].includes(w)) score[lang] += 1;
-    }
-    // Caracteres exclusivos pesam muito: ã/õ/ç só existem em português; ñ/¿/¡ em espanhol.
-    score.pt += (text.match(/[ãõç]/g) || []).length * 2 + (text.match(/ção|ções|ões|lh|nh/g) || []).length;
-    score.es += (text.match(/[ñ¿¡]/g) || []).length * 2 + (text.match(/ción|ciones|ll/g) || []).length;
-    const ranked = (Object.entries(score) as ["pt" | "en" | "es", number][]).sort((x, y) => y[1] - x[1]);
-    const [first, second] = ranked;
-    if (first[1] === 0) return null;
-    if (first[1] >= 2 && first[1] >= second[1] * 2) return first[0];
-    return null;
+  /** RJ-4.4 / RJ-13.4: deteção local (pt, en, es, fr, de); null quando não há vencedora clara. */
+  detectLanguageHeuristic(reviewText: string): ReviewLanguage | null {
+    return detectReviewLanguage(reviewText);
   },
 
-  async detectLanguage(reviewText: string): Promise<"pt" | "en" | "es"> {
+  async detectLanguage(reviewText: string): Promise<ReviewLanguage> {
     const local = this.detectLanguageHeuristic(reviewText);
     if (local) return local;
     try {
@@ -227,15 +206,15 @@ export const aiResponseService = {
           {
             role: "system",
             content:
-              "Detect the review language. Reply with exactly one code: pt, en, or es. If unsure, reply pt.",
+              "Detect the review language. Reply with exactly one code: pt, en, es, fr or de. If it is another language, reply en. If unsure, reply pt.",
           },
           { role: "user", content: reviewText },
         ],
         0.1,
       );
       // RJ-4.4: ler só um código isolado. Antes, "includes('es')" apanhava "Portuguese" como espanhol.
-      const match = String(text || "").toLowerCase().match(/\b(pt|en|es)\b/);
-      return (match?.[1] as "pt" | "en" | "es") ?? "pt";
+      const match = String(text || "").toLowerCase().match(/\b(pt|en|es|fr|de)\b/);
+      return (match?.[1] as ReviewLanguage) ?? "pt";
     } catch {
       return "pt";
     }
@@ -363,7 +342,8 @@ export const aiResponseService = {
     const { reviewText, platform, tone, language, establishmentContext, dynamicFields, localSeoKeywords, extraInstructions, userId } = request;
 
     // Língua: a pedida, ou a deteção local (sem IA). Se nenhuma servir, a IA deteta na mesma chamada.
-    const knownLanguage = (language || this.detectLanguageHeuristic(reviewText) || "").toLowerCase() || null;
+    // RJ-13.4: a língua pedida (código ou nome antigo da interface) ou a deteção local.
+    const knownLanguage: ReviewLanguage | null = toReviewLanguage(language) || this.detectLanguageHeuristic(reviewText);
     const platformKey = platform.toLowerCase().replace(/\s+/g, '_');
     const config = PLATFORM_CONFIGS[platformKey] || PLATFORM_CONFIGS['google_maps'];
     const seoKeywords = this.buildLocalSeoKeywords({
@@ -387,8 +367,8 @@ export const aiResponseService = {
 
       Step 1. Classify the review sentiment as positive, neutral or negative.
       Step 2. ${knownLanguage
-        ? `The review language is "${knownLanguage}". Write the replies in that language.`
-        : `Detect the review language (pt, en or es; if unsure use pt) and write the replies in it.`}
+        ? `The review language is "${knownLanguage}". Write the replies in ${REVIEW_LANGUAGE_PROMPT[knownLanguage]}.`
+        : `Detect the review language and reply in the customer's language. Supported: pt = ${REVIEW_LANGUAGE_PROMPT.pt}; en = English; es = Spanish; fr = French; de = German (formal "Sie"). If the review is in another language, reply in English and set language to "en". If unsure, use pt.`}
       Step 3. List up to 5 short topics the customer mentions (e.g. "service", "waiting time", "food"),
               written in the review's language. Empty list if none.
       Step 4. Write 3 DISTINCT reply variations: concise, balanced, detailed.
@@ -416,7 +396,7 @@ export const aiResponseService = {
       type: Type.OBJECT,
       properties: {
         sentiment: { type: Type.STRING, enum: ["positive", "neutral", "negative"] },
-        language: { type: Type.STRING, enum: ["pt", "en", "es"] },
+        language: { type: Type.STRING, enum: [...REVIEW_LANGUAGES] },
         keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
         variations: {
           type: Type.ARRAY,
@@ -485,6 +465,8 @@ export const aiResponseService = {
     responseType?: string;
     /** Nome de quem escreveu a review (vem da review sincronizada). */
     customerName?: string | null;
+    /** RJ-13.4: língua escolhida pelo utilizador; vazio ou "auto" = a língua do cliente. */
+    language?: string | null;
   }) {
       const variations = await this.generateReviewResponses({
         dynamicFields: { customerName: params.customerName || undefined },
@@ -492,7 +474,7 @@ export const aiResponseService = {
         reviewText: params.comment,
         platform: params.platform,
         tone: params.tone,
-        language: undefined,
+        language: params.language || undefined,
         establishmentContext: {
             name: params.businessContext?.businessName,
             responseGuidelines: params.extraInstructions,

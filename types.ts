@@ -25,10 +25,13 @@ export enum Tone {
 }
 
 export enum Language {
+  // RJ-13.4: "Automática" responde na língua do cliente (pt-PT, en, es, fr, de).
+  AUTO = 'Automática (a do cliente)',
   PT = 'Português',
   EN = 'Inglês',
   ES = 'Espanhol',
-  FR = 'Francês'
+  FR = 'Francês',
+  DE = 'Alemão'
 }
 
 export interface ReviewData {
