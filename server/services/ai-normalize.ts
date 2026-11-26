@@ -1,6 +1,8 @@
 // RJ-4.6: validação da resposta JSON do Gemini (sem dependências, para poder ser testada).
 // Valores fora da lista caem para um valor seguro.
 
+import { isReviewLanguage } from "../../shared/review-languages.js";
+
 export function normalizeGeneration(
   json: { sentiment?: string; language?: string; keywords?: unknown; variations?: Array<{ text?: string; type?: string }> },
   knownLanguage: string | null,
@@ -8,7 +10,7 @@ export function normalizeGeneration(
   const sentiment = (["positive", "neutral", "negative"].includes(String(json?.sentiment))
     ? json.sentiment
     : "neutral") as "positive" | "neutral" | "negative";
-  const language = knownLanguage || (["pt", "en", "es"].includes(String(json?.language)) ? String(json.language) : "pt");
+  const language = knownLanguage || (isReviewLanguage(json?.language) ? String(json.language) : "pt");
   const keywords = Array.isArray(json?.keywords)
     ? Array.from(new Set((json.keywords as unknown[]).map((k) => String(k || "").trim().toLowerCase()).filter((k) => k && k.length <= 60))).slice(0, 5)
     : [];

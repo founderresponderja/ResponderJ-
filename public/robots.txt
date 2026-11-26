@@ -6,4 +6,4 @@ Disallow: /app/
 Disallow: /invite/
 Disallow: /convite/
 
-Sitemap: https://www.responderja.pt/sitemap.xml
+Sitemap: https://responder-ja.vercel.app/sitemap.xml

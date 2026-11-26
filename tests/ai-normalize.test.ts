@@ -22,7 +22,7 @@ test("a língua já conhecida prevalece sobre a da IA", () => {
 });
 
 test("valores inválidos caem para valores seguros", () => {
-  const r = normalizeGeneration({ sentiment: "angry", language: "fr", keywords: "x" as any, variations: [{ text: "" }, {} as any] }, null);
+  const r = normalizeGeneration({ sentiment: "angry", language: "it", keywords: "x" as any, variations: [{ text: "" }, {} as any] }, null);
   assert.equal(r.sentiment, "neutral");
   assert.equal(r.language, "pt");
   assert.deepEqual(r.keywords, []);

@@ -644,7 +644,7 @@ export async function registerRoutes(app: any): Promise<void> {
   app.post('/api/generate-response', requireAuth, trialRateLimit, generateRateLimit, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
-      const { platform, originalMessage, tone, businessProfileId, responseType, extraInstructions } = req.body;
+      const { platform, originalMessage, tone, businessProfileId, responseType, extraInstructions, language } = req.body;
       const effectiveGeminiModel = mainModel();
       console.log("[generate-response] request", {
         userId,
@@ -716,6 +716,7 @@ export async function registerRoutes(app: any): Promise<void> {
         businessContext,
         responseType: responseType || "resposta",
         customerName: reviewAuthorName,
+        language: typeof language === "string" ? language : undefined,
       });
       console.log("[generate-response] aiResult received", {
         hasResponse: !!aiResult?.response,
