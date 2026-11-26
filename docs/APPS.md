@@ -33,6 +33,15 @@ Atualizado a 25/11/2026. Tarefas no Notion: RJ-10.x (contas das lojas), RJ-11.x 
 
 Barra de baixo com 3 separadores: Caixa de entrada, Plataformas e Definições. Planos fica dentro de Definições.
 
+## Decisão de 26/11/2026: app completa, sem abrir o site
+- **Nível 1 (agora):** a app nunca abre o site do Responder Já. Ligar plataformas, conta e planos ficam dentro da app; as avaliações ficam guardadas no telemóvel para abrir sem internet; respostas escritas sem rede seguem quando a rede voltar. A app continua a usar o servidor do Responder Já (a mesma conta do site). Ligar Google/Facebook mostra a página de login deles numa janela dentro da app (regra do Google e da Meta).
+- **Planos:** só informação na app (plano atual e planos disponíveis). A compra e a mudança de plano fazem-se no site, no computador. Sem compras dentro da app.
+- **Nível 2 (versão 2.0):** servidor próprio para as apps, à parte do site, e erros das apps separados no separador "Saúde da app" do super administrador (origem e versão da app). Tarefa própria no Notion.
+- **Rejeitado:** app sem servidor nenhum (chaves dentro da app, créditos sem controlo, sem sincronização automática, sem equipa da Agência).
+
+## Login com Google na app
+- Endereço de regresso autorizado no Clerk (produção): `responderja://sso-callback`.
+
 ## Recursos
 - Tipo de letra Max em OTF: `mobile/assets/fonts/Max-Regular.otf` (recebido a 25/11/2026). Não tem o símbolo €.
 - Ícones de 1024×1024 px: `mobile/assets/images/icon.png` (fundo petróleo) e `adaptive-icon.png` (Android, fundo transparente). Original em `icon.svg`.
