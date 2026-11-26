@@ -42,9 +42,15 @@ export default function SignIn() {
     correr(async () => {
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
-        redirectUrl: AuthSession.makeRedirectUri(),
+        // Endereço de regresso autorizado no Clerk (Native applications → redirect URLs).
+        redirectUrl: AuthSession.makeRedirectUri({ scheme: 'responderja', path: 'sso-callback' }),
       });
-      if (createdSessionId && setActive) await setActive({ session: createdSessionId });
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+      } else {
+        // Janela fechada ou login não concluído: dizer em vez de ficar calado.
+        setErro('O login com Google não foi concluído. Tente outra vez ou use o email.');
+      }
     });
 
   const enviarCodigo = () =>
