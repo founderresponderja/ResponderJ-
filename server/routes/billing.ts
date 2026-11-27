@@ -3,7 +3,14 @@ import type { Express } from "express";
 import { BillingService } from "../services/billing-service.js";
 import { requireAuth } from "../auth.js";
 import { storage } from "../storage.js";
-import { decideWebhookReplay } from "../services/billing-logic.js";
+import {
+  decideWebhookReplay,
+  normalizeInterval,
+  lookupKeyFor,
+  isPaidPlan,
+  checkoutTaxParams,
+  envFlag,
+} from "../services/billing-logic.js";
 import Stripe from "stripe";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
@@ -234,6 +241,9 @@ export function registerBillingRoutes(app: any) {
       };
 
       switch (event.type) {
+        // Débito direto SEPA e outros métodos com confirmação mais tarde: o pagamento só fica
+        // confirmado neste segundo aviso. Tratado como o checkout concluído (idempotente).
+        case 'checkout.session.async_payment_succeeded':
         case 'checkout.session.completed': {
           const session = event.data.object as Stripe.Checkout.Session;
           try {
@@ -301,6 +311,32 @@ export function registerBillingRoutes(app: any) {
             }
           } catch (error: any) {
             fail("invoice.payment_failed", error);
+          }
+          break;
+        }
+
+        case 'checkout.session.async_payment_failed': {
+          // O débito SEPA (ou outro pagamento confirmado mais tarde) falhou. A subscrição fica
+          // incompleta e não dá o plano (subscriptionAccess "pending"); o Stripe avisa o cliente.
+          const session = event.data.object as Stripe.Checkout.Session;
+          console.warn(`[webhook] async payment failed for checkout ${session.id} (customer ${session.customer})`);
+          break;
+        }
+
+        case 'charge.refunded': {
+          // Reembolso: o dinheiro volta ao cliente. O plano não muda sozinho (cancelar é outro passo,
+          // feito no portal ou no painel). A nota de crédito é emitida pela aplicação de faturação
+          // ligada ao Stripe (InvoiceXpress). Aqui fica só o registo, ligado ao utilizador.
+          const charge = event.data.object as Stripe.Charge;
+          try {
+            const customerId = typeof charge.customer === "string" ? charge.customer : (charge.customer as any)?.id;
+            const user = customerId ? await storage.getUserByStripeCustomerId(customerId) : undefined;
+            console.log(
+              `[webhook] refund ${charge.id}: ${charge.amount_refunded / 100} ${charge.currency} ` +
+              `of ${charge.amount / 100} (customer ${customerId || "?"}, user ${user?.id ?? "?"})`,
+            );
+          } catch (error: any) {
+            fail("charge.refunded", error);
           }
           break;
         }
@@ -378,10 +414,25 @@ export function registerBillingRoutes(app: any) {
 
       const baseUrl = process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`;
       const selectedPlan = CHECKOUT_PLANS[planId];
-      const priceId = getEnv(...selectedPlan.envPriceKeys);
+      const interval = normalizeInterval(req.body?.interval);
+
+      // Preços novos: procurados pelo nome interno (rj_<plano>_<mensal|anual>). Se a conta Stripe
+      // ainda não os tiver (o live, por agora), usa-se o caminho antigo das variáveis STRIPE_PRICE_ID_*.
+      let lookupPriceId: string | undefined;
+      if (isPaidPlan(planId)) {
+        const lookupKey = lookupKeyFor(planId, interval);
+        const found = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
+        lookupPriceId = found.data[0]?.id;
+      }
+      if (interval === "year" && !lookupPriceId) {
+        return res.status(400).json({ error: "O plano anual ainda não está disponível.", code: "annual_unavailable" });
+      }
+      const priceId = lookupPriceId || getEnv(...selectedPlan.envPriceKeys);
 
       console.log("[stripe] creating checkout session", {
         planId,
+        interval,
+        priceSource: lookupPriceId ? "lookup_key" : priceId ? "env" : "inline",
         priceIdResolved: !!priceId,
         priceIdPreview: priceId ? `${priceId.slice(0, 10)}...` : "inline_price_data_fallback",
         envKeysChecked: selectedPlan.envPriceKeys,
@@ -393,21 +444,30 @@ export function registerBillingRoutes(app: any) {
       // RJ-6.3: quem já é cliente Stripe (ex.: voltou a subscrever) usa o mesmo cliente,
       // para o pagamento chegar à conta certa e não se criarem clientes duplicados.
       const existingCustomerId = (await storage.getUser(req.user?.id).catch(() => undefined))?.stripeCustomerId || null;
+      // IVA automático, morada e NIF / número de IVA europeu, códigos promocionais (PILOTO50).
+      // Só com STRIPE_TAX_CHECKOUT=true (ambiente de testes); o live fica igual até ao «aprovo live».
+      const taxParams = checkoutTaxParams({
+        enabled: envFlag(process.env.STRIPE_TAX_CHECKOUT),
+        existingCustomer: !!existingCustomerId,
+      });
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         ...(existingCustomerId ? { customer: existingCustomerId } : { customer_email: email }),
+        ...taxParams,
         // RJ-6.3: identificam o utilizador quando o Stripe avisa do pagamento (webhook).
         client_reference_id: String(req.user?.id || ""),
         metadata: {
           userId: String(req.user?.id || ""),
           clerkUserId: clerkUserId || "",
           planId: planId || "",
+          interval,
         },
         subscription_data: {
           metadata: {
             userId: String(req.user?.id || ""),
             clerkUserId: clerkUserId || "",
             planId: planId || "",
+            interval,
           },
         },
         line_items: priceId

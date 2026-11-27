@@ -182,8 +182,14 @@ export class BillingService {
       return { updated: false, reason: "user_not_found" };
     }
 
-    const priceId = subscription.items?.data?.[0]?.price?.id;
-    const { planId, via } = resolvePaidPlan({ priceId, metadataPlanId: metadata.planId, env: process.env });
+    const price = subscription.items?.data?.[0]?.price;
+    const priceId = price?.id;
+    const { planId, via } = resolvePaidPlan({
+      priceId,
+      lookupKey: price?.lookup_key,
+      metadataPlanId: metadata.planId,
+      env: process.env,
+    });
     if (!planId) {
       throw new Error(
         `Preço desconhecido ${priceId} na subscrição ${subscription.id} (utilizador ${user.id}). ` +

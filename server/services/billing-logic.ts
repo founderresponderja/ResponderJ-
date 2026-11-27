@@ -12,18 +12,51 @@ export function isPaidPlan(value: unknown): value is PaidPlan {
   return typeof value === "string" && (PAID_PLANS as string[]).includes(value);
 }
 
+// ---------------------------------------------------------------------------------------------
+// Preços do Stripe por nome interno (lookup key). Criados na Sandbox a 27/11/2026:
+// rj_essencial_mensal, rj_essencial_anual, rj_profissional_mensal, ... O código procura o preço
+// pelo nome, por isso não depende dos IDs (que mudam entre a Sandbox e o live).
+// ---------------------------------------------------------------------------------------------
+export type BillingInterval = "month" | "year";
+
+const LOOKUP_PLAN_NAME: Record<PaidPlan, string> = {
+  starter: "essencial",
+  pro: "profissional",
+  agency: "agencia",
+};
+
+/** Mensal por omissão; aceita "year"/"anual"/"yearly" para o anual. */
+export function normalizeInterval(value: unknown): BillingInterval {
+  const v = String(value || "").toLowerCase();
+  return v === "year" || v === "anual" || v === "yearly" || v === "annual" ? "year" : "month";
+}
+
+export function lookupKeyFor(planId: PaidPlan, interval: BillingInterval): string {
+  return `rj_${LOOKUP_PLAN_NAME[planId]}_${interval === "year" ? "anual" : "mensal"}`;
+}
+
+/** Plano a partir do nome interno do preço (rj_profissional_anual -> pro). */
+export function planFromLookupKey(lookupKey?: string | null): PaidPlan | null {
+  const match = /^rj_([a-z]+)_(mensal|anual)$/.exec(String(lookupKey || ""));
+  if (!match) return null;
+  const found = PAID_PLANS.find((key) => LOOKUP_PLAN_NAME[key] === match[1]);
+  return found || null;
+}
+
 /**
  * Que plano corresponde a uma subscrição do Stripe.
- * 1) Pelo price ID configurado nas variáveis STRIPE_PRICE_ID_* (o caminho normal).
- * 2) Se não houver correspondência, pelo planId que o próprio checkout escreveu nos metadados
+ * 1) Pelo price ID configurado nas variáveis STRIPE_PRICE_ID_* (o caminho atual no live).
+ * 2) Pelo nome interno do preço (lookup key rj_<plano>_<mensal|anual>), o caminho dos preços novos.
+ * 3) Se não houver correspondência, pelo planId que o próprio checkout escreveu nos metadados
  *    da subscrição. Isto cobre o checkout sem price ID configurado (preço inline), que antes
  *    deixava o cliente a pagar sem nunca receber o plano.
  */
 export function resolvePaidPlan(input: {
   priceId?: string | null;
+  lookupKey?: string | null;
   metadataPlanId?: string | null;
   env: Record<string, string | undefined>;
-}): { planId: PaidPlan | null; via: "price" | "metadata" | null } {
+}): { planId: PaidPlan | null; via: "price" | "lookup_key" | "metadata" | null } {
   const priceId = input.priceId || "";
   if (priceId) {
     for (const key of PAID_PLANS) {
@@ -31,8 +64,32 @@ export function resolvePaidPlan(input: {
       if (ids.some((id) => id && id === priceId)) return { planId: key, via: "price" };
     }
   }
+  const byLookup = planFromLookupKey(input.lookupKey);
+  if (byLookup) return { planId: byLookup, via: "lookup_key" };
   if (isPaidPlan(input.metadataPlanId)) return { planId: input.metadataPlanId, via: "metadata" };
   return { planId: null, via: null };
+}
+
+/**
+ * Parâmetros fiscais do checkout (IVA automático, morada e NIF / número de IVA europeu,
+ * códigos promocionais). Só ligados com STRIPE_TAX_CHECKOUT=true: no live o Stripe Tax ainda
+ * não está configurado e, sem ele, o Stripe recusa o checkout com automatic_tax.
+ * Com cliente já existente, o Stripe só aceita guardar a morada/nome se customer_update o permitir.
+ */
+export function checkoutTaxParams(options: { enabled: boolean; existingCustomer: boolean }): Record<string, any> {
+  if (!options.enabled) return {};
+  return {
+    automatic_tax: { enabled: true },
+    tax_id_collection: { enabled: true },
+    billing_address_collection: "required",
+    allow_promotion_codes: true,
+    ...(options.existingCustomer ? { customer_update: { address: "auto", name: "auto" } } : {}),
+  };
+}
+
+/** Se a variável de ambiente liga uma opção ("true", "1", "sim"). */
+export function envFlag(value: string | undefined): boolean {
+  return ["true", "1", "sim", "yes"].includes(String(value || "").trim().toLowerCase());
 }
 
 /** Créditos de um período: as respostas mensais do plano (-1 = ilimitado). */
