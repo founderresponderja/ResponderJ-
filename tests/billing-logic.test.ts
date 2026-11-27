@@ -228,3 +228,79 @@ describe("estado da subscrição no Stripe (RJ-3.2)", () => {
     for (const s of ["canceled", "unpaid", "incomplete_expired", "paused"]) assert.equal(subscriptionAccess(s), "revoke");
   });
 });
+
+// Preços novos (Sandbox 27/11/2026): procurados pelo nome interno, IVA no checkout.
+import {
+  normalizeInterval,
+  lookupKeyFor,
+  planFromLookupKey,
+  checkoutTaxParams,
+  envFlag,
+} from "../server/services/billing-logic.ts";
+
+describe("preços pelo nome interno (lookup key)", () => {
+  test("nome interno de cada plano e período", () => {
+    assert.equal(lookupKeyFor("starter", "month"), "rj_essencial_mensal");
+    assert.equal(lookupKeyFor("pro", "year"), "rj_profissional_anual");
+    assert.equal(lookupKeyFor("agency", "month"), "rj_agencia_mensal");
+  });
+
+  test("plano a partir do nome interno (ida e volta)", () => {
+    for (const plan of ["starter", "pro", "agency"] as const) {
+      for (const interval of ["month", "year"] as const) {
+        assert.equal(planFromLookupKey(lookupKeyFor(plan, interval)), plan);
+      }
+    }
+  });
+
+  test("nomes que não são planos pagos do Responder Já não dão plano", () => {
+    assert.equal(planFromLookupKey("rj_gratuito_mensal"), null);
+    assert.equal(planFromLookupKey("rj_local_extra_mensal"), null);
+    assert.equal(planFromLookupKey("subly_premium_mensal"), null);
+    assert.equal(planFromLookupKey(null), null);
+  });
+
+  test("subscrição com preço novo: plano pelo nome interno", () => {
+    assert.deepEqual(
+      resolvePaidPlan({ priceId: "price_novo", lookupKey: "rj_profissional_anual", env: ENV }),
+      { planId: "pro", via: "lookup_key" },
+    );
+  });
+
+  test("price ID configurado continua a ter prioridade (live atual não muda)", () => {
+    assert.equal(resolvePaidPlan({ priceId: "price_starter_live", lookupKey: "rj_agencia_mensal", env: ENV }).planId, "starter");
+  });
+
+  test("período: mensal por omissão, anual só quando pedido", () => {
+    assert.equal(normalizeInterval(undefined), "month");
+    assert.equal(normalizeInterval("qualquer"), "month");
+    assert.equal(normalizeInterval("year"), "year");
+    assert.equal(normalizeInterval("anual"), "year");
+  });
+});
+
+describe("IVA no checkout", () => {
+  test("desligado: o checkout fica exatamente como antes", () => {
+    assert.deepEqual(checkoutTaxParams({ enabled: false, existingCustomer: true }), {});
+  });
+
+  test("ligado: IVA automático, morada obrigatória, NIF e códigos promocionais", () => {
+    const p = checkoutTaxParams({ enabled: true, existingCustomer: false });
+    assert.deepEqual(p.automatic_tax, { enabled: true });
+    assert.deepEqual(p.tax_id_collection, { enabled: true });
+    assert.equal(p.billing_address_collection, "required");
+    assert.equal(p.allow_promotion_codes, true);
+    assert.equal(p.customer_update, undefined);
+  });
+
+  test("cliente já existente: autoriza guardar a morada e o nome", () => {
+    assert.deepEqual(checkoutTaxParams({ enabled: true, existingCustomer: true }).customer_update, { address: "auto", name: "auto" });
+  });
+
+  test("variável de ambiente", () => {
+    assert.equal(envFlag("true"), true);
+    assert.equal(envFlag(" SIM "), true);
+    assert.equal(envFlag(undefined), false);
+    assert.equal(envFlag("false"), false);
+  });
+});
